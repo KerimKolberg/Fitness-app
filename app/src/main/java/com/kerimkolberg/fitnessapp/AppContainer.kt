@@ -1,0 +1,33 @@
+package com.kerimkolberg.fitnessapp
+
+import android.content.Context
+import androidx.datastore.preferences.preferencesDataStore
+import com.kerimkolberg.fitnessapp.data.ExerciseRepository
+import com.kerimkolberg.fitnessapp.data.SettingsRepository
+import com.kerimkolberg.fitnessapp.data.WorkoutRepository
+import com.kerimkolberg.fitnessapp.data.db.AppDatabase
+import com.kerimkolberg.fitnessapp.timer.RestTimer
+import com.kerimkolberg.fitnessapp.timer.RestTimerAlarm
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+
+private val Context.settingsDataStore by preferencesDataStore(name = "settings")
+
+/** Creates and holds the app-wide objects. Screens get what they need from here through their ViewModels. */
+class AppContainer(context: Context) {
+    private val appContext = context.applicationContext
+
+    /** For work that must outlive a single screen. */
+    val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
+    val database: AppDatabase = AppDatabase.build(appContext)
+
+    val exerciseRepository = ExerciseRepository(database.exerciseDao())
+
+    val workoutRepository = WorkoutRepository(database)
+
+    val settingsRepository = SettingsRepository(appContext.settingsDataStore)
+
+    val restTimer = RestTimer(appScope, onFinished = RestTimerAlarm(appContext)::fire)
+}
