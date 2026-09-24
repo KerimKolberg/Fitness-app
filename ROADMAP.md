@@ -10,7 +10,7 @@ A customized Android gym workout tracker inspired by FitNotes, published on Goog
 | Language / UI | Kotlin + Jetpack Compose (Material 3) | Native, modern Android toolkit |
 | Local database | Room (SQLite) | All data stored on the device |
 | Architecture | MVVM + repository layer | UI → ViewModel → Repository → Room |
-| Dependency injection | Hilt | |
+| Dependency injection | Manual (`AppContainer`) | Simpler than Hilt for one app module; can switch later if the app grows |
 | Connectivity | Offline-only for v1 | Designed so cloud sync can be added later (see below) |
 | Units | kg / lb, user-selectable | Store weights in kg internally, convert for display |
 
@@ -27,14 +27,14 @@ v1 is fully offline, but the data layer follows these rules so sync/accounts can
 ## Feature list
 
 ### Must-have (MVP)
-- [ ] Exercise library: built-in exercises + custom exercises, grouped by category (chest, back, legs, shoulders, arms, core, cardio)
-- [ ] Exercise types: weight × reps, reps only, distance/time (cardio), time only
-- [ ] Workout logging: add exercises to a day, log sets (weight × reps), edit/delete sets
-- [ ] Previous-session history shown while logging an exercise
-- [ ] Calendar view of past workouts
-- [ ] Per-exercise history screen
-- [ ] Rest timer with notification/vibration when finished
-- [ ] Settings: kg/lb, default rest time, theme
+- [x] Exercise library: built-in exercises + custom exercises, grouped by category (chest, back, legs, shoulders, arms, core, cardio)
+- [x] Exercise types: weight × reps, reps only, distance/time (cardio), time only
+- [x] Workout logging: add exercises to a day, log sets (weight × reps), edit/delete sets
+- [x] Previous-session history shown while logging an exercise
+- [x] Calendar view of past workouts
+- [x] Per-exercise history screen
+- [x] Rest timer with notification/vibration when finished
+- [x] Settings: kg/lb, default rest time, theme
 
 ### Should-have
 - [ ] Personal records (PRs) and estimated 1RM, with a marker when a PR is beaten
@@ -55,15 +55,15 @@ v1 is fully offline, but the data layer follows these rules so sync/accounts can
 - [ ] Wear OS companion
 - [ ] Cloud sync + accounts (see "Keeping the door open for cloud sync")
 
-## Data model (initial draft)
+## Data model
 
-All tables use `id: UUID`, `createdAt`, `updatedAt`, `deletedAt?`.
+Category, Exercise, Workout, WorkoutExercise and Set exist since Phase 1 (`app/src/main/java/.../data/db/Entities.kt`); the rest are planned. All tables use `id: UUID`, `createdAt`, `updatedAt`, `deletedAt?`.
 
 - **Category**: name, color, sortOrder
 - **Exercise**: name, categoryId, type (WEIGHT_REPS / REPS / DISTANCE_TIME / TIME), notes, isCustom
 - **Workout**: date, comment
 - **WorkoutExercise**: workoutId, exerciseId, sortOrder
-- **Set**: workoutExerciseId, sortOrder, weightKg?, reps?, distanceM?, durationSec?, isWarmup, comment
+- **Set**: workoutExerciseId, sortOrder, weightKg?, reps?, distanceMeters?, durationSeconds?, comment (isWarmup to come later)
 - **Routine**: name, notes
 - **RoutineExercise**: routineId, exerciseId, sortOrder, targetSets?, targetReps?
 - **BodyMeasurement**: date, type (WEIGHT / BODY_FAT / custom), value, unit
@@ -77,13 +77,14 @@ All tables use `id: UUID`, `createdAt`, `updatedAt`, `deletedAt?`.
 - [ ] Sketch main screens (Today/log, Exercise picker, Exercise log, Calendar, History, Settings)
 
 ### Phase 1: MVP
-- [ ] Android project setup (Gradle, Compose, Room, Hilt, CI build)
-- [ ] Database + repositories + seed data for built-in exercises
-- [ ] Exercise library screens
-- [ ] Workout logging screens
-- [ ] Calendar + history
-- [ ] Rest timer
-- [ ] Settings
+- [x] Android project setup (Gradle, Compose, Room, CI build)
+- [x] Database + repositories + seed data for built-in exercises
+- [x] Exercise library screens
+- [x] Workout logging screens
+- [x] Calendar + history
+- [x] Rest timer (runs while the app process is alive; a foreground service can make it bulletproof later)
+- [x] Settings
+- [ ] Try it on a real phone and collect fixes
 - **Goal:** installable APK, usable for personal training
 
 ### Phase 2: Insights
@@ -101,6 +102,7 @@ All tables use `id: UUID`, `createdAt`, `updatedAt`, `deletedAt?`.
 
 ### Phase 4: Google Play release
 - [ ] App name, icon, screenshots, store listing
+- [ ] Move UI text into `strings.xml` (needed for translations)
 - [ ] Privacy policy (simple, since data stays on device)
 - [ ] Signed release build (AAB), Play App Signing
 - [ ] Internal testing → closed testing → production
