@@ -1,9 +1,28 @@
 package com.kerimkolberg.fitnessapp.data
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class BuiltInExercisesTest {
+    @Test
+    fun starterPlansOnlyUseBuiltInExercises() {
+        val ids = BuiltInExercises.categories.flatMap { it.exercises }.map { it.id }.toSet()
+        StarterPlans.plans.forEach { (plan, names) ->
+            names.forEach { name ->
+                assertTrue("$name in $plan is not a built-in exercise", StarterPlans.exerciseId(name) in ids)
+            }
+        }
+    }
+
+    @Test
+    fun categoryKeysUsedByAchievementsExist() {
+        val keys = BuiltInExercises.categories.map { it.key }
+        listOf("mobility", "stretching", "tendons", "isometrics", "plyometrics", "sports").forEach {
+            assertTrue(it in keys)
+        }
+    }
+
     @Test
     fun idsAreUniqueAndStable() {
         val categoryIds = BuiltInExercises.categories.map { it.id }

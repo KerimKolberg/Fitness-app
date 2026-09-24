@@ -9,10 +9,17 @@ import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.toRoute
 import com.kerimkolberg.fitnessapp.data.ExerciseRepository
+import com.kerimkolberg.fitnessapp.data.GameRepository
+import com.kerimkolberg.fitnessapp.data.RoutineRepository
 import com.kerimkolberg.fitnessapp.data.SettingsRepository
 import com.kerimkolberg.fitnessapp.data.WorkoutRepository
 import com.kerimkolberg.fitnessapp.model.Exercise
+import com.kerimkolberg.fitnessapp.model.GameStats
+import com.kerimkolberg.fitnessapp.model.XpRules
+import com.kerimkolberg.fitnessapp.model.celebrationsBetween
+import com.kerimkolberg.fitnessapp.model.recordScore
 import com.kerimkolberg.fitnessapp.model.HistorySession
+import com.kerimkolberg.fitnessapp.model.Routine
 import com.kerimkolberg.fitnessapp.model.SetEntry
 import com.kerimkolberg.fitnessapp.model.Settings
 import com.kerimkolberg.fitnessapp.model.UnitSystem
@@ -49,7 +56,13 @@ class ExerciseLogViewModel(
     private val workoutRepository: WorkoutRepository,
     settingsRepository: SettingsRepository,
     private val restTimer: RestTimer,
+    gameRepository: GameRepository,
+    private val routineRepository: RoutineRepository,
 ) : ViewModel() {
+    /** All plans, to add this exercise to or remove it from. */
+    val plans: StateFlow<List<Routine>> =
+        routineRepository.routines.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
     private val route = savedStateHandle.toRoute<ExerciseLogRoute>()
     val date: LocalDate = LocalDate.ofEpochDay(route.epochDay)
     val exerciseId: String = route.exerciseId
@@ -62,6 +75,10 @@ class ExerciseLogViewModel(
         private set
 
     var errorMessage by mutableStateOf<String?>(null)
+        private set
+
+    /** A message to celebrate with, such as a new record or an unlocked achievement. */
+    var celebration by mutableStateOf<String?>(null)
         private set
 
     val timerState: StateFlow<RestTimerState> = restTimer.state
@@ -84,6 +101,14 @@ class ExerciseLogViewModel(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ExerciseLogUiState())
 
     init {
+        // Compare each new snapshot of the game stats with the previous one and celebrate what changed.
+        viewModelScope.launch {
+            var previous: GameStats? = null
+            gameRepository.stats.collect { stats ->
+                previous?.let { before -> celebrate(celebrationsBetween(before, stats)) }
+                previous = stats
+            }
+        }
         // Start from the last values used, like a gym notebook: today's last set, else last session's.
         viewModelScope.launch {
             val state = uiState.first { !it.isLoading }
@@ -116,7 +141,12 @@ class ExerciseLogViewModel(
                     if (editingId != null) {
                         workoutRepository.updateSet(editingId, result.values)
                     } else {
+                        val best = state.history.flatMap { it.sets }.mapNotNull { recordScore(it.values, exercise.type) }.maxOrNull()
+                        val score = recordScore(result.values, exercise.type)
                         workoutRepository.addSet(date, exerciseId, result.values)
+                        if (best != null && score != null && score > best) {
+                            celebrate(listOf("⭐ New personal record! +${XpRules.PER_RECORD} XP"))
+                        }
                         if (state.settings.autoStartRestTimer) {
                             restTimer.start(state.settings.restTimerSeconds)
                         }
@@ -145,6 +175,29 @@ class ExerciseLogViewModel(
 
     fun clearInput() = updateInput(SetInput())
 
+    fun setInPlan(planId: String, inPlan: Boolean) {
+        viewModelScope.launch {
+            if (inPlan) {
+                routineRepository.addExercise(planId, exerciseId)
+            } else {
+                routineRepository.removeExerciseFromRoutine(planId, exerciseId)
+            }
+        }
+    }
+
+    fun createPlanWithExercise(name: String) {
+        viewModelScope.launch { routineRepository.addExercise(routineRepository.createRoutine(name), exerciseId) }
+    }
+
+    fun consumeCelebration() {
+        celebration = null
+    }
+
+    private fun celebrate(messages: List<String>) {
+        if (messages.isEmpty()) return
+        celebration = (listOfNotNull(celebration) + messages).joinToString("\n")
+    }
+
     fun startTimer(seconds: Int) = restTimer.start(seconds)
 
     fun stopTimer() = restTimer.stop()
@@ -159,6 +212,8 @@ class ExerciseLogViewModel(
                 workoutRepository = container.workoutRepository,
                 settingsRepository = container.settingsRepository,
                 restTimer = container.restTimer,
+                gameRepository = container.gameRepository,
+                routineRepository = container.routineRepository,
             )
         }
     }

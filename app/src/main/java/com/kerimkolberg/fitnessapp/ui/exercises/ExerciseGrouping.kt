@@ -11,9 +11,12 @@ fun groupExercises(
     exercises: List<Exercise>,
     query: String,
     selectedCategoryId: String?,
+    /** When set, only these exercises are shown (the exercises of a plan). */
+    allowedIds: Set<String>? = null,
 ): List<ExerciseGroup> {
     val words = query.trim().lowercase().split(Regex("\\s+")).filter { it.isNotEmpty() }
     val byCategory = exercises
+        .filter { exercise -> allowedIds == null || exercise.id in allowedIds }
         .filter { exercise -> words.all { exercise.name.lowercase().contains(it) } }
         .groupBy { it.categoryId }
     return categories

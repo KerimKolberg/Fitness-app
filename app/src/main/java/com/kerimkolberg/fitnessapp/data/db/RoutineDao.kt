@@ -33,6 +33,9 @@ interface RoutineDao {
     )
     fun observeRoutineExercises(): Flow<List<RoutineExerciseRow>>
 
+    @Query("SELECT name FROM routines WHERE deletedAt IS NULL")
+    suspend fun getRoutineNames(): List<String>
+
     @Query("SELECT * FROM routines WHERE id = :id")
     suspend fun getRoutine(id: String): RoutineEntity?
 

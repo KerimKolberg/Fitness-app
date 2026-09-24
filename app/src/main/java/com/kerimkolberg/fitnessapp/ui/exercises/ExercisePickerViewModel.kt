@@ -12,6 +12,7 @@ import androidx.navigation.toRoute
 import com.kerimkolberg.fitnessapp.data.ExerciseRepository
 import com.kerimkolberg.fitnessapp.data.RoutineRepository
 import com.kerimkolberg.fitnessapp.model.Category
+import com.kerimkolberg.fitnessapp.model.Routine
 import com.kerimkolberg.fitnessapp.ui.ExercisePickerRoute
 import com.kerimkolberg.fitnessapp.ui.appViewModelFactory
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,6 +26,8 @@ data class ExercisePickerUiState(
     val categories: List<Category> = emptyList(),
     val groups: List<ExerciseGroup> = emptyList(),
     val selectedCategoryId: String? = null,
+    val plans: List<Routine> = emptyList(),
+    val selectedPlanId: String? = null,
 )
 
 class ExercisePickerViewModel(
@@ -40,17 +43,29 @@ class ExercisePickerViewModel(
         private set
 
     private val selectedCategoryId = MutableStateFlow<String?>(null)
+    private val selectedPlanId = MutableStateFlow<String?>(null)
+    private val planFilter = combine(routineRepository.routines, selectedPlanId) { plans, planId -> plans to planId }
 
     val uiState: StateFlow<ExercisePickerUiState> = combine(
         repository.categories,
         repository.exercises,
         snapshotFlow { query },
         selectedCategoryId,
-    ) { categories, exercises, query, selectedCategoryId ->
+        planFilter,
+    ) { categories, exercises, query, selectedCategoryId, (plans, planId) ->
+        val plan = plans.firstOrNull { it.id == planId }
         ExercisePickerUiState(
             categories = categories,
-            groups = groupExercises(categories, exercises, query, selectedCategoryId),
+            groups = groupExercises(
+                categories,
+                exercises,
+                query,
+                selectedCategoryId,
+                allowedIds = plan?.exercises?.map { it.exerciseId }?.toSet(),
+            ),
             selectedCategoryId = selectedCategoryId,
+            plans = plans,
+            selectedPlanId = plan?.id,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ExercisePickerUiState())
 
@@ -74,6 +89,13 @@ class ExercisePickerViewModel(
     /** Selects a category filter, or shows all categories when [categoryId] is null. */
     fun selectCategory(categoryId: String?) {
         selectedCategoryId.value = categoryId
+        selectedPlanId.value = null
+    }
+
+    /** Shows only the exercises of a plan (tap again to show all). */
+    fun selectPlan(planId: String) {
+        selectedPlanId.value = if (selectedPlanId.value == planId) null else planId
+        selectedCategoryId.value = null
     }
 
     companion object {

@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Edit
@@ -54,7 +55,7 @@ fun ExercisePickerScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (viewModel.routineId != null) "Add to routine" else "Choose exercise") },
+                title = { Text(if (viewModel.routineId != null) "Add to plan" else "Choose exercise") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -96,10 +97,21 @@ fun ExercisePickerScreen(
             ) {
                 item {
                     FilterChip(
-                        selected = state.selectedCategoryId == null,
+                        selected = state.selectedCategoryId == null && state.selectedPlanId == null,
                         onClick = { viewModel.selectCategory(null) },
                         label = { Text("All") },
                     )
+                }
+                // Plans come first when not adding to a plan: they are the quickest way to find exercises.
+                if (viewModel.routineId == null) {
+                    items(state.plans, key = { "plan-${it.id}" }) { plan ->
+                        FilterChip(
+                            selected = state.selectedPlanId == plan.id,
+                            onClick = { viewModel.selectPlan(plan.id) },
+                            label = { Text(plan.name) },
+                            leadingIcon = { Icon(Icons.AutoMirrored.Filled.List, contentDescription = null) },
+                        )
+                    }
                 }
                 items(state.categories, key = { it.id }) { category ->
                     FilterChip(

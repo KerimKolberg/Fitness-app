@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -20,6 +21,7 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -156,6 +158,30 @@ fun EditExerciseScreen(
                         Text(type.label, modifier = Modifier.padding(start = 12.dp))
                     }
                 }
+            }
+
+            OutlinedTextField(
+                value = viewModel.tempo,
+                onValueChange = viewModel::updateTempo,
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Tempo (optional)") },
+                supportingText = { Text("Seconds down-pause-up-pause, e.g. 5-0-1-0 for slow eccentrics") },
+                singleLine = true,
+            )
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .toggleable(
+                        value = viewModel.perSide,
+                        onValueChange = viewModel::updatePerSide,
+                        role = Role.Checkbox,
+                    )
+                    .padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Checkbox(checked = viewModel.perSide, onCheckedChange = null)
+                Text("Each side separately (left and right)", modifier = Modifier.padding(start = 12.dp))
             }
 
             OutlinedTextField(

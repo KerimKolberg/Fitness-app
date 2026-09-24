@@ -13,6 +13,9 @@ data class SetInput(
     val distance: String = "",
     val minutes: String = "",
     val seconds: String = "",
+    val height: String = "",
+    val rpe: String = "",
+    val note: String = "",
 ) {
     sealed interface Result {
         data class Valid(val values: SetValues) : Result
@@ -25,8 +28,9 @@ data class SetInput(
         var repCount: Int? = null
         var distanceMeters: Double? = null
         var durationSeconds: Int? = null
+        var effort: Int? = null
 
-        if (type.usesWeight) {
+        if (type.usesWeight && (type == ExerciseType.WEIGHT_REPS || weight.isNotBlank())) {
             val value = parseDecimal(weight.ifBlank { "0" })
             if (value == null || value < 0) return Result.Invalid("Enter a valid weight")
             weightKg = units.weightToKg(value)
@@ -41,6 +45,16 @@ data class SetInput(
             if (value == null || value < 0) return Result.Invalid("Enter a valid distance")
             distanceMeters = units.distanceToMeters(value)
         }
+        if (type.usesHeight && height.isNotBlank()) {
+            val value = parseDecimal(height)
+            if (value == null || value < 0) return Result.Invalid("Enter a valid height or distance")
+            distanceMeters = units.heightToMeters(value)
+        }
+        if (type.usesIntensity && rpe.isNotBlank()) {
+            val value = rpe.trim().toIntOrNull()
+            if (value == null || value !in 1..10) return Result.Invalid("Intensity is a number from 1 to 10")
+            effort = value
+        }
         if (type.usesTime && (minutes.isNotBlank() || seconds.isNotBlank())) {
             val min = minutes.trim().ifEmpty { "0" }.toIntOrNull()
             val sec = seconds.trim().ifEmpty { "0" }.toIntOrNull()
@@ -50,10 +64,20 @@ data class SetInput(
         if (type == ExerciseType.DISTANCE_TIME && (distanceMeters ?: 0.0) <= 0.0 && (durationSeconds ?: 0) <= 0) {
             return Result.Invalid("Enter a distance or a time")
         }
-        if (type == ExerciseType.TIME && (durationSeconds ?: 0) <= 0) {
+        val needsTime = type == ExerciseType.TIME || type == ExerciseType.TIME_WEIGHT || type == ExerciseType.SESSION
+        if (needsTime && (durationSeconds ?: 0) <= 0) {
             return Result.Invalid("Enter a time")
         }
-        return Result.Valid(SetValues(weightKg, repCount, distanceMeters, durationSeconds))
+        return Result.Valid(
+            SetValues(
+                weightKg = weightKg,
+                reps = repCount,
+                distanceMeters = distanceMeters,
+                durationSeconds = durationSeconds,
+                rpe = effort,
+                note = if (type.usesIntensity) note.trim() else "",
+            ),
+        )
     }
 
     fun adjustWeight(direction: Int, units: UnitSystem): SetInput {
@@ -72,6 +96,9 @@ data class SetInput(
             weight = values.weightKg?.let { formatNumber(units.weightFromKg(it)) }.orEmpty(),
             reps = values.reps?.toString().orEmpty(),
             distance = values.distanceMeters?.let { formatNumber(units.distanceFromMeters(it)) }.orEmpty(),
+            height = values.distanceMeters?.let { formatNumber(units.heightFromMeters(it)) }.orEmpty(),
+            rpe = values.rpe?.toString().orEmpty(),
+            note = values.note,
             minutes = values.durationSeconds?.let { (it / 60).toString() }.orEmpty(),
             seconds = values.durationSeconds?.let { (it % 60).toString() }.orEmpty(),
         )

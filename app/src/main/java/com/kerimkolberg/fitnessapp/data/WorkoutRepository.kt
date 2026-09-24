@@ -51,7 +51,8 @@ class WorkoutRepository(
                 reps = values.reps,
                 distanceMeters = values.distanceMeters,
                 durationSeconds = values.durationSeconds,
-                comment = "",
+                comment = values.note,
+                rpe = values.rpe,
                 createdAt = time,
                 updatedAt = time,
             )
@@ -67,6 +68,8 @@ class WorkoutRepository(
                 reps = values.reps,
                 distanceMeters = values.distanceMeters,
                 durationSeconds = values.durationSeconds,
+                rpe = values.rpe,
+                comment = values.note,
                 updatedAt = now(),
             ),
         )
@@ -148,6 +151,8 @@ private fun groupDayRows(rows: List<DayRow>): List<DayExercise> =
                             reps = row.reps,
                             distanceMeters = row.distanceMeters,
                             durationSeconds = row.durationSeconds,
+                            rpe = row.rpe,
+                            note = row.comment.orEmpty(),
                         ),
                     )
                 }
@@ -162,5 +167,7 @@ private fun WorkoutSetEntity.toSetEntry() = SetEntry(
         reps = reps,
         distanceMeters = distanceMeters,
         durationSeconds = durationSeconds,
+        rpe = rpe,
+        note = comment,
     ),
 )

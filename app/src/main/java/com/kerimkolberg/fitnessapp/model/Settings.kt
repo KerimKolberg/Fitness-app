@@ -26,6 +26,11 @@ enum class UnitSystem(
 
     fun lengthToCm(value: Double): Double = if (this == METRIC) value else value * CM_PER_INCH
 
+    /** Jump height or distance, stored in meters, shown in cm or inches. */
+    fun heightFromMeters(meters: Double): Double = lengthFromCm(meters * 100)
+
+    fun heightToMeters(value: Double): Double = lengthToCm(value) / 100
+
     companion object {
         const val KG_PER_LB = 0.45359237
         const val METERS_PER_KM = 1000.0
@@ -45,4 +50,6 @@ data class Settings(
     val restTimerSeconds: Int = 90,
     val autoStartRestTimer: Boolean = true,
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
+    /** Workouts per week that keep a streak going. */
+    val weeklyGoal: Int = 3,
 )

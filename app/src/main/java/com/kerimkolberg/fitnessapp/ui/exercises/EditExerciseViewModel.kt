@@ -40,6 +40,10 @@ class EditExerciseViewModel(
         private set
     var notes by mutableStateOf("")
         private set
+    var tempo by mutableStateOf("")
+        private set
+    var perSide by mutableStateOf(false)
+        private set
     var nameError by mutableStateOf<String?>(null)
         private set
 
@@ -55,6 +59,8 @@ class EditExerciseViewModel(
                 categoryId = exercise.categoryId
                 type = exercise.type
                 notes = exercise.notes
+                tempo = exercise.tempo
+                perSide = exercise.perSide
             } else if (categoryId == null) {
                 categoryId = repository.categories.first().firstOrNull()?.id
             }
@@ -78,6 +84,14 @@ class EditExerciseViewModel(
         notes = value
     }
 
+    fun updateTempo(value: String) {
+        tempo = value
+    }
+
+    fun updatePerSide(value: Boolean) {
+        perSide = value
+    }
+
     fun save() {
         val category = categoryId
         if (name.isBlank()) {
@@ -86,7 +100,7 @@ class EditExerciseViewModel(
         }
         if (category == null) return
         viewModelScope.launch {
-            repository.saveExercise(exerciseId, name, category, type, notes)
+            repository.saveExercise(exerciseId, name, category, type, notes, tempo, perSide)
             result = EditExerciseResult.SAVED
         }
     }

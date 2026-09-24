@@ -3,7 +3,10 @@ package com.kerimkolberg.fitnessapp.data
 import com.kerimkolberg.fitnessapp.model.ExerciseType
 import com.kerimkolberg.fitnessapp.model.ExerciseType.DISTANCE_TIME
 import com.kerimkolberg.fitnessapp.model.ExerciseType.REPS
+import com.kerimkolberg.fitnessapp.model.ExerciseType.REPS_HEIGHT
+import com.kerimkolberg.fitnessapp.model.ExerciseType.SESSION
 import com.kerimkolberg.fitnessapp.model.ExerciseType.TIME
+import com.kerimkolberg.fitnessapp.model.ExerciseType.TIME_WEIGHT
 import com.kerimkolberg.fitnessapp.model.ExerciseType.WEIGHT_REPS
 import java.util.UUID
 
@@ -28,6 +31,8 @@ object BuiltInExercises {
         val key: String,
         val name: String,
         val type: ExerciseType = WEIGHT_REPS,
+        val tempo: String = "",
+        val perSide: Boolean = false,
     ) {
         val id: String get() = stableId("exercise", key)
     }
@@ -35,11 +40,24 @@ object BuiltInExercises {
     fun stableId(kind: String, key: String): String =
         UUID.nameUUIDFromBytes("builtin:$kind:$key".toByteArray()).toString()
 
+    /** The key of a built-in exercise, derived from its name. */
+    fun keyOf(name: String): String = name.lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-')
+
     private fun exercise(
         name: String,
         type: ExerciseType = WEIGHT_REPS,
-        key: String = name.lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-'),
-    ) = BuiltInExercise(key = key, name = name, type = type)
+        tempo: String = "",
+        perSide: Boolean = false,
+        key: String = keyOf(name),
+    ) = BuiltInExercise(key = key, name = name, type = type, tempo = tempo, perSide = perSide)
+
+    // Category keys that other features (achievements, starter plans) refer to.
+    const val MOBILITY = "mobility"
+    const val STRETCHING = "stretching"
+    const val ISOMETRICS = "isometrics"
+    const val TENDONS = "tendons"
+    const val PLYOMETRICS = "plyometrics"
+    const val SPORTS = "sports"
 
     val categories: List<BuiltInCategory> = listOf(
         BuiltInCategory(
@@ -147,6 +165,86 @@ object BuiltInExercises {
                 exercise("Swimming", DISTANCE_TIME),
                 exercise("Stair Climber", TIME),
                 exercise("Jump Rope", TIME),
+            ),
+        ),
+        BuiltInCategory(
+            key = MOBILITY, name = "Mobility", color = 0xFF00ACC1.toInt(),
+            exercises = listOf(
+                exercise("Hip CARs", REPS, perSide = true),
+                exercise("Shoulder CARs", REPS, perSide = true),
+                exercise("Thoracic Rotation", REPS, perSide = true),
+                exercise("Ankle Dorsiflexion Rocks", REPS, perSide = true),
+                exercise("90/90 Hip Switches", REPS),
+                exercise("Cat-Cow", REPS),
+                exercise("World's Greatest Stretch", REPS, perSide = true),
+                exercise("Deep Squat Hold", TIME),
+            ),
+        ),
+        BuiltInCategory(
+            key = STRETCHING, name = "Stretching", color = 0xFF7CB342.toInt(),
+            exercises = listOf(
+                exercise("Hamstring Stretch", TIME, perSide = true),
+                exercise("Hip Flexor Stretch", TIME, perSide = true),
+                exercise("Couch Stretch", TIME, perSide = true),
+                exercise("Pigeon Stretch", TIME, perSide = true),
+                exercise("Calf Stretch", TIME, perSide = true),
+                exercise("Doorway Chest Stretch", TIME),
+                exercise("Child's Pose", TIME),
+                exercise("Dead Hang", TIME),
+            ),
+        ),
+        BuiltInCategory(
+            key = ISOMETRICS, name = "Isometrics", color = 0xFF5E35B1.toInt(),
+            exercises = listOf(
+                exercise("Wall Sit", TIME_WEIGHT),
+                exercise("Spanish Squat Hold", TIME_WEIGHT),
+                exercise("Split Squat Hold", TIME_WEIGHT, perSide = true),
+                exercise("Copenhagen Plank", TIME, perSide = true),
+                exercise("Isometric Mid-Thigh Pull", TIME_WEIGHT),
+                exercise("Glute Bridge Hold", TIME_WEIGHT),
+                exercise("Single-Leg Calf Raise Hold", TIME_WEIGHT, perSide = true),
+                exercise("Hollow Body Hold", TIME),
+            ),
+        ),
+        BuiltInCategory(
+            key = TENDONS, name = "Tendons & eccentrics", color = 0xFFD81B60.toInt(),
+            exercises = listOf(
+                exercise("Nordic Hamstring Curl", REPS, tempo = "5-0-1-0"),
+                exercise("Eccentric Heel Drop", WEIGHT_REPS, tempo = "3-0-1-0", perSide = true),
+                exercise("Decline Board Squat", WEIGHT_REPS, tempo = "3-0-1-0"),
+                exercise("Heavy Slow Leg Press", WEIGHT_REPS, tempo = "3-0-3-0"),
+                exercise("Tyler Twist", REPS, tempo = "3-0-1-0", perSide = true),
+                exercise("Eccentric Wrist Extension", WEIGHT_REPS, tempo = "3-0-1-0", perSide = true),
+                exercise("Reverse Nordic Curl", REPS, tempo = "3-0-1-0"),
+                exercise("Tibialis Raise", WEIGHT_REPS),
+            ),
+        ),
+        BuiltInCategory(
+            key = PLYOMETRICS, name = "Plyometrics", color = 0xFFF4511E.toInt(),
+            exercises = listOf(
+                exercise("Box Jump", REPS_HEIGHT),
+                exercise("Broad Jump", REPS_HEIGHT),
+                exercise("Depth Jump", REPS_HEIGHT),
+                exercise("Lateral Bound", REPS_HEIGHT, perSide = true),
+                exercise("Pogo Hops", REPS),
+                exercise("Tuck Jump", REPS),
+                exercise("Skater Jump", REPS),
+                exercise("Medicine Ball Slam", WEIGHT_REPS),
+            ),
+        ),
+        BuiltInCategory(
+            key = SPORTS, name = "Sports", color = 0xFF546E7A.toInt(),
+            exercises = listOf(
+                exercise("Tennis", SESSION),
+                exercise("Table Tennis", SESSION),
+                exercise("Volleyball", SESSION),
+                exercise("Padel", SESSION),
+                exercise("Badminton", SESSION),
+                exercise("Squash", SESSION),
+                exercise("Football", SESSION),
+                exercise("Basketball", SESSION),
+                exercise("Climbing", SESSION),
+                exercise("Martial Arts", SESSION),
             ),
         ),
     )

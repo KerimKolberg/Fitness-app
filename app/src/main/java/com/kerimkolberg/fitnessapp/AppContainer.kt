@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.preferences.preferencesDataStore
 import com.kerimkolberg.fitnessapp.data.BodyRepository
 import com.kerimkolberg.fitnessapp.data.ExerciseRepository
+import com.kerimkolberg.fitnessapp.data.GameRepository
 import com.kerimkolberg.fitnessapp.data.RoutineRepository
 import com.kerimkolberg.fitnessapp.data.SettingsRepository
 import com.kerimkolberg.fitnessapp.data.WorkoutRepository
@@ -34,6 +35,8 @@ class AppContainer(context: Context) {
     val bodyRepository = BodyRepository(database.bodyDao())
 
     val settingsRepository = SettingsRepository(appContext.settingsDataStore)
+
+    val gameRepository = GameRepository(database.workoutDao(), settingsRepository)
 
     val restTimer = RestTimer(appScope, onFinished = RestTimerAlarm(appContext)::fire)
 }

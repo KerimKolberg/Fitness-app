@@ -56,6 +56,8 @@ class ExerciseRepository(
                         isCustom = false,
                         createdAt = time,
                         updatedAt = time,
+                        tempo = exercise.tempo,
+                        perSide = exercise.perSide,
                     )
                 }
             },
@@ -69,6 +71,8 @@ class ExerciseRepository(
         categoryId: String,
         type: ExerciseType,
         notes: String,
+        tempo: String = "",
+        perSide: Boolean = false,
     ): String {
         val time = now()
         val existing = id?.let { dao.getExercise(it) }
@@ -77,6 +81,8 @@ class ExerciseRepository(
             categoryId = categoryId,
             type = type,
             notes = notes.trim(),
+            tempo = tempo.trim(),
+            perSide = perSide,
             updatedAt = time,
         ) ?: ExerciseEntity(
             id = id ?: newId(),
@@ -87,6 +93,8 @@ class ExerciseRepository(
             isCustom = true,
             createdAt = time,
             updatedAt = time,
+            tempo = tempo.trim(),
+            perSide = perSide,
         )
         dao.upsertExercise(entity)
         return entity.id
@@ -109,4 +117,6 @@ private fun ExerciseEntity.toModel() = Exercise(
     type = type,
     notes = notes,
     isCustom = isCustom,
+    tempo = tempo,
+    perSide = perSide,
 )

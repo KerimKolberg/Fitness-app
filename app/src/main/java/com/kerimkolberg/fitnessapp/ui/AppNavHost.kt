@@ -12,6 +12,7 @@ import com.kerimkolberg.fitnessapp.ui.body.BodyScreen
 import com.kerimkolberg.fitnessapp.ui.calendar.CalendarScreen
 import com.kerimkolberg.fitnessapp.ui.exercises.EditExerciseScreen
 import com.kerimkolberg.fitnessapp.ui.exercises.ExercisePickerScreen
+import com.kerimkolberg.fitnessapp.ui.game.AchievementsScreen
 import com.kerimkolberg.fitnessapp.ui.log.ExerciseLogScreen
 import com.kerimkolberg.fitnessapp.ui.routines.RoutineScreen
 import com.kerimkolberg.fitnessapp.ui.routines.RoutinesScreen
@@ -46,6 +47,9 @@ object RoutinesRoute
 data class RoutineRoute(val routineId: String)
 
 @Serializable
+object AchievementsRoute
+
+@Serializable
 object BodyRoute
 
 @Serializable
@@ -64,6 +68,7 @@ fun AppNavHost(navController: NavHostController = rememberNavController()) {
                 onOpenSettings = { navController.navigate(SettingsRoute) },
                 onOpenRoutines = { navController.navigate(RoutinesRoute) },
                 onOpenBody = { navController.navigate(BodyRoute) },
+                onOpenAchievements = { navController.navigate(AchievementsRoute) },
             )
         }
         composable<ExercisePickerRoute> { entry ->
@@ -124,6 +129,9 @@ fun AppNavHost(navController: NavHostController = rememberNavController()) {
                 onBack = { navController.popBackStack() },
                 onAddExercise = { routineId -> navController.navigate(ExercisePickerRoute(routineId = routineId)) },
             )
+        }
+        composable<AchievementsRoute> {
+            AchievementsScreen(onBack = { navController.popBackStack() })
         }
         composable<BodyRoute> {
             BodyScreen(

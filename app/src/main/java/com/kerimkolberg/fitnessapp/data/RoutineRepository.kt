@@ -62,9 +62,11 @@ class RoutineRepository(
         }
     }
 
+    /** Adds an exercise at the end of a routine, unless it is already in it. */
     suspend fun addExercise(routineId: String, exerciseId: String) {
         database.withTransaction {
             val existing = dao.getRoutineExercises(routineId)
+            if (existing.any { it.exerciseId == exerciseId }) return@withTransaction
             val time = now()
             dao.insertRoutineExercise(
                 RoutineExerciseEntity(
@@ -77,6 +79,26 @@ class RoutineRepository(
                 ),
             )
         }
+    }
+
+    /** Removes an exercise from a routine, wherever it appears in it. */
+    suspend fun removeExerciseFromRoutine(routineId: String, exerciseId: String) {
+        val time = now()
+        dao.getRoutineExercises(routineId).filter { it.exerciseId == exerciseId }.forEach {
+            dao.softDeleteRoutineExercise(it.id, time)
+        }
+    }
+
+    /** Adds the [StarterPlans] that the user does not have yet (matched by name). Returns how many were added. */
+    suspend fun addStarterPlans(): Int = database.withTransaction {
+        val existing = dao.getRoutineNames().map { it.lowercase() }.toSet()
+        var added = 0
+        StarterPlans.plans.filter { (name, _) -> name.lowercase() !in existing }.forEach { (name, exercises) ->
+            val id = createRoutine(name)
+            exercises.forEach { addExercise(id, StarterPlans.exerciseId(it)) }
+            added++
+        }
+        added
     }
 
     suspend fun removeExercise(routineExerciseId: String) {

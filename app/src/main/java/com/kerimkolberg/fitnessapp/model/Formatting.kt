@@ -31,17 +31,26 @@ fun formatDuration(totalSeconds: Int): String {
 /** A one-line summary of a set, e.g. "100 kg × 5", "12 reps", "5 km · 25:00". */
 fun formatSet(values: SetValues, type: ExerciseType, units: UnitSystem): String {
     val parts = mutableListOf<String>()
-    if (type.usesWeight && values.weightKg != null) {
+    if (type.usesWeight && values.weightKg != null && (values.weightKg > 0 || type == ExerciseType.WEIGHT_REPS)) {
         val weight = "${formatNumber(units.weightFromKg(values.weightKg))} ${units.weightUnit}"
-        parts += if (values.reps != null) "$weight × ${values.reps}" else weight
+        parts += if (type.usesReps && values.reps != null) "$weight × ${values.reps}" else weight
     } else if (type.usesReps && values.reps != null) {
         parts += if (values.reps == 1) "1 rep" else "${values.reps} reps"
+    }
+    if (type.usesHeight && values.distanceMeters != null) {
+        parts += "${formatNumber(units.heightFromMeters(values.distanceMeters))} ${units.lengthUnit}"
     }
     if (type.usesDistance && values.distanceMeters != null) {
         parts += "${formatNumber(units.distanceFromMeters(values.distanceMeters))} ${units.distanceUnit}"
     }
     if (type.usesTime && values.durationSeconds != null) {
         parts += formatDuration(values.durationSeconds)
+    }
+    if (type.usesIntensity && values.rpe != null) {
+        parts += "RPE ${values.rpe}"
+    }
+    if (type.usesIntensity && values.note.isNotBlank()) {
+        parts += values.note
     }
     return parts.joinToString(" · ")
 }

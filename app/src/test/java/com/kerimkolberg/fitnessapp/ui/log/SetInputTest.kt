@@ -72,4 +72,31 @@ class SetInputTest {
         assertEquals("6", SetInput(reps = "5").adjustReps(1).reps)
         assertEquals("0", SetInput().adjustReps(-1).reps)
     }
+
+    @Test
+    fun loadedHoldsNeedATimeButNotAWeight() {
+        assertEquals(SetValues(durationSeconds = 45), SetInput(seconds = "45").valid(ExerciseType.TIME_WEIGHT))
+        assertEquals(
+            SetValues(weightKg = 20.0, durationSeconds = 45),
+            SetInput(weight = "20", seconds = "45").valid(ExerciseType.TIME_WEIGHT),
+        )
+        SetInput(weight = "20").invalid(ExerciseType.TIME_WEIGHT)
+    }
+
+    @Test
+    fun jumpsWithOptionalHeight() {
+        assertEquals(SetValues(reps = 5, distanceMeters = 0.6), SetInput(reps = "5", height = "60").valid(ExerciseType.REPS_HEIGHT))
+        assertEquals(SetValues(reps = 5), SetInput(reps = "5").valid(ExerciseType.REPS_HEIGHT))
+        assertEquals("60", SetInput.from(SetValues(reps = 5, distanceMeters = 0.6), UnitSystem.METRIC).height)
+    }
+
+    @Test
+    fun sportsSessions() {
+        assertEquals(
+            SetValues(durationSeconds = 5400, rpe = 7, note = "doubles"),
+            SetInput(minutes = "90", rpe = "7", note = " doubles ").valid(ExerciseType.SESSION),
+        )
+        SetInput(minutes = "90", rpe = "11").invalid(ExerciseType.SESSION)
+        SetInput(rpe = "5").invalid(ExerciseType.SESSION)
+    }
 }

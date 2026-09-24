@@ -20,8 +20,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -48,11 +50,14 @@ fun RoutinesScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Routines") },
+                title = { Text("Plans") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
+                },
+                actions = {
+                    TextButton(onClick = viewModel::addStarterPlans) { Text("Add starter plans") }
                 },
             )
         },
@@ -60,7 +65,7 @@ fun RoutinesScreen(
             ExtendedFloatingActionButton(
                 onClick = { creating = true },
                 icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                text = { Text("New routine") },
+                text = { Text("New plan") },
             )
         },
     ) { padding ->
@@ -74,12 +79,22 @@ fun RoutinesScreen(
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Text("No routines yet", style = MaterialTheme.typography.titleLarge)
+                Text("No plans yet", style = MaterialTheme.typography.titleLarge)
                 Text(
-                    text = "A routine is a list of exercises you do together, like \"Push day\". " +
-                        "Add one to a workout day to fill it in quickly.",
+                    text = "A plan is a list of exercises you do together, like \"Push\" or \"Tendon health\". " +
+                        "An exercise can be in as many plans as you like. Add a plan to a workout day to fill it in quickly.",
                     modifier = Modifier.padding(top = 8.dp),
                     style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                )
+                OutlinedButton(onClick = viewModel::addStarterPlans, modifier = Modifier.padding(top = 24.dp)) {
+                    Text("Add starter plans")
+                }
+                Text(
+                    text = "Push, Pull, Legs, Upper body, Tendon health and Mobility flow. Edit them as you like.",
+                    modifier = Modifier.padding(top = 8.dp),
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
                 )
@@ -111,7 +126,7 @@ fun RoutinesScreen(
 
     if (creating) {
         TextInputDialog(
-            title = "New routine",
+            title = "New plan",
             label = "Name, e.g. Push day",
             confirmText = "Create",
             onConfirm = { name ->

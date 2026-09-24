@@ -64,10 +64,10 @@ fun RoutineScreen(
                 },
                 actions = {
                     IconButton(onClick = { renaming = true }) {
-                        Icon(Icons.Default.Edit, contentDescription = "Rename routine")
+                        Icon(Icons.Default.Edit, contentDescription = "Rename plan")
                     }
                     IconButton(onClick = { confirmDelete = true }) {
-                        Icon(Icons.Default.Delete, contentDescription = "Delete routine")
+                        Icon(Icons.Default.Delete, contentDescription = "Delete plan")
                     }
                 },
             )
@@ -84,7 +84,7 @@ fun RoutineScreen(
         if (exercises.isEmpty()) {
             Column(Modifier.padding(padding).padding(24.dp)) {
                 Text(
-                    text = "Add the exercises of this routine in the order you do them.",
+                    text = "Add the exercises of this plan in the order you do them.",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -127,7 +127,7 @@ fun RoutineScreen(
 
     if (renaming) {
         TextInputDialog(
-            title = "Rename routine",
+            title = "Rename plan",
             label = "Name",
             initialValue = routine?.name.orEmpty(),
             onConfirm = { name ->
@@ -140,7 +140,7 @@ fun RoutineScreen(
     if (confirmDelete) {
         AlertDialog(
             onDismissRequest = { confirmDelete = false },
-            title = { Text("Delete routine?") },
+            title = { Text("Delete plan?") },
             text = { Text("Workouts you already logged are not affected.") },
             confirmButton = {
                 TextButton(

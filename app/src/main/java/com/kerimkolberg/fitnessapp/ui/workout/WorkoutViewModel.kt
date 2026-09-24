@@ -4,10 +4,12 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewModelScope
+import com.kerimkolberg.fitnessapp.data.GameRepository
 import com.kerimkolberg.fitnessapp.data.RoutineRepository
 import com.kerimkolberg.fitnessapp.data.SettingsRepository
 import com.kerimkolberg.fitnessapp.data.WorkoutRepository
 import com.kerimkolberg.fitnessapp.model.DayExercise
+import com.kerimkolberg.fitnessapp.model.GameStats
 import com.kerimkolberg.fitnessapp.model.Routine
 import com.kerimkolberg.fitnessapp.model.UnitSystem
 import com.kerimkolberg.fitnessapp.ui.appViewModelFactory
@@ -33,7 +35,11 @@ class WorkoutViewModel(
     private val workoutRepository: WorkoutRepository,
     private val routineRepository: RoutineRepository,
     settingsRepository: SettingsRepository,
+    gameRepository: GameRepository,
 ) : ViewModel() {
+    val gameStats: StateFlow<GameStats?> =
+        gameRepository.stats.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
     val routines: StateFlow<List<Routine>> =
         routineRepository.routines.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
@@ -96,6 +102,7 @@ class WorkoutViewModel(
                 workoutRepository = container.workoutRepository,
                 routineRepository = container.routineRepository,
                 settingsRepository = container.settingsRepository,
+                gameRepository = container.gameRepository,
             )
         }
     }

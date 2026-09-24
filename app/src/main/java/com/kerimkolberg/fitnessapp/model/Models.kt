@@ -2,17 +2,24 @@ package com.kerimkolberg.fitnessapp.model
 
 import java.time.LocalDate
 
-/** What gets recorded for each set of an exercise. */
+/** What gets recorded for each set of an exercise. The name is stored in the database: never rename one. */
 enum class ExerciseType(val label: String) {
     WEIGHT_REPS("Weight and reps"),
     REPS("Reps only"),
     DISTANCE_TIME("Distance and time"),
-    TIME("Time only");
+    TIME("Time only"),
+    TIME_WEIGHT("Time and weight (loaded holds)"),
+    REPS_HEIGHT("Reps and height or distance (jumps)"),
+    SESSION("Session time and intensity (sports)");
 
-    val usesWeight: Boolean get() = this == WEIGHT_REPS
-    val usesReps: Boolean get() = this == WEIGHT_REPS || this == REPS
+    val usesWeight: Boolean get() = this == WEIGHT_REPS || this == TIME_WEIGHT
+    val usesReps: Boolean get() = this == WEIGHT_REPS || this == REPS || this == REPS_HEIGHT
     val usesDistance: Boolean get() = this == DISTANCE_TIME
-    val usesTime: Boolean get() = this == DISTANCE_TIME || this == TIME
+    /** Jump height or distance, stored in [SetValues.distanceMeters] and shown in cm or inches. */
+    val usesHeight: Boolean get() = this == REPS_HEIGHT
+    val usesTime: Boolean get() = this == DISTANCE_TIME || this == TIME || this == TIME_WEIGHT || this == SESSION
+    /** Intensity (RPE 1-10) and a note per entry. */
+    val usesIntensity: Boolean get() = this == SESSION
 }
 
 data class Category(
@@ -28,14 +35,23 @@ data class Exercise(
     val type: ExerciseType,
     val notes: String,
     val isCustom: Boolean,
+    /** Optional lifting tempo such as "5-0-1-0": seconds down, pause, up, pause. */
+    val tempo: String = "",
+    /** Each side is trained separately, so a set is logged per side. */
+    val perSide: Boolean = false,
 )
 
-/** The measured values of one set. Weight is always stored in kg and distance in meters. */
+/**
+ * The measured values of one set. Weight is always stored in kg and distance (or jump height) in
+ * meters. [rpe] is the effort from 1 (very easy) to 10 (maximal).
+ */
 data class SetValues(
     val weightKg: Double? = null,
     val reps: Int? = null,
     val distanceMeters: Double? = null,
     val durationSeconds: Int? = null,
+    val rpe: Int? = null,
+    val note: String = "",
 )
 
 data class SetEntry(

@@ -21,6 +21,17 @@ data class DayRow(
     val reps: Int?,
     val distanceMeters: Double?,
     val durationSeconds: Int?,
+    val rpe: Int?,
+    val comment: String?,
+)
+
+/** Every logged set with its date and exercise details, for the game stats. */
+data class LoggedSetRow(
+    val date: LocalDate,
+    val exerciseId: String,
+    val categoryId: String,
+    val exerciseType: ExerciseType,
+    @Embedded val set: WorkoutSetEntity,
 )
 
 data class HistoryRow(
@@ -85,7 +96,8 @@ interface WorkoutDao {
         SELECT we.id AS workoutExerciseId, e.id AS exerciseId, e.name AS exerciseName,
                e.type AS exerciseType, c.color AS categoryColor,
                s.id AS setId, s.weightKg AS weightKg, s.reps AS reps,
-               s.distanceMeters AS distanceMeters, s.durationSeconds AS durationSeconds
+               s.distanceMeters AS distanceMeters, s.durationSeconds AS durationSeconds,
+               s.rpe AS rpe, s.comment AS comment
         FROM workouts w
         JOIN workout_exercises we ON we.workoutId = w.id AND we.deletedAt IS NULL
         JOIN exercises e ON e.id = we.exerciseId
@@ -119,4 +131,18 @@ interface WorkoutDao {
         """,
     )
     fun observeWorkoutDates(from: LocalDate, to: LocalDate): Flow<List<LocalDate>>
+
+    @Query(
+        """
+        SELECT w.date AS date, we.exerciseId AS exerciseId, e.categoryId AS categoryId,
+               e.type AS exerciseType, s.*
+        FROM workout_sets s
+        JOIN workout_exercises we ON we.id = s.workoutExerciseId AND we.deletedAt IS NULL
+        JOIN workouts w ON w.id = we.workoutId AND w.deletedAt IS NULL
+        JOIN exercises e ON e.id = we.exerciseId
+        WHERE s.deletedAt IS NULL
+        ORDER BY w.date, we.sortOrder, s.sortOrder
+        """,
+    )
+    fun observeAllSets(): Flow<List<LoggedSetRow>>
 }

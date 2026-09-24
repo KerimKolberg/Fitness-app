@@ -19,6 +19,10 @@ class RoutinesViewModel(private val repository: RoutineRepository) : ViewModel()
     val routines: StateFlow<List<Routine>?> =
         repository.routines.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
+    fun addStarterPlans() {
+        viewModelScope.launch { repository.addStarterPlans() }
+    }
+
     fun createRoutine(name: String, onCreated: (String) -> Unit) {
         viewModelScope.launch { onCreated(repository.createRoutine(name)) }
     }

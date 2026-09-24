@@ -1,5 +1,6 @@
 package com.kerimkolberg.fitnessapp.data.db
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
@@ -40,6 +41,10 @@ data class ExerciseEntity(
     val createdAt: Long,
     val updatedAt: Long,
     val deletedAt: Long? = null,
+    /** Added in v3. */
+    @ColumnInfo(defaultValue = "") val tempo: String = "",
+    /** Added in v3. */
+    @ColumnInfo(defaultValue = "0") val perSide: Boolean = false,
 )
 
 @Entity(tableName = "workouts", indices = [Index("date")])
@@ -93,6 +98,8 @@ data class WorkoutSetEntity(
     val createdAt: Long,
     val updatedAt: Long,
     val deletedAt: Long? = null,
+    /** Effort 1-10, added in v3. */
+    val rpe: Int? = null,
 )
 
 @Entity(tableName = "routines")

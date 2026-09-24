@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
@@ -37,11 +38,14 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -79,9 +83,20 @@ fun ExerciseLogScreen(
     val timer by viewModel.timerState.collectAsStateWithLifecycle()
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     var showTimer by remember { mutableStateOf(false) }
+    var showPlans by remember { mutableStateOf(false) }
+    val plans by viewModel.plans.collectAsStateWithLifecycle()
     val requestNotificationPermission = rememberNotificationPermissionRequester()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(viewModel.celebration) {
+        viewModel.celebration?.let { message ->
+            viewModel.consumeCelebration()
+            snackbarHostState.showSnackbar(message, withDismissAction = true)
+        }
+    }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
@@ -105,6 +120,9 @@ fun ExerciseLogScreen(
                 },
                 actions = {
                     TimerAction(timer = timer, onClick = { showTimer = true })
+                    IconButton(onClick = { showPlans = true }) {
+                        Icon(Icons.AutoMirrored.Filled.List, contentDescription = "Add to plans")
+                    }
                     IconButton(onClick = { onEditExercise(viewModel.exerciseId) }) {
                         Icon(Icons.Default.Edit, contentDescription = "Edit exercise")
                     }
@@ -140,6 +158,17 @@ fun ExerciseLogScreen(
                 else -> ProgressTab(history = state.history, type = exercise.type, units = state.units)
             }
         }
+    }
+
+    if (showPlans) {
+        PlansDialog(
+            exerciseName = state.exercise?.name.orEmpty(),
+            exerciseId = viewModel.exerciseId,
+            plans = plans,
+            onToggle = viewModel::setInPlan,
+            onCreatePlan = viewModel::createPlanWithExercise,
+            onDismiss = { showPlans = false },
+        )
     }
 
     if (showTimer) {
@@ -190,9 +219,26 @@ private fun TrackTab(
     ) {
         item {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                state.exercise?.let { exercise ->
+                    val hints = listOfNotNull(
+                        exercise.tempo.takeIf { it.isNotBlank() }?.let { "Tempo $it (down-pause-up-pause, seconds)" },
+                        "Log each side as its own set".takeIf { exercise.perSide },
+                    )
+                    if (hints.isNotEmpty()) {
+                        Text(
+                            text = hints.joinToString("\n"),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.secondary,
+                        )
+                    }
+                }
                 if (type.usesWeight) {
                     StepperField(
-                        label = "Weight (${units.weightUnit})",
+                        label = if (type == ExerciseType.WEIGHT_REPS) {
+                            "Weight (${units.weightUnit})"
+                        } else {
+                            "Added weight (${units.weightUnit}, optional)"
+                        },
                         value = input.weight,
                         onValueChange = { viewModel.updateInput(input.copy(weight = it)) },
                         onDecrement = { viewModel.adjustWeight(-1) },
@@ -220,6 +266,16 @@ private fun TrackTab(
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     )
                 }
+                if (type.usesHeight) {
+                    OutlinedTextField(
+                        value = input.height,
+                        onValueChange = { viewModel.updateInput(input.copy(height = it)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Height or distance (${units.lengthUnit}, optional)") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    )
+                }
                 if (type.usesTime) {
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         OutlinedTextField(
@@ -239,6 +295,22 @@ private fun TrackTab(
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         )
                     }
+                }
+                if (type.usesIntensity) {
+                    OutlinedTextField(
+                        value = input.rpe,
+                        onValueChange = { viewModel.updateInput(input.copy(rpe = it)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Intensity, 1 (easy) to 10 (max), optional") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    )
+                    OutlinedTextField(
+                        value = input.note,
+                        onValueChange = { viewModel.updateInput(input.copy(note = it)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Note, e.g. \"doubles, won 6-4\" (optional)") },
+                    )
                 }
                 viewModel.errorMessage?.let { message ->
                     Text(message, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)

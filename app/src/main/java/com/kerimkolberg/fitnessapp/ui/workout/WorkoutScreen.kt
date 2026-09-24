@@ -35,6 +35,7 @@ import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -56,6 +57,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kerimkolberg.fitnessapp.model.DayExercise
+import com.kerimkolberg.fitnessapp.model.GameStats
 import com.kerimkolberg.fitnessapp.model.Routine
 import com.kerimkolberg.fitnessapp.model.UnitSystem
 import com.kerimkolberg.fitnessapp.model.formatSet
@@ -71,10 +73,12 @@ fun WorkoutScreen(
     onOpenSettings: () -> Unit,
     onOpenRoutines: () -> Unit,
     onOpenBody: () -> Unit,
+    onOpenAchievements: () -> Unit,
     viewModel: WorkoutViewModel = viewModel(factory = WorkoutViewModel.Factory),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val routines by viewModel.routines.collectAsStateWithLifecycle()
+    val gameStats by viewModel.gameStats.collectAsStateWithLifecycle()
     var exerciseToDelete by remember { mutableStateOf<DayExercise?>(null) }
     var menuOpen by remember { mutableStateOf(false) }
     var choosingRoutine by remember { mutableStateOf(false) }
@@ -93,13 +97,14 @@ fun WorkoutScreen(
                         }
                         DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                             val close = { menuOpen = false }
-                            MenuItem("Add a routine to this day", close) { choosingRoutine = true }
+                            MenuItem("Add a plan to this day", close) { choosingRoutine = true }
                             if (state.exercises.isNotEmpty() && state.date != LocalDate.now()) {
                                 MenuItem("Copy exercises to today", close, viewModel::copyExercisesToToday)
                             }
                             HorizontalDivider()
-                            MenuItem("Routines", close, onOpenRoutines)
+                            MenuItem("Plans", close, onOpenRoutines)
                             MenuItem("Body tracker", close, onOpenBody)
+                            MenuItem("Progress & achievements", close, onOpenAchievements)
                             MenuItem("Settings", close, onOpenSettings)
                         }
                     }
@@ -127,6 +132,7 @@ fun WorkoutScreen(
                 onNext = viewModel::showNextDay,
                 onToday = viewModel::showToday,
             )
+            gameStats?.let { GameSummaryBar(it, onClick = onOpenAchievements) }
             HorizontalDivider()
             when {
                 state.isLoading -> Unit
@@ -251,7 +257,7 @@ private fun EmptyDay(onAddExercise: () -> Unit, onUseRoutine: () -> Unit) {
         }
         Spacer(Modifier.height(8.dp))
         OutlinedButton(onClick = onUseRoutine) {
-            Text("Use a routine")
+            Text("Use a plan")
         }
     }
 }
@@ -329,10 +335,10 @@ private fun RoutineChooserDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add a routine") },
+        title = { Text("Add a plan to this day") },
         text = {
             if (routines.isEmpty()) {
-                Text("You have no routines yet. Create one first, for example \"Push day\".")
+                Text("You have no plans yet. Create one, or add the starter plans.")
             } else {
                 LazyColumn {
                     items(routines, key = { it.id }) { routine ->
@@ -345,7 +351,7 @@ private fun RoutineChooserDialog(
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onManageRoutines) { Text("Manage routines") } },
+        confirmButton = { TextButton(onClick = onManageRoutines) { Text("Manage plans") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
 }
@@ -359,4 +365,42 @@ private fun MenuItem(text: String, closeMenu: () -> Unit, onClick: () -> Unit) {
             onClick()
         },
     )
+}
+
+/** Level, XP and this week's goal at a glance. Tapping it opens the achievements. */
+@Composable
+private fun GameSummaryBar(stats: GameStats, onClick: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = "Level ${stats.level}",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Text(
+                text = "  ${stats.xpIntoLevel}/${stats.xpForLevel} XP",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                text = buildString {
+                    if (stats.weekStreak > 0) append("🔥 ${stats.weekStreak} wk · ")
+                    append("${stats.workoutsThisWeek}/${stats.weeklyGoal} this week")
+                },
+                style = MaterialTheme.typography.labelMedium,
+            )
+        }
+        LinearProgressIndicator(
+            progress = { stats.xpIntoLevel.toFloat() / stats.xpForLevel },
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
 }

@@ -20,6 +20,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
             restTimerSeconds = prefs[REST_TIMER_SECONDS] ?: defaults.restTimerSeconds,
             autoStartRestTimer = prefs[AUTO_START_REST_TIMER] ?: defaults.autoStartRestTimer,
             themeMode = prefs[THEME_MODE].toEnumOr(defaults.themeMode),
+            weeklyGoal = prefs[WEEKLY_GOAL] ?: defaults.weeklyGoal,
         )
     }
 
@@ -32,6 +33,8 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
 
     suspend fun setThemeMode(value: ThemeMode) = dataStore.edit { it[THEME_MODE] = value.name }
 
+    suspend fun setWeeklyGoal(value: Int) = dataStore.edit { it[WEEKLY_GOAL] = value.coerceIn(1, 7) }
+
     companion object {
         const val MIN_REST_SECONDS = 15
         const val MAX_REST_SECONDS = 15 * 60
@@ -40,6 +43,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         private val REST_TIMER_SECONDS = intPreferencesKey("rest_timer_seconds")
         private val AUTO_START_REST_TIMER = booleanPreferencesKey("auto_start_rest_timer")
         private val THEME_MODE = stringPreferencesKey("theme_mode")
+        private val WEEKLY_GOAL = intPreferencesKey("weekly_goal")
     }
 }
 

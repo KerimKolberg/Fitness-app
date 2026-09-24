@@ -1,6 +1,7 @@
 package com.kerimkolberg.fitnessapp.data
 
 import android.app.Application
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.kerimkolberg.fitnessapp.data.db.AppDatabase
@@ -18,6 +19,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.nio.file.Files
 import java.time.LocalDate
 
 /** Runs the repositories against a real (in-memory) Room database. */
@@ -214,5 +216,39 @@ class RepositoryTest {
 
         body.deleteMeasurement(weights.first().id)
         assertEquals(listOf(81.0), body.measurements.first().filter { it.metric == BodyMetric.BODYWEIGHT }.map { it.value })
+    }
+
+    @Test
+    fun starterPlansAreAddedOnceAndShareExercises() = runTest {
+        exercises.addMissingBuiltIns()
+        assertEquals(StarterPlans.plans.size, routines.addStarterPlans())
+        assertEquals(0, routines.addStarterPlans())
+
+        val plans = routines.routines.first().associateBy { it.name }
+        val incline = StarterPlans.exerciseId("Incline Barbell Bench Press")
+        assertTrue(plans.getValue("Push").exercises.any { it.exerciseId == incline })
+
+        // The same exercise can be in several plans, but only once per plan.
+        val upper = plans.getValue("Upper body")
+        routines.addExercise(upper.id, incline)
+        routines.addExercise(upper.id, incline)
+        assertEquals(1, routines.exerciseIds(upper.id).count { it == incline })
+        routines.removeExerciseFromRoutine(upper.id, incline)
+        assertTrue(incline !in routines.exerciseIds(upper.id))
+        assertTrue(incline in routines.exerciseIds(plans.getValue("Push").id))
+    }
+
+    @Test
+    fun gameStatsFollowTheLog() = runTest {
+        exercises.addMissingBuiltIns()
+        val settingsFile = Files.createTempDirectory("settings").resolve("test.preferences_pb").toFile()
+        val settings = SettingsRepository(PreferenceDataStoreFactory.create(produceFile = { settingsFile }))
+        val game = GameRepository(database.workoutDao(), settings)
+        assertEquals(0, game.stats.first().xp)
+
+        workouts.addSet(LocalDate.now(), StarterPlans.exerciseId("Box Jump"), SetValues(reps = 5, distanceMeters = 0.6))
+        val stats = game.stats.first()
+        assertEquals(1, stats.totalWorkouts)
+        assertTrue(stats.xp > 0)
     }
 }

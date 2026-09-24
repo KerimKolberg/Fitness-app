@@ -57,7 +57,7 @@ v1 is fully offline, but the data layer follows these rules so sync/accounts can
 
 ## Data model
 
-Category, Exercise, Workout, WorkoutExercise and Set exist since Phase 1; Routine, RoutineExercise and BodyMeasurement since Phase 2 (database version 2) (`app/src/main/java/.../data/db/Entities.kt`); the rest are planned. All tables use `id: UUID`, `createdAt`, `updatedAt`, `deletedAt?`.
+Category, Exercise, Workout, WorkoutExercise and Set exist since Phase 1; Routine, RoutineExercise and BodyMeasurement since Phase 2 (database version 2); exercise tempo/perSide and set RPE since Phase 2b (version 3) (`app/src/main/java/.../data/db/Entities.kt`); the rest are planned. All tables use `id: UUID`, `createdAt`, `updatedAt`, `deletedAt?`.
 
 - **Category**: name, color, sortOrder
 - **Exercise**: name, categoryId, type (WEIGHT_REPS / REPS / DISTANCE_TIME / TIME), notes, isCustom
@@ -107,11 +107,19 @@ Broaden the library beyond gym lifts. Each group needs the right way to log it:
 | Plyometrics | box jumps, broad jumps, pogo hops, depth jumps | reps + optional height/distance |
 | Sports | tennis, table tennis, volleyball, padel, badminton, football, basketball | session time + intensity (RPE) + notes |
 
-- [ ] New exercise types: "time + weight" for loaded holds, "reps + height/distance" for jumps
-- [ ] Optional tempo per exercise (e.g. 5-0-1-0) and "per side" flag
-- [ ] Session intensity (RPE 1–10) and notes, for sports and conditioning
-- [ ] New categories: Mobility, Stretching, Isometrics, Tendon / eccentrics, Plyometrics, Sports
-- [ ] Built-in exercises for each category
+- [x] New exercise types: "time + weight" for loaded holds, "reps + height/distance" for jumps, "session" for sports
+- [x] Optional tempo per exercise (e.g. 5-0-1-0) and "each side" flag
+- [x] Session intensity (RPE 1–10) and notes, for sports and conditioning
+- [x] New categories: Mobility, Stretching, Isometrics, Tendons & eccentrics, Plyometrics, Sports
+- [x] Built-in exercises for each category (50 new)
+- [x] Plans (formerly "routines"): one exercise can be in many plans, "Add to plans" on every exercise, plan filter in the exercise picker, starter plans (Push, Pull, Legs, Upper body, Tendon health, Mobility flow)
+
+### Gamification
+- [x] XP for sets, workouts, personal records, new exercises and weekly goals; levels
+- [x] Weekly workout goal and week streaks
+- [x] 14 achievements, including variety ones for mobility, tendons, plyometrics and sports
+- [x] Celebrations after saving a set (record, achievement, level up, weekly goal)
+- [ ] Ideas for later: challenges (e.g. "30 days of mobility"), yearly summary, share cards
 
 ### Phase 3: Data safety
 - [ ] Backup/restore

@@ -23,6 +23,11 @@ fun recordScore(values: SetValues, type: ExerciseType): Double? {
         ExerciseType.TIME -> (values.durationSeconds ?: 0).toDouble()
         ExerciseType.DISTANCE_TIME ->
             values.distanceMeters?.takeIf { it > 0 } ?: (values.durationSeconds ?: 0).toDouble()
+        // A longer hold is the record; the weight used is shown alongside it.
+        ExerciseType.TIME_WEIGHT -> (values.durationSeconds ?: 0).toDouble()
+        ExerciseType.REPS_HEIGHT -> values.distanceMeters?.takeIf { it > 0 } ?: (values.reps ?: 0).toDouble()
+        // Sports sessions are not a contest with yourself.
+        ExerciseType.SESSION -> 0.0
     }
     return score.takeIf { it > 0.0 }
 }
@@ -85,6 +90,21 @@ fun personalRecords(history: List<HistorySession>, type: ExerciseType, units: Un
             },
             best("Longest time", { it.durationSeconds?.toDouble() }) { _, seconds -> formatDuration(seconds.toInt()) },
         )
+        ExerciseType.TIME_WEIGHT -> listOfNotNull(
+            best("Longest hold", { it.durationSeconds?.toDouble() }) { values, _ -> formatSet(values, type, units) },
+            best("Heaviest weight", { it.weightKg }) { values, _ -> formatSet(values, type, units) },
+        )
+        ExerciseType.REPS_HEIGHT -> listOfNotNull(
+            best("Highest or longest jump", { it.distanceMeters }) { _, meters ->
+                "${formatNumber(units.heightFromMeters(meters))} ${units.lengthUnit}"
+            },
+            best("Most reps in a set", { it.reps?.toDouble() }) { _, reps -> "${reps.toInt()} reps" },
+        )
+        ExerciseType.SESSION -> listOfNotNull(
+            best("Longest session", { it.durationSeconds?.toDouble() }) { _, seconds -> formatDuration(seconds.toInt()) },
+            bestSession(history) { session -> session.sets.sumOf { it.values.durationSeconds ?: 0 }.toDouble() }
+                ?.let { (date, seconds) -> RecordEntry("Most time in a day", formatDuration(seconds.toInt()), date) },
+        )
     }
     return entries
 }
@@ -122,17 +142,20 @@ enum class ProgressMetric(val label: String, val kind: MetricKind) {
     MAX_REPS("Most reps in a set", MetricKind.COUNT),
     TOTAL_REPS("Total reps", MetricKind.COUNT),
     DISTANCE("Distance", MetricKind.DISTANCE),
+    MAX_HEIGHT("Best jump", MetricKind.HEIGHT),
+    AVERAGE_RPE("Average intensity (RPE)", MetricKind.COUNT),
     LONGEST_TIME("Longest set", MetricKind.DURATION),
     DURATION("Total time", MetricKind.DURATION),
     ;
 
-    enum class MetricKind { WEIGHT, COUNT, DISTANCE, DURATION }
+    enum class MetricKind { WEIGHT, COUNT, DISTANCE, HEIGHT, DURATION }
 
     /** Formats a value of this metric (stored units) for display. */
     fun format(value: Double, units: UnitSystem): String = when (kind) {
         MetricKind.WEIGHT -> "${formatNumber(units.weightFromKg(value))} ${units.weightUnit}"
         MetricKind.COUNT -> formatNumber(value)
         MetricKind.DISTANCE -> "${formatNumber(units.distanceFromMeters(value))} ${units.distanceUnit}"
+        MetricKind.HEIGHT -> "${formatNumber(units.heightFromMeters(value))} ${units.lengthUnit}"
         MetricKind.DURATION -> formatDuration(value.toInt())
     }
 
@@ -142,6 +165,9 @@ enum class ProgressMetric(val label: String, val kind: MetricKind) {
             ExerciseType.REPS -> listOf(MAX_REPS, TOTAL_REPS)
             ExerciseType.DISTANCE_TIME -> listOf(DISTANCE, DURATION)
             ExerciseType.TIME -> listOf(LONGEST_TIME, DURATION)
+            ExerciseType.TIME_WEIGHT -> listOf(LONGEST_TIME, MAX_WEIGHT)
+            ExerciseType.REPS_HEIGHT -> listOf(MAX_HEIGHT, TOTAL_REPS)
+            ExerciseType.SESSION -> listOf(DURATION, AVERAGE_RPE)
         }
     }
 }
@@ -160,6 +186,8 @@ fun progressPoints(history: List<HistorySession>, metric: ProgressMetric): List<
             ProgressMetric.MAX_REPS -> (values.maxOfOrNull { it.reps ?: 0 } ?: 0).toDouble()
             ProgressMetric.TOTAL_REPS -> values.sumOf { it.reps ?: 0 }.toDouble()
             ProgressMetric.DISTANCE -> values.sumOf { it.distanceMeters ?: 0.0 }
+            ProgressMetric.MAX_HEIGHT -> values.maxOfOrNull { it.distanceMeters ?: 0.0 } ?: 0.0
+            ProgressMetric.AVERAGE_RPE -> values.mapNotNull { it.rpe }.average().takeIf { !it.isNaN() } ?: 0.0
             ProgressMetric.LONGEST_TIME -> (values.maxOfOrNull { it.durationSeconds ?: 0 } ?: 0).toDouble()
             ProgressMetric.DURATION -> values.sumOf { it.durationSeconds ?: 0 }.toDouble()
         }
