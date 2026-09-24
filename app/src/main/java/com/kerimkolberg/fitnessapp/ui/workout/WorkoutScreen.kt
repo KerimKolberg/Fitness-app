@@ -25,7 +25,6 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -36,7 +35,9 @@ import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -55,6 +56,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kerimkolberg.fitnessapp.model.DayExercise
+import com.kerimkolberg.fitnessapp.model.Routine
 import com.kerimkolberg.fitnessapp.model.UnitSystem
 import com.kerimkolberg.fitnessapp.model.formatSet
 import com.kerimkolberg.fitnessapp.ui.components.formatFullDate
@@ -67,10 +69,15 @@ fun WorkoutScreen(
     onOpenExercise: (LocalDate, String) -> Unit,
     onOpenCalendar: (LocalDate) -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenRoutines: () -> Unit,
+    onOpenBody: () -> Unit,
     viewModel: WorkoutViewModel = viewModel(factory = WorkoutViewModel.Factory),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val routines by viewModel.routines.collectAsStateWithLifecycle()
     var exerciseToDelete by remember { mutableStateOf<DayExercise?>(null) }
+    var menuOpen by remember { mutableStateOf(false) }
+    var choosingRoutine by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -80,8 +87,21 @@ fun WorkoutScreen(
                     IconButton(onClick = { onOpenCalendar(state.date) }) {
                         Icon(Icons.Default.DateRange, contentDescription = "Calendar")
                     }
-                    IconButton(onClick = onOpenSettings) {
-                        Icon(Icons.Default.Settings, contentDescription = "Settings")
+                    Box {
+                        IconButton(onClick = { menuOpen = true }) {
+                            Icon(Icons.Default.MoreVert, contentDescription = "More options")
+                        }
+                        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                            val close = { menuOpen = false }
+                            MenuItem("Add a routine to this day", close) { choosingRoutine = true }
+                            if (state.exercises.isNotEmpty() && state.date != LocalDate.now()) {
+                                MenuItem("Copy exercises to today", close, viewModel::copyExercisesToToday)
+                            }
+                            HorizontalDivider()
+                            MenuItem("Routines", close, onOpenRoutines)
+                            MenuItem("Body tracker", close, onOpenBody)
+                            MenuItem("Settings", close, onOpenSettings)
+                        }
                     }
                 },
             )
@@ -110,7 +130,10 @@ fun WorkoutScreen(
             HorizontalDivider()
             when {
                 state.isLoading -> Unit
-                state.exercises.isEmpty() -> EmptyDay(onAddExercise = { onAddExercise(state.date) })
+                state.exercises.isEmpty() -> EmptyDay(
+                    onAddExercise = { onAddExercise(state.date) },
+                    onUseRoutine = { choosingRoutine = true },
+                )
                 else -> LazyColumn(
                     contentPadding = PaddingValues(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 96.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -126,6 +149,21 @@ fun WorkoutScreen(
                 }
             }
         }
+    }
+
+    if (choosingRoutine) {
+        RoutineChooserDialog(
+            routines = routines,
+            onChoose = { routine ->
+                choosingRoutine = false
+                viewModel.applyRoutine(routine.id)
+            },
+            onManageRoutines = {
+                choosingRoutine = false
+                onOpenRoutines()
+            },
+            onDismiss = { choosingRoutine = false },
+        )
     }
 
     exerciseToDelete?.let { exercise ->
@@ -189,7 +227,7 @@ private fun DateSwitcher(
 }
 
 @Composable
-private fun EmptyDay(onAddExercise: () -> Unit) {
+private fun EmptyDay(onAddExercise: () -> Unit, onUseRoutine: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -210,6 +248,10 @@ private fun EmptyDay(onAddExercise: () -> Unit) {
             Icon(Icons.Default.Add, contentDescription = null)
             Spacer(Modifier.width(8.dp))
             Text("Start new workout")
+        }
+        Spacer(Modifier.height(8.dp))
+        OutlinedButton(onClick = onUseRoutine) {
+            Text("Use a routine")
         }
     }
 }
@@ -252,6 +294,13 @@ private fun DayExerciseCard(
                         }
                     }
                 }
+                if (exercise.sets.isEmpty()) {
+                    Text(
+                        text = "Not started yet",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 exercise.sets.forEachIndexed { index, set ->
                     Row(modifier = Modifier.padding(end = 16.dp, top = 2.dp)) {
                         Text(
@@ -269,4 +318,45 @@ private fun DayExerciseCard(
             }
         }
     }
+}
+
+@Composable
+private fun RoutineChooserDialog(
+    routines: List<Routine>,
+    onChoose: (Routine) -> Unit,
+    onManageRoutines: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Add a routine") },
+        text = {
+            if (routines.isEmpty()) {
+                Text("You have no routines yet. Create one first, for example \"Push day\".")
+            } else {
+                LazyColumn {
+                    items(routines, key = { it.id }) { routine ->
+                        ListItem(
+                            modifier = Modifier.clickable { onChoose(routine) },
+                            headlineContent = { Text(routine.name) },
+                            supportingContent = { Text("${routine.exercises.size} exercises") },
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onManageRoutines) { Text("Manage routines") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
+}
+
+@Composable
+private fun MenuItem(text: String, closeMenu: () -> Unit, onClick: () -> Unit) {
+    DropdownMenuItem(
+        text = { Text(text) },
+        onClick = {
+            closeMenu()
+            onClick()
+        },
+    )
 }

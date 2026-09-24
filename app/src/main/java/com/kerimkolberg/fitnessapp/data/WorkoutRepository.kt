@@ -42,23 +42,7 @@ class WorkoutRepository(
     suspend fun addSet(date: LocalDate, exerciseId: String, values: SetValues): String =
         database.withTransaction {
             val time = now()
-            val workout = dao.getWorkoutForDate(date) ?: WorkoutEntity(
-                id = newId(),
-                date = date,
-                comment = "",
-                createdAt = time,
-                updatedAt = time,
-            ).also { dao.insertWorkout(it) }
-
-            val workoutExercise = dao.getWorkoutExercise(workout.id, exerciseId) ?: WorkoutExerciseEntity(
-                id = newId(),
-                workoutId = workout.id,
-                exerciseId = exerciseId,
-                sortOrder = (dao.maxExerciseSortOrder(workout.id) ?: -1) + 1,
-                createdAt = time,
-                updatedAt = time,
-            ).also { dao.insertWorkoutExercise(it) }
-
+            val workoutExercise = getOrCreateWorkoutExercise(getOrCreateWorkout(date, time), exerciseId, time)
             val set = WorkoutSetEntity(
                 id = newId(),
                 workoutExerciseId = workoutExercise.id,
@@ -99,6 +83,42 @@ class WorkoutRepository(
             }
         }
     }
+
+    /**
+     * Adds exercises to a day without sets, as a plan to fill in (from a routine or an earlier
+     * workout). Exercises already on that day are skipped.
+     */
+    suspend fun addExercisesToDay(date: LocalDate, exerciseIds: List<String>) {
+        if (exerciseIds.isEmpty()) return
+        database.withTransaction {
+            val time = now()
+            val workout = getOrCreateWorkout(date, time)
+            exerciseIds.distinct().forEach { getOrCreateWorkoutExercise(workout, it, time) }
+        }
+    }
+
+    private suspend fun getOrCreateWorkout(date: LocalDate, time: Long): WorkoutEntity =
+        dao.getWorkoutForDate(date) ?: WorkoutEntity(
+            id = newId(),
+            date = date,
+            comment = "",
+            createdAt = time,
+            updatedAt = time,
+        ).also { dao.insertWorkout(it) }
+
+    private suspend fun getOrCreateWorkoutExercise(
+        workout: WorkoutEntity,
+        exerciseId: String,
+        time: Long,
+    ): WorkoutExerciseEntity =
+        dao.getWorkoutExercise(workout.id, exerciseId) ?: WorkoutExerciseEntity(
+            id = newId(),
+            workoutId = workout.id,
+            exerciseId = exerciseId,
+            sortOrder = (dao.maxExerciseSortOrder(workout.id) ?: -1) + 1,
+            createdAt = time,
+            updatedAt = time,
+        ).also { dao.insertWorkoutExercise(it) }
 
     /** Removes an exercise and all its sets from a day. */
     suspend fun deleteWorkoutExercise(workoutExerciseId: String) {

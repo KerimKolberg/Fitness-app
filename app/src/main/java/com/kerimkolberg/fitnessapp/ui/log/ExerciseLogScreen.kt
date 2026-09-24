@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
@@ -21,6 +22,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -118,6 +120,7 @@ fun ExerciseLogScreen(
             PrimaryTabRow(selectedTabIndex = selectedTab) {
                 Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }, text = { Text("Track") })
                 Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }, text = { Text("History") })
+                Tab(selected = selectedTab == 2, onClick = { selectedTab = 2 }, text = { Text("Progress") })
             }
             val exercise = state.exercise
             when {
@@ -133,7 +136,8 @@ fun ExerciseLogScreen(
                         viewModel.save()
                     },
                 )
-                else -> HistoryTab(state = state, type = exercise.type, currentDate = viewModel.date)
+                selectedTab == 1 -> HistoryTab(state = state, type = exercise.type, currentDate = viewModel.date)
+                else -> ProgressTab(history = state.history, type = exercise.type, units = state.units)
             }
         }
     }
@@ -312,6 +316,7 @@ private fun TrackTab(
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
                 )
+                if (set.id in state.recordSetIds) RecordBadge()
             }
         }
     }
@@ -362,7 +367,7 @@ private fun HistoryTab(state: ExerciseLogUiState, type: ExerciseType, currentDat
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        historySessions(state.history, type, state.units, currentDate)
+        historySessions(state.history, type, state.units, currentDate, state.recordSetIds)
     }
 }
 
@@ -371,6 +376,7 @@ private fun LazyListScope.historySessions(
     type: ExerciseType,
     units: UnitSystem,
     currentDate: LocalDate,
+    recordSetIds: Set<String>,
 ) {
     sessions.forEach { session ->
         item(key = session.date.toEpochDay()) {
@@ -382,17 +388,31 @@ private fun LazyListScope.historySessions(
                         fontWeight = FontWeight.SemiBold,
                     )
                     session.sets.forEachIndexed { index, set ->
-                        Row(Modifier.padding(top = 4.dp)) {
+                        Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                             Text(
                                 text = "${index + 1}",
                                 modifier = Modifier.width(28.dp),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                             Text(formatSet(set.values, type, units))
+                            if (set.id in recordSetIds) RecordBadge()
                         }
                     }
                 }
             }
         }
     }
+}
+
+/** Marks a set that beat every earlier set of the exercise. */
+@Composable
+private fun RecordBadge() {
+    Icon(
+        imageVector = Icons.Default.Star,
+        contentDescription = "Personal record",
+        modifier = Modifier
+            .padding(start = 8.dp)
+            .size(18.dp),
+        tint = MaterialTheme.colorScheme.secondary,
+    )
 }

@@ -16,6 +16,7 @@ import com.kerimkolberg.fitnessapp.model.HistorySession
 import com.kerimkolberg.fitnessapp.model.SetEntry
 import com.kerimkolberg.fitnessapp.model.Settings
 import com.kerimkolberg.fitnessapp.model.UnitSystem
+import com.kerimkolberg.fitnessapp.model.personalRecordSetIds
 import com.kerimkolberg.fitnessapp.timer.RestTimer
 import com.kerimkolberg.fitnessapp.timer.RestTimerState
 import com.kerimkolberg.fitnessapp.ui.ExerciseLogRoute
@@ -36,6 +37,8 @@ data class ExerciseLogUiState(
     /** The most recent session before the screen's date. */
     val previousSession: HistorySession? = null,
     val history: List<HistorySession> = emptyList(),
+    /** Sets that were a personal record when logged. */
+    val recordSetIds: Set<String> = emptySet(),
     val settings: Settings = Settings(),
     val isLoading: Boolean = true,
 )
@@ -74,6 +77,7 @@ class ExerciseLogViewModel(
             sets = history.firstOrNull { it.date == date }?.sets.orEmpty(),
             previousSession = history.firstOrNull { it.date < date },
             history = history,
+            recordSetIds = exercise?.let { personalRecordSetIds(history, it.type) }.orEmpty(),
             settings = settings,
             isLoading = false,
         )

@@ -44,7 +44,7 @@ import com.kerimkolberg.fitnessapp.ui.components.ColorDot
 @Composable
 fun ExercisePickerScreen(
     onBack: () -> Unit,
-    onPickExercise: (String) -> Unit,
+    onLogExercise: (String) -> Unit,
     onCreateExercise: () -> Unit,
     onEditExercise: (String) -> Unit,
     viewModel: ExercisePickerViewModel = viewModel(factory = ExercisePickerViewModel.Factory),
@@ -54,7 +54,7 @@ fun ExercisePickerScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Choose exercise") },
+                title = { Text(if (viewModel.routineId != null) "Add to routine" else "Choose exercise") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -139,7 +139,7 @@ fun ExercisePickerScreen(
                     }
                     items(group.exercises, key = { it.id }) { exercise ->
                         ListItem(
-                            modifier = Modifier.clickable { onPickExercise(exercise.id) },
+                            modifier = Modifier.clickable { viewModel.pick(exercise.id, onLogExercise, onBack) },
                             headlineContent = { Text(exercise.name) },
                             supportingContent = if (exercise.type != ExerciseType.WEIGHT_REPS) {
                                 { Text(exercise.type.label) }

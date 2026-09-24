@@ -4,7 +4,7 @@ A gym workout tracker for Android, inspired by FitNotes. Works fully offline: al
 
 See [ROADMAP.md](ROADMAP.md) for the plan and progress.
 
-## What it does today (Phase 1)
+## What it does today (Phases 1 and 2)
 
 - **Workout log**: one screen per day, with previous/next day arrows and a calendar
 - **Exercise library**: about 70 built-in exercises in 8 categories, search, and your own custom exercises
@@ -12,6 +12,10 @@ See [ROADMAP.md](ROADMAP.md) for the plan and progress.
 - **Last time** hint and a full **history** per exercise
 - **Rest timer** that starts when you save a set, with vibration and a notification
 - **Settings**: kg/lb (km/mi), default rest time, light/dark theme
+- **Personal records**: a star on every set that beat your previous best, estimated 1RM, rep maxes
+- **Progress graphs** per exercise (estimated 1RM, heaviest weight, volume, reps, time, distance)
+- **Routines**: save lists of exercises and add them to a workout day; copy an earlier day's exercises to today
+- **Body tracker**: bodyweight, body fat and body measurements with graphs
 
 ## Try it on your phone
 

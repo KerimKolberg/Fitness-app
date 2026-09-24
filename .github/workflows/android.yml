@@ -32,6 +32,7 @@ jobs:
             echo "::error::The Room schema changed. Commit app/schemas and add a Migration for the new version."
             git status --porcelain app/schemas
             git diff app/schemas
+            git ls-files --others --exclude-standard app/schemas | while read -r f; do echo "== $f"; cat "$f"; echo; done
             exit 1
           fi
 

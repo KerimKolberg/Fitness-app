@@ -4,9 +4,11 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewModelScope
+import com.kerimkolberg.fitnessapp.data.RoutineRepository
 import com.kerimkolberg.fitnessapp.data.SettingsRepository
 import com.kerimkolberg.fitnessapp.data.WorkoutRepository
 import com.kerimkolberg.fitnessapp.model.DayExercise
+import com.kerimkolberg.fitnessapp.model.Routine
 import com.kerimkolberg.fitnessapp.model.UnitSystem
 import com.kerimkolberg.fitnessapp.ui.appViewModelFactory
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -29,8 +31,12 @@ data class WorkoutUiState(
 class WorkoutViewModel(
     private val savedStateHandle: SavedStateHandle,
     private val workoutRepository: WorkoutRepository,
+    private val routineRepository: RoutineRepository,
     settingsRepository: SettingsRepository,
 ) : ViewModel() {
+    val routines: StateFlow<List<Routine>> =
+        routineRepository.routines.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
 
     // The calendar screen writes the picked day into this key of our SavedStateHandle.
     private val epochDay = savedStateHandle.getStateFlow(KEY_EPOCH_DAY, LocalDate.now().toEpochDay())
@@ -60,6 +66,23 @@ class WorkoutViewModel(
         viewModelScope.launch { workoutRepository.deleteWorkoutExercise(workoutExerciseId) }
     }
 
+    /** Adds a routine's exercises to the shown day, ready to be filled in. */
+    fun applyRoutine(routineId: String) {
+        val date = uiState.value.date
+        viewModelScope.launch {
+            workoutRepository.addExercisesToDay(date, routineRepository.exerciseIds(routineId))
+        }
+    }
+
+    /** Copies the shown day's exercises (not their sets) to today, then shows today. */
+    fun copyExercisesToToday() {
+        val exerciseIds = uiState.value.exercises.map { it.exerciseId }
+        viewModelScope.launch {
+            workoutRepository.addExercisesToDay(LocalDate.now(), exerciseIds)
+            showToday()
+        }
+    }
+
     private fun moveDays(days: Long) {
         savedStateHandle[KEY_EPOCH_DAY] = epochDay.value + days
     }
@@ -71,6 +94,7 @@ class WorkoutViewModel(
             WorkoutViewModel(
                 savedStateHandle = createSavedStateHandle(),
                 workoutRepository = container.workoutRepository,
+                routineRepository = container.routineRepository,
                 settingsRepository = container.settingsRepository,
             )
         }

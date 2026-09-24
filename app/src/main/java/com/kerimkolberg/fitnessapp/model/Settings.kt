@@ -20,10 +20,17 @@ enum class UnitSystem(
     fun distanceToMeters(value: Double): Double =
         if (this == METRIC) value * METERS_PER_KM else value * METERS_PER_MILE
 
+    val lengthUnit: String get() = if (this == METRIC) "cm" else "in"
+
+    fun lengthFromCm(cm: Double): Double = if (this == METRIC) cm else cm / CM_PER_INCH
+
+    fun lengthToCm(value: Double): Double = if (this == METRIC) value else value * CM_PER_INCH
+
     companion object {
         const val KG_PER_LB = 0.45359237
         const val METERS_PER_KM = 1000.0
         const val METERS_PER_MILE = 1609.344
+        const val CM_PER_INCH = 2.54
     }
 }
 

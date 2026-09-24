@@ -37,10 +37,10 @@ v1 is fully offline, but the data layer follows these rules so sync/accounts can
 - [x] Settings: kg/lb, default rest time, theme
 
 ### Should-have
-- [ ] Personal records (PRs) and estimated 1RM, with a marker when a PR is beaten
-- [ ] Progress graphs per exercise (max weight, estimated 1RM, volume, reps)
-- [ ] Routines/templates and copying a past workout to today
-- [ ] Body tracker: bodyweight, body fat %, measurements, with graphs
+- [x] Personal records (PRs) and estimated 1RM, with a marker when a PR is beaten
+- [x] Progress graphs per exercise (max weight, estimated 1RM, volume, reps)
+- [x] Routines/templates and copying a past workout to today
+- [x] Body tracker: bodyweight, body fat %, measurements, with graphs
 - [ ] Backup/restore to a local file / Google Drive (via the Android file picker)
 - [ ] CSV export
 - [ ] Set and workout comments
@@ -57,7 +57,7 @@ v1 is fully offline, but the data layer follows these rules so sync/accounts can
 
 ## Data model
 
-Category, Exercise, Workout, WorkoutExercise and Set exist since Phase 1 (`app/src/main/java/.../data/db/Entities.kt`); the rest are planned. All tables use `id: UUID`, `createdAt`, `updatedAt`, `deletedAt?`.
+Category, Exercise, Workout, WorkoutExercise and Set exist since Phase 1; Routine, RoutineExercise and BodyMeasurement since Phase 2 (database version 2) (`app/src/main/java/.../data/db/Entities.kt`); the rest are planned. All tables use `id: UUID`, `createdAt`, `updatedAt`, `deletedAt?`.
 
 - **Category**: name, color, sortOrder
 - **Exercise**: name, categoryId, type (WEIGHT_REPS / REPS / DISTANCE_TIME / TIME), notes, isCustom
@@ -88,11 +88,30 @@ Category, Exercise, Workout, WorkoutExercise and Set exist since Phase 1 (`app/s
 - **Goal:** installable APK, usable for personal training
 
 ### Phase 2: Insights
-- [ ] PRs and estimated 1RM
-- [ ] Progress graphs
-- [ ] Routines/templates
-- [ ] Body tracker
+- [x] PRs and estimated 1RM (Epley), with a star on record-setting sets and rep maxes
+- [x] Progress graphs (per exercise, plus body measurements)
+- [x] Routines, adding a routine to a day, and copying a day's exercises to today
+- [x] Body tracker (bodyweight, body fat, 9 circumference measurements)
+- [ ] Try it on a real phone and collect fixes
 - **Goal:** feature parity with FitNotes' core
+
+### Phase 2b: Exercise variety
+Broaden the library beyond gym lifts. Each group needs the right way to log it:
+
+| Group | Examples | How a set is logged |
+|---|---|---|
+| Mobility | hip CARs, thoracic rotations, ankle mobility | reps, or time; per side |
+| Stretching | hamstring, hip flexor, couch stretch | time held; per side |
+| Isometrics | wall sit, Copenhagen plank, split-squat hold, mid-thigh pull | time held + optional weight |
+| Slow eccentrics (tendons) | Nordic curls, eccentric heel drops, decline squats, Tyler twist | weight × reps + tempo (e.g. 5 s down) |
+| Plyometrics | box jumps, broad jumps, pogo hops, depth jumps | reps + optional height/distance |
+| Sports | tennis, table tennis, volleyball, padel, badminton, football, basketball | session time + intensity (RPE) + notes |
+
+- [ ] New exercise types: "time + weight" for loaded holds, "reps + height/distance" for jumps
+- [ ] Optional tempo per exercise (e.g. 5-0-1-0) and "per side" flag
+- [ ] Session intensity (RPE 1–10) and notes, for sports and conditioning
+- [ ] New categories: Mobility, Stretching, Isometrics, Tendon / eccentrics, Plyometrics, Sports
+- [ ] Built-in exercises for each category
 
 ### Phase 3: Data safety
 - [ ] Backup/restore

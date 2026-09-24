@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.kerimkolberg.fitnessapp.data.db.AppDatabase
+import com.kerimkolberg.fitnessapp.model.BodyMetric
 import com.kerimkolberg.fitnessapp.model.ExerciseType
 import com.kerimkolberg.fitnessapp.model.SetValues
 import kotlinx.coroutines.flow.first
@@ -26,6 +27,8 @@ class RepositoryTest {
     private lateinit var database: AppDatabase
     private lateinit var exercises: ExerciseRepository
     private lateinit var workouts: WorkoutRepository
+    private lateinit var routines: RoutineRepository
+    private lateinit var body: BodyRepository
     private var clock = 1_000L
 
     private val bench = BuiltInExercises.stableId("exercise", "flat-barbell-bench-press")
@@ -40,6 +43,8 @@ class RepositoryTest {
         ).allowMainThreadQueries().build()
         exercises = ExerciseRepository(database.exerciseDao(), now = { clock++ })
         workouts = WorkoutRepository(database, now = { clock++ })
+        routines = RoutineRepository(database, now = { clock++ })
+        body = BodyRepository(database.bodyDao(), now = { clock++ })
     }
 
     @After
@@ -150,5 +155,64 @@ class RepositoryTest {
 
         assertEquals(listOf(bench), workouts.observeDay(day).first().map { it.exerciseId })
         assertTrue(exercises.exercises.first().none { it.id == bench })
+    }
+
+    @Test
+    fun routinesKeepTheirOrder() = runTest {
+        exercises.addMissingBuiltIns()
+        val row = BuiltInExercises.stableId("exercise", "barbell-row")
+        val id = routines.createRoutine("Full body")
+        routines.addExercise(id, squat)
+        routines.addExercise(id, bench)
+        routines.addExercise(id, row)
+
+        val routine = routines.observeRoutine(id).first()!!
+        assertEquals(listOf(squat, bench, row), routine.exercises.map { it.exerciseId })
+
+        routines.moveExercise(id, routine.exercises[2].id, -1)
+        assertEquals(listOf(squat, row, bench), routines.exerciseIds(id))
+
+        routines.removeExercise(routine.exercises[0].id)
+        assertEquals(listOf(row, bench), routines.exerciseIds(id))
+
+        routines.deleteRoutine(id)
+        assertTrue(routines.routines.first().isEmpty())
+    }
+
+    @Test
+    fun plannedExercisesAppearWithoutSetsAndAreReusedWhenLogging() = runTest {
+        exercises.addMissingBuiltIns()
+        workouts.addSet(day, bench, SetValues(weightKg = 100.0, reps = 5))
+        workouts.addExercisesToDay(day, listOf(bench, squat, squat))
+
+        val planned = workouts.observeDay(day).first()
+        assertEquals(listOf(bench, squat), planned.map { it.exerciseId })
+        assertTrue(planned[1].sets.isEmpty())
+        // A day with only planned exercises is not a workout day on the calendar.
+        val tomorrow = day.plusDays(1)
+        workouts.addExercisesToDay(tomorrow, listOf(bench))
+        assertEquals(1, workouts.observeDay(tomorrow).first().size)
+        assertTrue(workouts.observeWorkoutDates(tomorrow, tomorrow).first().isEmpty())
+
+        workouts.addSet(day, squat, SetValues(weightKg = 140.0, reps = 3))
+        val logged = workouts.observeDay(day).first()
+        assertEquals(2, logged.size)
+        assertEquals(1, logged[1].sets.size)
+    }
+
+    @Test
+    fun oneBodyMeasurementPerMetricAndDay() = runTest {
+        body.saveMeasurement(BodyMetric.BODYWEIGHT, day.minusDays(7), 81.0)
+        body.saveMeasurement(BodyMetric.BODYWEIGHT, day, 80.5)
+        body.saveMeasurement(BodyMetric.BODYWEIGHT, day, 80.0)
+        body.saveMeasurement(BodyMetric.WAIST, day, 84.0)
+
+        val all = body.measurements.first()
+        val weights = all.filter { it.metric == BodyMetric.BODYWEIGHT }
+        assertEquals(listOf(day, day.minusDays(7)), weights.map { it.date })
+        assertEquals(80.0, weights.first().value, 0.0)
+
+        body.deleteMeasurement(weights.first().id)
+        assertEquals(listOf(81.0), body.measurements.first().filter { it.metric == BodyMetric.BODYWEIGHT }.map { it.value })
     }
 }

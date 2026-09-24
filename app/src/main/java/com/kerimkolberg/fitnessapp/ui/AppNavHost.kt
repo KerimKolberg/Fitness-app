@@ -7,10 +7,14 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import com.kerimkolberg.fitnessapp.ui.body.BodyMetricScreen
+import com.kerimkolberg.fitnessapp.ui.body.BodyScreen
 import com.kerimkolberg.fitnessapp.ui.calendar.CalendarScreen
 import com.kerimkolberg.fitnessapp.ui.exercises.EditExerciseScreen
 import com.kerimkolberg.fitnessapp.ui.exercises.ExercisePickerScreen
 import com.kerimkolberg.fitnessapp.ui.log.ExerciseLogScreen
+import com.kerimkolberg.fitnessapp.ui.routines.RoutineScreen
+import com.kerimkolberg.fitnessapp.ui.routines.RoutinesScreen
 import com.kerimkolberg.fitnessapp.ui.settings.SettingsScreen
 import com.kerimkolberg.fitnessapp.ui.workout.WorkoutScreen
 import com.kerimkolberg.fitnessapp.ui.workout.WorkoutViewModel
@@ -19,8 +23,9 @@ import kotlinx.serialization.Serializable
 @Serializable
 object WorkoutRoute
 
+/** Picks an exercise to log on a day, or to add to a routine when [routineId] is set. */
 @Serializable
-data class ExercisePickerRoute(val epochDay: Long)
+data class ExercisePickerRoute(val epochDay: Long = 0, val routineId: String? = null)
 
 @Serializable
 data class EditExerciseRoute(val exerciseId: String? = null)
@@ -34,6 +39,18 @@ data class CalendarRoute(val epochDay: Long)
 @Serializable
 object SettingsRoute
 
+@Serializable
+object RoutinesRoute
+
+@Serializable
+data class RoutineRoute(val routineId: String)
+
+@Serializable
+object BodyRoute
+
+@Serializable
+data class BodyMetricRoute(val metric: String)
+
 @Composable
 fun AppNavHost(navController: NavHostController = rememberNavController()) {
     NavHost(navController = navController, startDestination = WorkoutRoute) {
@@ -45,13 +62,15 @@ fun AppNavHost(navController: NavHostController = rememberNavController()) {
                 },
                 onOpenCalendar = { date -> navController.navigate(CalendarRoute(date.toEpochDay())) },
                 onOpenSettings = { navController.navigate(SettingsRoute) },
+                onOpenRoutines = { navController.navigate(RoutinesRoute) },
+                onOpenBody = { navController.navigate(BodyRoute) },
             )
         }
         composable<ExercisePickerRoute> { entry ->
             val route = entry.toRoute<ExercisePickerRoute>()
             ExercisePickerScreen(
                 onBack = { navController.popBackStack() },
-                onPickExercise = { exerciseId ->
+                onLogExercise = { exerciseId ->
                     navController.navigate(ExerciseLogRoute(route.epochDay, exerciseId)) {
                         popUpTo<ExercisePickerRoute> { inclusive = true }
                     }
@@ -93,6 +112,27 @@ fun AppNavHost(navController: NavHostController = rememberNavController()) {
         }
         composable<SettingsRoute> {
             SettingsScreen(onBack = { navController.popBackStack() })
+        }
+        composable<RoutinesRoute> {
+            RoutinesScreen(
+                onBack = { navController.popBackStack() },
+                onOpenRoutine = { routineId -> navController.navigate(RoutineRoute(routineId)) },
+            )
+        }
+        composable<RoutineRoute> {
+            RoutineScreen(
+                onBack = { navController.popBackStack() },
+                onAddExercise = { routineId -> navController.navigate(ExercisePickerRoute(routineId = routineId)) },
+            )
+        }
+        composable<BodyRoute> {
+            BodyScreen(
+                onBack = { navController.popBackStack() },
+                onOpenMetric = { metric -> navController.navigate(BodyMetricRoute(metric.name)) },
+            )
+        }
+        composable<BodyMetricRoute> {
+            BodyMetricScreen(onBack = { navController.popBackStack() })
         }
     }
 }

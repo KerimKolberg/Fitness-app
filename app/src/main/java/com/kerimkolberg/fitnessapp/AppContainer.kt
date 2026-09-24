@@ -2,7 +2,9 @@ package com.kerimkolberg.fitnessapp
 
 import android.content.Context
 import androidx.datastore.preferences.preferencesDataStore
+import com.kerimkolberg.fitnessapp.data.BodyRepository
 import com.kerimkolberg.fitnessapp.data.ExerciseRepository
+import com.kerimkolberg.fitnessapp.data.RoutineRepository
 import com.kerimkolberg.fitnessapp.data.SettingsRepository
 import com.kerimkolberg.fitnessapp.data.WorkoutRepository
 import com.kerimkolberg.fitnessapp.data.db.AppDatabase
@@ -26,6 +28,10 @@ class AppContainer(context: Context) {
     val exerciseRepository = ExerciseRepository(database.exerciseDao())
 
     val workoutRepository = WorkoutRepository(database)
+
+    val routineRepository = RoutineRepository(database)
+
+    val bodyRepository = BodyRepository(database.bodyDao())
 
     val settingsRepository = SettingsRepository(appContext.settingsDataStore)
 

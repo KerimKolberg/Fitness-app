@@ -4,6 +4,7 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import com.kerimkolberg.fitnessapp.model.BodyMetric
 import com.kerimkolberg.fitnessapp.model.ExerciseType
 import java.time.LocalDate
 
@@ -89,6 +90,46 @@ data class WorkoutSetEntity(
     val distanceMeters: Double?,
     val durationSeconds: Int?,
     val comment: String,
+    val createdAt: Long,
+    val updatedAt: Long,
+    val deletedAt: Long? = null,
+)
+
+@Entity(tableName = "routines")
+data class RoutineEntity(
+    @PrimaryKey val id: String,
+    val name: String,
+    val notes: String,
+    val createdAt: Long,
+    val updatedAt: Long,
+    val deletedAt: Long? = null,
+)
+
+@Entity(
+    tableName = "routine_exercises",
+    foreignKeys = [
+        ForeignKey(entity = RoutineEntity::class, parentColumns = ["id"], childColumns = ["routineId"]),
+        ForeignKey(entity = ExerciseEntity::class, parentColumns = ["id"], childColumns = ["exerciseId"]),
+    ],
+    indices = [Index("routineId"), Index("exerciseId")],
+)
+data class RoutineExerciseEntity(
+    @PrimaryKey val id: String,
+    val routineId: String,
+    val exerciseId: String,
+    val sortOrder: Int,
+    val createdAt: Long,
+    val updatedAt: Long,
+    val deletedAt: Long? = null,
+)
+
+/** One body measurement. The value is stored in base units: kg, percent, or cm (see [BodyMetric]). */
+@Entity(tableName = "body_measurements", indices = [Index("metric", "date")])
+data class BodyMeasurementEntity(
+    @PrimaryKey val id: String,
+    val date: LocalDate,
+    val metric: BodyMetric,
+    val value: Double,
     val createdAt: Long,
     val updatedAt: Long,
     val deletedAt: Long? = null,
