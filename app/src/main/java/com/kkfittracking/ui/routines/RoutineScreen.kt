@@ -2,6 +2,7 @@
 
 package com.kkfittracking.ui.routines
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -50,8 +51,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kkfittracking.model.Block
 import com.kkfittracking.model.RoutineExercise
 import com.kkfittracking.model.formatDuration
+import com.kkfittracking.model.summary
 import com.kkfittracking.ui.components.ColorDot
 import com.kkfittracking.ui.components.TextInputDialog
+import com.kkfittracking.ui.log.SetPlanDialog
 
 @Composable
 fun RoutineScreen(
@@ -61,6 +64,15 @@ fun RoutineScreen(
     viewModel: RoutineViewModel = viewModel(factory = RoutineViewModel.Factory),
 ) {
     val routine by viewModel.routine.collectAsStateWithLifecycle()
+    val library by viewModel.exercises.collectAsStateWithLifecycle()
+    val settings by viewModel.settings.collectAsStateWithLifecycle()
+    // The exercise whose sets, reps and weight are being edited.
+    var editingPlan by rememberSaveable { mutableStateOf<String?>(null) }
+    val planText = { member: RoutineExercise ->
+        library[member.exerciseId]?.let { exercise ->
+            exercise.plan.summary(exercise.type, settings.dropSetPercent, settings.unitSystem)
+        } ?: "Tap to set sets, reps and weight"
+    }
     var renaming by rememberSaveable { mutableStateOf(false) }
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
 
@@ -136,7 +148,9 @@ fun RoutineScreen(
                     when (block) {
                         is Block.Single -> {
                             ListItem(
+                                modifier = Modifier.clickable { editingPlan = block.item.exerciseId },
                                 headlineContent = { Text(block.item.exerciseName) },
+                                supportingContent = { Text(planText(block.item)) },
                                 leadingContent = { ColorDot(block.item.categoryColor) },
                                 trailingContent = {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -154,10 +168,36 @@ fun RoutineScreen(
                             onMoveUp = moveUp,
                             onMoveDown = moveDown,
                             onRemove = { viewModel.removeExercise(it.id) },
+                            onEdit = { editingPlan = it.exerciseId },
+                            planText = planText,
                         )
                     }
                 }
             }
+        }
+    }
+
+    editingPlan?.let { exerciseId ->
+        val exercise = library[exerciseId]
+        if (exercise != null) {
+            SetPlanDialog(
+                plan = exercise.plan,
+                type = exercise.type,
+                units = settings.unitSystem,
+                defaultRestSeconds = settings.restTimerSeconds,
+                defaultPercent = settings.dropSetPercent,
+                enteredWeightKg = exercise.plan.weightKg,
+                inSuperset = routine?.exercises?.any { it.exerciseId == exerciseId && it.supersetId != null } == true,
+                onSave = {
+                    viewModel.savePlan(exerciseId, it)
+                    editingPlan = null
+                },
+                onClear = {
+                    viewModel.savePlan(exerciseId, exercise.plan.withoutSetPlan())
+                    editingPlan = null
+                },
+                onDismiss = { editingPlan = null },
+            )
         }
     }
 
@@ -211,6 +251,8 @@ private fun SupersetCard(
     onMoveUp: (() -> Unit)?,
     onMoveDown: (() -> Unit)?,
     onRemove: (RoutineExercise) -> Unit,
+    onEdit: (RoutineExercise) -> Unit,
+    planText: (RoutineExercise) -> String,
 ) {
     Card(
         modifier = Modifier
@@ -239,8 +281,10 @@ private fun SupersetCard(
         }
         members.forEachIndexed { index, member ->
             ListItem(
+                modifier = Modifier.clickable { onEdit(member) },
                 colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                 headlineContent = { Text("${index + 1}. ${member.exerciseName}") },
+                supportingContent = { Text(planText(member)) },
                 leadingContent = { ColorDot(member.categoryColor) },
                 trailingContent = {
                     IconButton(onClick = { onRemove(member) }) {

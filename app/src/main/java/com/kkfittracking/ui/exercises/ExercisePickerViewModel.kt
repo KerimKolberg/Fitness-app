@@ -11,6 +11,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.navigation.toRoute
 import com.kkfittracking.data.ExerciseRepository
 import com.kkfittracking.data.RoutineRepository
+import com.kkfittracking.data.SettingsRepository
 import com.kkfittracking.data.WorkoutRepository
 import com.kkfittracking.model.Category
 import com.kkfittracking.model.MAX_SUPERSET_SIZE
@@ -18,6 +19,7 @@ import com.kkfittracking.model.Muscle
 import com.kkfittracking.model.Routine
 import com.kkfittracking.model.Tendon
 import com.kkfittracking.model.TrainingStyle
+import com.kkfittracking.model.inUserOrder
 import com.kkfittracking.ui.ExercisePickerRoute
 import com.kkfittracking.ui.appViewModelFactory
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -56,6 +58,7 @@ private data class LibrarySelection(
 class ExercisePickerViewModel(
     savedStateHandle: SavedStateHandle,
     repository: ExerciseRepository,
+    settingsRepository: SettingsRepository,
     private val routineRepository: RoutineRepository,
     private val workoutRepository: WorkoutRepository,
 ) : ViewModel() {
@@ -79,13 +82,18 @@ class ExercisePickerViewModel(
     private val selectedPlanId = MutableStateFlow<String?>(null)
     private val planFilter = combine(routineRepository.routines, selectedPlanId) { plans, planId -> plans to planId }
 
+    /** The sections in the user's order, with the user's order of the training styles. */
+    private val orderedCategories = combine(repository.categories, settingsRepository.settings) { categories, settings ->
+        categories.inUserOrder(settings.sectionOrder) { it.id } to settings.styleOrder
+    }
+
     val uiState: StateFlow<ExercisePickerUiState> = combine(
-        repository.categories,
+        orderedCategories,
         repository.exercises,
         snapshotFlow { query },
         selection,
         planFilter,
-    ) { categories, exercises, query, selection, (plans, planId) ->
+    ) { (categories, styleOrder), exercises, query, selection, (plans, planId) ->
         val plan = plans.firstOrNull { it.id == planId }
         val filter = LibraryFilter(
             query = query,
@@ -105,7 +113,7 @@ class ExercisePickerViewModel(
                 emptyList()
             },
             selectedMuscle = selection.muscle,
-            styles = styleChoices(categories, exercises, filter),
+            styles = styleChoices(categories, exercises, filter).inUserOrder(styleOrder) { it.name },
             selectedStyle = selection.style,
             tendons = if (selection.style in TENDON_STYLES || selection.tendon != null) {
                 tendonChoices(categories, exercises, filter)
@@ -190,6 +198,7 @@ class ExercisePickerViewModel(
             ExercisePickerViewModel(
                 createSavedStateHandle(),
                 container.exerciseRepository,
+                container.settingsRepository,
                 container.routineRepository,
                 container.workoutRepository,
             )

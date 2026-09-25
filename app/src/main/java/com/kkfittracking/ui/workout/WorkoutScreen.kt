@@ -2,6 +2,9 @@
 
 package com.kkfittracking.ui.workout
 
+import android.content.Intent
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -57,11 +60,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.health.connect.client.PermissionController
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.kkfittracking.data.health.HealthConnect
 import com.kkfittracking.model.Block
 import com.kkfittracking.model.DayExercise
 import com.kkfittracking.model.GameStats
@@ -69,6 +76,7 @@ import com.kkfittracking.model.MAX_SUPERSET_SIZE
 import com.kkfittracking.model.Routine
 import com.kkfittracking.model.UnitSystem
 import com.kkfittracking.model.dayCompletion
+import com.kkfittracking.model.formatNumber
 import com.kkfittracking.model.formatSet
 import com.kkfittracking.model.groupDay
 import com.kkfittracking.model.setLabels
@@ -98,6 +106,15 @@ fun WorkoutScreen(
     val guide by viewModel.guide.collectAsStateWithLifecycle()
     val completion = remember(state.exercises) { dayCompletion(state.exercises) }
     val requestNotificationPermission = rememberNotificationPermissionRequester()
+    val context = LocalContext.current
+    val healthLauncher = rememberLauncherForActivityResult(PermissionController.createRequestPermissionResultContract()) {
+        viewModel.refreshSteps()
+    }
+    // Steps keep coming in during the day: read them again whenever the screen comes back.
+    LifecycleResumeEffect(Unit) {
+        viewModel.refreshSteps()
+        onPauseOrDispose { }
+    }
     var exerciseToDelete by remember { mutableStateOf<DayExercise?>(null) }
     var menuOpen by remember { mutableStateOf(false) }
     var choosingRoutine by remember { mutableStateOf(false) }
@@ -194,6 +211,15 @@ fun WorkoutScreen(
                 onToday = viewModel::showToday,
             )
             gameStats?.let { GameSummaryBar(it, onClick = onOpenAchievements) }
+            StepsBar(
+                steps = viewModel.steps,
+                units = state.units,
+                onConnect = { healthLauncher.launch(viewModel.healthPermissions) },
+                onInstall = {
+                    val uri = Uri.parse("market://details?id=${HealthConnect.PROVIDER_PACKAGE}&url=healthconnect%3A%2F%2Fonboarding")
+                    runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, uri).setPackage("com.android.vending")) }
+                },
+            )
             HorizontalDivider()
             when {
                 state.isLoading -> Unit
@@ -376,6 +402,32 @@ fun WorkoutScreen(
                 TextButton(onClick = { exerciseToDelete = null }) { Text("Cancel") }
             },
         )
+    }
+}
+
+/** The day's steps and distance from Health Connect, or a button to connect it. */
+@Composable
+private fun StepsBar(steps: StepsState, units: UnitSystem, onConnect: () -> Unit, onInstall: () -> Unit) {
+    val (text, action) = when (steps) {
+        StepsState.Hidden -> return
+        StepsState.NeedsInstall -> "👣 Daily steps need Health Connect" to ("Install" to onInstall)
+        StepsState.NeedsPermission -> "👣 Show daily steps from Health Connect" to ("Connect" to onConnect)
+        is StepsState.Loaded -> {
+            val activity = steps.activity
+            val distance = activity.meters?.takeIf { it > 0 }?.let {
+                " · ${formatNumber(units.distanceFromMeters(it))} ${units.distanceUnit}"
+            }.orEmpty()
+            "👣 ${"%,d".format(activity.steps)} steps$distance" to null
+        }
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(text, style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f).padding(vertical = 6.dp))
+        action?.let { (label, onClick) -> TextButton(onClick = onClick) { Text(label) } }
     }
 }
 

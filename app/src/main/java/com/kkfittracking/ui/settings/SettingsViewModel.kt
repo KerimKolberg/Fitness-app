@@ -6,16 +6,22 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.kkfittracking.data.ExerciseRepository
 import com.kkfittracking.data.SettingsRepository
 import com.kkfittracking.data.backup.BackupException
 import com.kkfittracking.data.backup.BackupFile
 import com.kkfittracking.data.backup.DataTransfer
+import com.kkfittracking.model.Category
 import com.kkfittracking.model.Settings
 import com.kkfittracking.model.ThemeMode
+import com.kkfittracking.model.TrainingStyle
 import com.kkfittracking.model.UnitSystem
+import com.kkfittracking.model.inUserOrder
+import com.kkfittracking.model.moveInOrder
 import com.kkfittracking.ui.appViewModelFactory
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.io.IOException
@@ -23,7 +29,33 @@ import java.io.IOException
 class SettingsViewModel(
     private val repository: SettingsRepository,
     private val dataTransfer: DataTransfer,
+    exerciseRepository: ExerciseRepository,
 ) : ViewModel() {
+    /** The library's sections, in the user's order, for arranging them. */
+    val sections: StateFlow<List<Category>> = combine(exerciseRepository.categories, repository.settings) { categories, settings ->
+        categories.inUserOrder(settings.sectionOrder) { it.id }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Moves a section one place up (-1) or down (+1) in the library. */
+    fun moveSection(id: String, direction: Int) {
+        val order = moveInOrder(sections.value.map { it.id }, id, direction)
+        viewModelScope.launch { repository.setSectionOrder(order) }
+    }
+
+    /** Moves a training style one place up (-1) or down (+1). */
+    fun moveStyle(style: TrainingStyle, direction: Int) {
+        val shown = TrainingStyle.sectionOrder.inUserOrder(settings.value?.styleOrder.orEmpty()) { it.name }.map { it.name }
+        viewModelScope.launch { repository.setStyleOrder(moveInOrder(shown, style.name, direction)) }
+    }
+
+    /** Back to the app's own order of sections and styles. */
+    fun resetLibraryOrder() {
+        viewModelScope.launch {
+            repository.setSectionOrder(emptyList())
+            repository.setStyleOrder(emptyList())
+        }
+    }
+
     val lastBackupAt: StateFlow<Long?> =
         repository.lastBackupAt.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
@@ -120,7 +152,7 @@ class SettingsViewModel(
 
     companion object {
         val Factory = appViewModelFactory { container ->
-            SettingsViewModel(container.settingsRepository, container.dataTransfer)
+            SettingsViewModel(container.settingsRepository, container.dataTransfer, container.exerciseRepository)
         }
     }
 }

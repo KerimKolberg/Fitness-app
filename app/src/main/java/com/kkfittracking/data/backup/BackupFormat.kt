@@ -168,6 +168,8 @@ data class SettingsDto(
     val dropSetPercent: Int = 20,
     val supersetAutoAdvance: Boolean = true,
     val supersetTransitionSeconds: Int = 15,
+    val sectionOrder: List<String> = emptyList(),
+    val styleOrder: List<String> = emptyList(),
 )
 
 /** A backup that cannot be restored, with a message for the user. */

@@ -26,6 +26,8 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
             dropSetPercent = prefs[DROP_SET_PERCENT] ?: defaults.dropSetPercent,
             supersetAutoAdvance = prefs[SUPERSET_AUTO_ADVANCE] ?: defaults.supersetAutoAdvance,
             supersetTransitionSeconds = prefs[SUPERSET_TRANSITION] ?: defaults.supersetTransitionSeconds,
+            sectionOrder = prefs[SECTION_ORDER].toList(),
+            styleOrder = prefs[STYLE_ORDER].toList(),
         )
     }
 
@@ -54,7 +56,15 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         it[DROP_SET_PERCENT] = settings.dropSetPercent.coerceIn(MIN_DROP_PERCENT, MAX_DROP_PERCENT)
         it[SUPERSET_AUTO_ADVANCE] = settings.supersetAutoAdvance
         it[SUPERSET_TRANSITION] = settings.supersetTransitionSeconds.coerceIn(0, MAX_TRANSITION_SECONDS)
+        it[SECTION_ORDER] = settings.sectionOrder.joinToString(",")
+        it[STYLE_ORDER] = settings.styleOrder.joinToString(",")
     }
+
+    /** The order of the library's sections (category ids); empty goes back to the default. */
+    suspend fun setSectionOrder(order: List<String>) = dataStore.edit { it[SECTION_ORDER] = order.joinToString(",") }
+
+    /** The order of the training styles (their names); empty goes back to the default. */
+    suspend fun setStyleOrder(order: List<String>) = dataStore.edit { it[STYLE_ORDER] = order.joinToString(",") }
 
     suspend fun setSupersetTransitionSeconds(value: Int) =
         dataStore.edit { it[SUPERSET_TRANSITION] = value.coerceIn(0, MAX_TRANSITION_SECONDS) }
@@ -85,8 +95,12 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         private val DROP_SET_PERCENT = intPreferencesKey("drop_set_percent")
         private val SUPERSET_AUTO_ADVANCE = booleanPreferencesKey("superset_auto_advance")
         private val SUPERSET_TRANSITION = intPreferencesKey("superset_transition_seconds")
+        private val SECTION_ORDER = stringPreferencesKey("section_order")
+        private val STYLE_ORDER = stringPreferencesKey("style_order")
     }
 }
 
 private inline fun <reified T : Enum<T>> String?.toEnumOr(default: T): T =
     this?.let { name -> enumValues<T>().firstOrNull { it.name == name } } ?: default
+
+private fun String?.toList(): List<String> = this?.split(",")?.filter { it.isNotBlank() }.orEmpty()

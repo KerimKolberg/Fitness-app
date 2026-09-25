@@ -35,7 +35,10 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
@@ -47,8 +50,10 @@ import com.kkfittracking.BuildConfig
 import com.kkfittracking.data.backup.BackupFile
 import com.kkfittracking.data.backup.summary
 import com.kkfittracking.model.ThemeMode
+import com.kkfittracking.model.TrainingStyle
 import com.kkfittracking.model.UnitSystem
 import com.kkfittracking.model.formatDuration
+import com.kkfittracking.model.inUserOrder
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -65,6 +70,8 @@ fun SettingsScreen(
     val lastBackupAt by viewModel.lastBackupAt.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val today = LocalDate.now().toString()
+    var arrangingLibrary by rememberSaveable { mutableStateOf(false) }
+    val sections by viewModel.sections.collectAsStateWithLifecycle()
 
     val backupLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) {
         it?.let(viewModel::backUp)
@@ -215,6 +222,12 @@ fun SettingsScreen(
             )
             HorizontalDivider(Modifier.padding(vertical = 8.dp))
 
+            SectionTitle("Exercise library")
+            ActionRow("Order of sections and styles", "Which body sections and training styles come first", busy = false) {
+                arrangingLibrary = true
+            }
+            HorizontalDivider(Modifier.padding(vertical = 8.dp))
+
             SectionTitle("Theme")
             ThemeMode.entries.forEach { mode ->
                 RadioRow(
@@ -260,6 +273,17 @@ fun SettingsScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+    }
+
+    if (arrangingLibrary) {
+        LibraryOrderDialog(
+            sections = sections,
+            styles = TrainingStyle.sectionOrder.inUserOrder(settings?.styleOrder.orEmpty()) { it.name },
+            onMoveSection = viewModel::moveSection,
+            onMoveStyle = viewModel::moveStyle,
+            onReset = viewModel::resetLibraryOrder,
+            onDismiss = { arrangingLibrary = false },
+        )
     }
 
     viewModel.pendingRestore?.let { file ->

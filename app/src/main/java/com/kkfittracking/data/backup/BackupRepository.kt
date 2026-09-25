@@ -165,6 +165,8 @@ private fun Settings.toDto() = SettingsDto(
     dropSetPercent = dropSetPercent,
     supersetAutoAdvance = supersetAutoAdvance,
     supersetTransitionSeconds = supersetTransitionSeconds,
+    sectionOrder = sectionOrder,
+    styleOrder = styleOrder,
 )
 
 /** Unknown values fall back to the defaults: settings are not worth failing a restore over. */
@@ -180,5 +182,7 @@ private fun SettingsDto.toSettings(): Settings {
         dropSetPercent = dropSetPercent,
         supersetAutoAdvance = supersetAutoAdvance,
         supersetTransitionSeconds = supersetTransitionSeconds,
+        sectionOrder = sectionOrder,
+        styleOrder = styleOrder,
     )
 }

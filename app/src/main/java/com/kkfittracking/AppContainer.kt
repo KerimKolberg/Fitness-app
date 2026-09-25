@@ -11,6 +11,7 @@ import com.kkfittracking.data.WorkoutRepository
 import com.kkfittracking.data.backup.BackupRepository
 import com.kkfittracking.data.backup.DataTransfer
 import com.kkfittracking.data.db.AppDatabase
+import com.kkfittracking.data.health.HealthConnect
 import com.kkfittracking.guide.GuidedWorkout
 import com.kkfittracking.guide.WatchBridge
 import com.kkfittracking.guide.WorkoutGuideService
@@ -45,6 +46,9 @@ class AppContainer(context: Context) {
     val settingsRepository = SettingsRepository(appContext.settingsDataStore)
 
     val gameRepository = GameRepository(database.workoutDao(), settingsRepository)
+
+    /** Daily steps and distance from Health Connect. */
+    val healthConnect = HealthConnect(appContext)
 
     val dataTransfer = DataTransfer(
         context = appContext,

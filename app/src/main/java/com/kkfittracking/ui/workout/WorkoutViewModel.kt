@@ -11,6 +11,8 @@ import com.kkfittracking.data.GameRepository
 import com.kkfittracking.data.RoutineRepository
 import com.kkfittracking.data.SettingsRepository
 import com.kkfittracking.data.WorkoutRepository
+import com.kkfittracking.data.health.DailyActivity
+import com.kkfittracking.data.health.HealthConnect
 import com.kkfittracking.guide.GuideState
 import com.kkfittracking.guide.GuidedWorkout
 import com.kkfittracking.model.DayExercise
@@ -28,6 +30,18 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 
+/** The day's steps from Health Connect, or what is needed to show them. */
+sealed interface StepsState {
+    /** Health Connect is not on this phone. */
+    data object Hidden : StepsState
+
+    data object NeedsInstall : StepsState
+
+    data object NeedsPermission : StepsState
+
+    data class Loaded(val activity: DailyActivity) : StepsState
+}
+
 data class WorkoutUiState(
     val date: LocalDate,
     val exercises: List<DayExercise> = emptyList(),
@@ -43,7 +57,15 @@ class WorkoutViewModel(
     settingsRepository: SettingsRepository,
     gameRepository: GameRepository,
     private val guidedWorkout: GuidedWorkout,
+    private val healthConnect: HealthConnect,
 ) : ViewModel() {
+    /** The shown day's steps and distance. */
+    var steps by mutableStateOf<StepsState>(StepsState.Hidden)
+        private set
+
+    /** What to ask Health Connect for. */
+    val healthPermissions: Set<String> get() = healthConnect.permissions
+
     /** The play button's guided workout, when one runs. */
     val guide: StateFlow<GuideState> = guidedWorkout.state
 
@@ -72,6 +94,27 @@ class WorkoutViewModel(
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = WorkoutUiState(date = LocalDate.ofEpochDay(epochDay.value)),
         )
+
+    init {
+        viewModelScope.launch { epochDay.collect { refreshSteps() } }
+    }
+
+    /** Reads the shown day's steps again (after the permission was given, or when the screen comes back). */
+    fun refreshSteps() {
+        val date = LocalDate.ofEpochDay(epochDay.value)
+        viewModelScope.launch {
+            steps = runCatching {
+                when (healthConnect.status()) {
+                    HealthConnect.Status.UNAVAILABLE -> StepsState.Hidden
+                    HealthConnect.Status.NEEDS_UPDATE -> StepsState.NeedsInstall
+                    HealthConnect.Status.AVAILABLE -> when {
+                        !healthConnect.hasPermissions() -> StepsState.NeedsPermission
+                        else -> healthConnect.dailyActivity(date)?.let { StepsState.Loaded(it) } ?: StepsState.Hidden
+                    }
+                }
+            }.getOrDefault(StepsState.Hidden)
+        }
+    }
 
     fun showPreviousDay() = moveDays(-1)
 
@@ -151,6 +194,7 @@ class WorkoutViewModel(
                 settingsRepository = container.settingsRepository,
                 gameRepository = container.gameRepository,
                 guidedWorkout = container.guidedWorkout,
+                healthConnect = container.healthConnect,
             )
         }
     }

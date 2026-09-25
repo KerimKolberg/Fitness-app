@@ -60,4 +60,8 @@ data class Settings(
     val supersetAutoAdvance: Boolean = true,
     /** Default seconds to get from one superset exercise to the next. */
     val supersetTransitionSeconds: Int = 15,
+    /** The library's sections (category ids) in the user's order; empty for the default order. */
+    val sectionOrder: List<String> = emptyList(),
+    /** The training styles (their names) in the user's order; empty for the default order. */
+    val styleOrder: List<String> = emptyList(),
 )

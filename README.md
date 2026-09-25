@@ -15,13 +15,15 @@ See [ROADMAP.md](ROADMAP.md) for the plan and progress.
 - **Settings**: kg/lb (km/mi), default rest time, light/dark theme
 - **Personal records**: a star on every set that beat your previous best, estimated 1RM, rep maxes
 - **Progress graphs** per exercise (estimated 1RM, heaviest weight, volume, reps, time, distance)
-- **Plans**: group exercises (Push, Upper body, Tendon health…); one exercise can be in many plans. Add a plan to a workout day, filter the exercise list by plan, or start from the starter plans (including KK Upper body and KK Lower body: blocks of a muscular exercise and its tendon work, as 3-round supersets with sets, reps and weights). Copy an earlier day's exercises to today
+- **Plans**: group exercises (Push, Upper body, Tendon health…); one exercise can be in many plans. Add a plan to a workout day, filter the exercise list by plan, or start from the starter plans, then change them like any plan: tap an exercise to set its sets, reps and weight (including KK Upper body and KK Lower body: blocks of a muscular exercise and its tendon work, as 3-round supersets with sets, reps and weights). Copy an earlier day's exercises to today
 - **Beyond the gym**: mobility, stretching, isometric holds, slow eccentrics for tendons (with tempo), plyometrics (with jump height) and sports sessions (with intensity and notes)
 - **HIIT** (under Cardio): an interval timer for high and low intensity with rounds, a get-ready countdown, beeps and vibration
 - **Drop sets**: planned per exercise, on the last set or as the whole exercise, with the number of drops, reps per drop and a percentage or fixed weight; or tap "Drop set" any time
 - **Supersets**: group 2 to 12 exercises and log them round by round. "+Super-sets" arranges a day or a plan by dragging, with the time to walk to the next exercise and the rest after each round; plans can bring their supersets along. Set the rounds of a superset, a drop set on the last round for all, and per exercise how many rounds it joins or its own drop set choice
 - **Tendons**: isometric and eccentric exercises show the tendons they train (patellar, Achilles, rotator cuff, elbow tendons…) with a drawing and what each one connects; filter by tendon in the library
 - **Watch app** (Wear OS): follow the guided workout on the wrist and log sets there, synced with the phone
+- **Daily steps**: the day's steps and distance from Health Connect (what Samsung Health, Google Fit and your watch record), shown on each day
+- **Your library order**: Settings → Exercise library puts the body sections and training styles in the order you like
 - **Guided workout**: press Start on a day with a plan and the app takes you from exercise to exercise (round by round in supersets), moving on after each set you save. Pause for longer breaks, skip, or stop early; a notification shows what's next with the phone locked
 - **Day analysis**: how much of the day's plan is done, and what was done and what wasn't
 - **How to do it**: a description and video links (YouTube or any page) on every exercise
