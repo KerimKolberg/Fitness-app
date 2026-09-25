@@ -70,7 +70,7 @@ import com.kkfittracking.ui.components.ColorDot
 private val RowSpacing = 8.dp
 
 /**
- * "+Super-sets" for a day or a plan: drag exercises (by their ≡ handle) between a superset's
+ * "Superset edit" for a day or a plan: drag exercises (by their ≡ handle) between a superset's
  * header and its end line to superset them, set the time to walk from one exercise to the next
  * and the rest after each round. Exercises outside a superset are done on their own.
  */
@@ -95,7 +95,7 @@ fun SupersetsScreen(
             TopAppBar(
                 title = {
                     Column {
-                        Text("+Super-sets")
+                        Text("Superset edit")
                         Text(
                             text = viewModel.subject,
                             style = MaterialTheme.typography.labelMedium,

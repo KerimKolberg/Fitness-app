@@ -124,7 +124,7 @@ fun RoutineScreen(
                     item(key = "supersets") {
                         Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                             OutlinedButton(onClick = { onSupersets(viewModel.routineId) }, modifier = Modifier.fillMaxWidth()) {
-                                Text("+Super-sets")
+                                Text("Superset edit")
                             }
                             if (current.supersetCount > 0) {
                                 Text(

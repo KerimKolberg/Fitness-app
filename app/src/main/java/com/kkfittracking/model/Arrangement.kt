@@ -1,7 +1,7 @@
 package com.kkfittracking.model
 
 /**
- * The "+Super-sets" screen as one flat list, in the order the exercises are done. A superset is a
+ * The "Superset edit" screen as one flat list, in the order the exercises are done. A superset is a
  * [Start] row, its exercises and an [End] row; exercises outside those pairs are done on their own.
  * Only exercises move, so the pairs always stay whole and never nest. The same list arranges a
  * day or a plan.

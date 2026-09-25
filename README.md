@@ -19,7 +19,7 @@ See [ROADMAP.md](ROADMAP.md) for the plan and progress.
 - **Beyond the gym**: mobility, stretching, isometric holds, slow eccentrics for tendons (with tempo), plyometrics (with jump height) and sports sessions (with intensity and notes)
 - **HIIT** (under Cardio): an interval timer for high and low intensity with rounds, a get-ready countdown, beeps and vibration
 - **Drop sets**: planned per exercise, on the last set or as the whole exercise, with the number of drops, reps per drop and a percentage or fixed weight; or tap "Drop set" any time
-- **Supersets**: group 2 to 12 exercises and log them round by round. "+Super-sets" arranges a day or a plan by dragging, with the time to walk to the next exercise and the rest after each round; plans can bring their supersets along. Set the rounds of a superset, a drop set on the last round for all, and per exercise how many rounds it joins or its own drop set choice
+- **Supersets**: group 2 to 12 exercises and log them round by round. "Superset edit" arranges a day or a plan by dragging, with the time to walk to the next exercise and the rest after each round; plans can bring their supersets along. Set the rounds of a superset, a drop set on the last round for all, and per exercise how many rounds it joins or its own drop set choice
 - **Tendons**: isometric and eccentric exercises show the tendons they train (patellar, Achilles, rotator cuff, elbow tendons…) with a drawing and what each one connects; filter by tendon in the library
 - **Watch app** (Wear OS): follow the guided workout on the wrist and log sets there, synced with the phone
 - **Daily steps**: the day's steps and distance from Health Connect (what Samsung Health, Google Fit and your watch record), shown on each day
@@ -28,6 +28,7 @@ See [ROADMAP.md](ROADMAP.md) for the plan and progress.
 - **Day analysis**: how much of the day's plan is done, and what was done and what wasn't
 - **How to do it**: a description and video links (YouTube or any page) on every exercise
 - **Progress**: graphs per exercise with the all-time high and low marked, and records
+- **Graphs & records** (menu): any exercise's progress by date (heaviest weight, estimated 1RM, volume, reps, time, distance…) and your body tracker values (bodyweight, body fat, measurements), over 1 month, 3 months, 1 year or everything, with all-time high and low; plus every exercise's personal record, newest first, one tap from its graph
 - **Gamification**: XP and levels, a weekly goal with streaks, 17 achievements, and celebrations when you hit a record
 - **Body tracker**: bodyweight, body fat and body measurements with graphs
 - **Your data**: back up to a file (e.g. on Google Drive) and restore it on any phone; export workouts and body measurements as CSV

@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import com.kkfittracking.model.ExerciseType
 import com.kkfittracking.model.HistorySession
 import com.kkfittracking.model.ProgressMetric
+import com.kkfittracking.model.ProgressPoint
 import com.kkfittracking.model.UnitSystem
 import com.kkfittracking.model.formatNumber
 import com.kkfittracking.model.personalRecords
@@ -99,19 +100,7 @@ fun ProgressTab(history: List<HistorySession>, type: ExerciseType, units: UnitSy
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             LineChart(points = points, formatValue = { metric.format(it, units) })
-            progressSummary(points)?.takeIf { points.size > 1 }?.let { summary ->
-                Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SummaryTile("All-time high", metric.format(summary.high.value, units), formatShortDate(summary.high.date), MaterialTheme.colorScheme.tertiary)
-                    SummaryTile("All-time low", metric.format(summary.low.value, units), formatShortDate(summary.low.date), MaterialTheme.colorScheme.error)
-                    val change = summary.change
-                    SummaryTile(
-                        "Since the start",
-                        (if (change >= 0) "+" else "−") + metric.format(kotlin.math.abs(change), units),
-                        formatShortDate(summary.first.date),
-                        MaterialTheme.colorScheme.primary,
-                    )
-                }
-            }
+            GraphSummary(points) { metric.format(it, units) }
         }
         if (maxes.isNotEmpty()) {
             item {
@@ -138,7 +127,7 @@ fun ProgressTab(history: List<HistorySession>, type: ExerciseType, units: UnitSy
 
 /** One figure under the graph, such as the all-time high, with its date. */
 @Composable
-private fun RowScope.SummaryTile(label: String, value: String, date: String, color: Color) {
+internal fun RowScope.SummaryTile(label: String, value: String, date: String, color: Color) {
     Card(modifier = Modifier.weight(1f)) {
         Column(Modifier.padding(8.dp)) {
             Text(label, style = MaterialTheme.typography.labelSmall, color = color)
@@ -156,4 +145,21 @@ private fun SectionTitle(text: String) {
         style = MaterialTheme.typography.titleMedium,
         fontWeight = FontWeight.SemiBold,
     )
+}
+
+/** The all-time high and low of a graph, and the change since its first point. */
+@Composable
+internal fun GraphSummary(points: List<ProgressPoint>, format: (Double) -> String) {
+    val summary = progressSummary(points)?.takeIf { points.size > 1 } ?: return
+    Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        SummaryTile("All-time high", format(summary.high.value), formatShortDate(summary.high.date), MaterialTheme.colorScheme.tertiary)
+        SummaryTile("All-time low", format(summary.low.value), formatShortDate(summary.low.date), MaterialTheme.colorScheme.error)
+        val change = summary.change
+        SummaryTile(
+            "Since the start",
+            (if (change >= 0) "+" else "−") + format(kotlin.math.abs(change)),
+            formatShortDate(summary.first.date),
+            MaterialTheme.colorScheme.primary,
+        )
+    }
 }

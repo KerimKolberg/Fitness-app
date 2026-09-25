@@ -329,7 +329,7 @@ class RepositoryTest {
         assertTrue(workouts.observeDay(day).first().all { it.supersetId == null && it.roundRestSeconds == null })
     }
 
-    /** A plan arranged with "+Super-sets", then added to a day on a day with extra energy, and on a normal day. */
+    /** A plan arranged with "Superset edit", then added to a day on a day with extra energy, and on a normal day. */
     @Test
     fun planSupersetsComeAlongToTheDayWhenChosen() = runTest {
         exercises.syncBuiltIns()

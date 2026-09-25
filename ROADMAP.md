@@ -58,6 +58,8 @@ v1 is fully offline, but the data layer follows these rules so sync/accounts can
 - [x] Daily steps and distance from Health Connect on every day (read only)
 - [x] Set plans edited from the plan screen; the user's own order of library sections and training styles
 - [x] Move what's left of a day to the next day or a picked day: from the summary after stopping a guided workout, or from the day's menu
+- [x] Graphs & records screen: exercise graphs by date, body tracker graphs, time ranges, and all personal records
+- [x] Clearer names: "New superset" and "Superset edit"
 - [ ] Later: write finished workouts to Health Connect, so they show up in Samsung Health and Google Fit
 - [ ] Health Connect: read daily steps (and optionally heart rate) that Samsung Health, Google Fit, Fitbit and watches already record; write finished workouts back so they show up in those apps
 - [ ] Cloud sync + accounts (see "Keeping the door open for cloud sync")
@@ -131,7 +133,7 @@ Broaden the library beyond gym lifts. Each group needs the right way to log it:
 ### Phase 2c: Training techniques
 - [x] Drop sets: a "Drop set" option when logging, each drop lighter by a set percentage (Settings, default 20%, rounded to 0.5 kg / 1 lb); shown as ↘ under the set they continue
 - [x] Supersets and circuits of 2 to 6 exercises on a workout day: pick them in order, log round by round (the app opens the next exercise after each set), rest timer only after the last exercise of a round, ungroup any time
-- [x] "+Super-sets" for a day: drag exercises by their ≡ handle between a superset's header and its end line, set the time to walk to the next exercise and the rest after each round
+- [x] "Superset edit" for a day: drag exercises by their ≡ handle between a superset's header and its end line, set the time to walk to the next exercise and the rest after each round
 - [x] While logging: a "Go to <next exercise>" countdown between superset exercises
 - [x] Supersets saved inside plans: when adding the plan to a day, choose "With supersets" or "One by one"
 

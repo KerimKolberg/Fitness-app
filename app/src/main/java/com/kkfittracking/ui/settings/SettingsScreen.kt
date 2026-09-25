@@ -197,7 +197,7 @@ fun SettingsScreen(
                 Column(Modifier.weight(1f)) {
                     Text("Time to the next superset exercise")
                     Text(
-                        text = "Default for new supersets; change it per superset with +Super-sets",
+                        text = "Default for new supersets; change it per superset in Superset edit",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

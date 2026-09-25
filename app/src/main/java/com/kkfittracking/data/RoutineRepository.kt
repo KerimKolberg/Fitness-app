@@ -164,7 +164,7 @@ class RoutineRepository(
         }
     }
 
-    /** Saves the order and supersets chosen on the "+Super-sets" screen. */
+    /** Saves the order and supersets chosen on the "Superset edit" screen. */
     suspend fun arrangePlan(exercises: List<ArrangedExercise>) {
         database.withTransaction {
             val time = now()

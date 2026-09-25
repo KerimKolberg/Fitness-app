@@ -16,6 +16,7 @@ import com.kkfittracking.model.PlannedExercise
 import com.kkfittracking.model.SetEntry
 import com.kkfittracking.model.SetValues
 import com.kkfittracking.model.groupSupersets
+import com.kkfittracking.model.historiesOf
 import com.kkfittracking.model.unfinishedPart
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -41,6 +42,10 @@ class WorkoutRepository(
                 HistorySession(date = date, sets = dateRows.map { it.set.toSetEntry() })
             }
         }
+
+    /** Every exercise's history at once (newest session first), for the graphs and records. */
+    fun observeAllHistory(): Flow<Map<String, List<HistorySession>>> =
+        dao.observeAllSets().map { rows -> historiesOf(rows.map { Triple(it.date, it.exerciseId, it.set.toSetEntry()) }) }
 
     /** The dates between [from] and [to] (inclusive) that have at least one logged set. */
     fun observeWorkoutDates(from: LocalDate, to: LocalDate): Flow<Set<LocalDate>> =
@@ -181,7 +186,7 @@ class WorkoutRepository(
         }
     }
 
-    /** Saves the order and supersets chosen on the "+Super-sets" screen. */
+    /** Saves the order and supersets chosen on the "Superset edit" screen. */
     suspend fun arrangeDay(exercises: List<ArrangedExercise>) {
         database.withTransaction {
             val time = now()

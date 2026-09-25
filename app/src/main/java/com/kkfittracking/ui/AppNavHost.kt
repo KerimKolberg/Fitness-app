@@ -8,6 +8,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import com.kkfittracking.ui.analysis.AnalysisScreen
 import com.kkfittracking.ui.body.BodyMetricScreen
 import com.kkfittracking.ui.body.BodyScreen
 import com.kkfittracking.ui.calendar.CalendarScreen
@@ -51,12 +52,16 @@ object RoutinesRoute
 @Serializable
 data class RoutineRoute(val routineId: String)
 
-/** "+Super-sets" for the plan [planId], or else for the day [epochDay]. */
+/** "Superset edit" for the plan [planId], or else for the day [epochDay]. */
 @Serializable
 data class SupersetsRoute(val epochDay: Long = 0, val planId: String? = null)
 
 @Serializable
 object AchievementsRoute
+
+/** Graphs and records, showing [exerciseId] first when set. */
+@Serializable
+data class AnalysisRoute(val exerciseId: String? = null)
 
 @Serializable
 object BodyRoute
@@ -91,6 +96,7 @@ fun AppNavHost(
                 onOpenRoutines = { navController.navigate(RoutinesRoute) },
                 onOpenBody = { navController.navigate(BodyRoute) },
                 onOpenAchievements = { navController.navigate(AchievementsRoute) },
+                onOpenAnalysis = { navController.navigate(AnalysisRoute()) },
                 onNewSuperset = { date -> navController.navigate(ExercisePickerRoute(date.toEpochDay(), superset = true)) },
                 onSupersets = { date -> navController.navigate(SupersetsRoute(epochDay = date.toEpochDay())) },
             )
@@ -169,6 +175,9 @@ fun AppNavHost(
         }
         composable<SupersetsRoute> {
             SupersetsScreen(onDone = { navController.popBackStack() })
+        }
+        composable<AnalysisRoute> {
+            AnalysisScreen(onBack = { navController.popBackStack() })
         }
         composable<AchievementsRoute> {
             AchievementsScreen(onBack = { navController.popBackStack() })

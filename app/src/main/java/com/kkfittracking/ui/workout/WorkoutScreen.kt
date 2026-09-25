@@ -73,7 +73,6 @@ import com.kkfittracking.data.health.HealthConnect
 import com.kkfittracking.model.Block
 import com.kkfittracking.model.DayExercise
 import com.kkfittracking.model.GameStats
-import com.kkfittracking.model.MAX_SUPERSET_SIZE
 import com.kkfittracking.model.Routine
 import com.kkfittracking.model.UnitSystem
 import com.kkfittracking.model.dayCompletion
@@ -98,6 +97,7 @@ fun WorkoutScreen(
     onOpenRoutines: () -> Unit,
     onOpenBody: () -> Unit,
     onOpenAchievements: () -> Unit,
+    onOpenAnalysis: () -> Unit,
     onNewSuperset: (LocalDate) -> Unit,
     onSupersets: (LocalDate) -> Unit,
     viewModel: WorkoutViewModel = viewModel(factory = WorkoutViewModel.Factory),
@@ -171,9 +171,9 @@ fun WorkoutScreen(
                             DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                                 val close = { menuOpen = false }
                                 MenuItem("Add a plan to this day", close) { choosingRoutine = true }
-                                MenuItem("New superset (2–$MAX_SUPERSET_SIZE exercises)", close) { onNewSuperset(state.date) }
+                                MenuItem("New superset", close) { onNewSuperset(state.date) }
                                 if (state.exercises.size >= 2) {
-                                    MenuItem("+Super-sets", close) { onSupersets(state.date) }
+                                    MenuItem("Superset edit", close) { onSupersets(state.date) }
                                 }
                                 if (state.exercises.isNotEmpty()) {
                                     MenuItem("Select exercises to remove", close) { selection = emptySet() }
@@ -186,6 +186,7 @@ fun WorkoutScreen(
                                 }
                                 HorizontalDivider()
                                 MenuItem("Plans", close, onOpenRoutines)
+                                MenuItem("Graphs & records", close, onOpenAnalysis)
                                 MenuItem("Body tracker", close, onOpenBody)
                                 MenuItem("Progress & achievements", close, onOpenAchievements)
                                 MenuItem("Settings", close, onOpenSettings)
@@ -281,7 +282,7 @@ fun WorkoutScreen(
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 if (state.exercises.size >= 2) {
                                     OutlinedButton(onClick = { onSupersets(state.date) }, modifier = Modifier.weight(1f)) {
-                                        Text("+Super-sets")
+                                        Text("Superset edit")
                                     }
                                 }
                                 OutlinedButton(onClick = { selection = emptySet() }) { Text("Select") }
