@@ -7,6 +7,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.kkfittracking.data.db.AppDatabase
 import com.kkfittracking.data.db.CategoryEntity
 import com.kkfittracking.data.db.ExerciseEntity
+import com.kkfittracking.guide.GuidedWorkout
 import com.kkfittracking.model.ArrangedExercise
 import com.kkfittracking.model.BodyMetric
 import com.kkfittracking.model.ExerciseLink
@@ -531,5 +532,36 @@ class RepositoryTest {
 
         workouts.deleteWorkoutExercises(logged.map { it.workoutExerciseId })
         assertTrue(workouts.observeDay(day).first().isEmpty())
+    }
+
+    @Test
+    fun theGuideFollowsTheDaysPlan() = runTest {
+        exercises.syncBuiltIns()
+        exercises.savePlan(bench, ExercisePlan(sets = 2))
+        exercises.savePlan(squat, ExercisePlan(sets = 1))
+        workouts.addPlannedExercises(day, listOf(PlannedExercise(bench), PlannedExercise(squat)), withSupersets = false)
+        val settingsFile = Files.createTempDirectory("settings").resolve("test.preferences_pb").toFile()
+        val settings = SettingsRepository(PreferenceDataStoreFactory.create(produceFile = { settingsFile }))
+        var notifications = 0
+        val guide = GuidedWorkout(backgroundScope, workouts, settings, onStarted = { notifications++ }, now = { clock })
+
+        assertEquals(bench, guide.start(day)?.exerciseId)
+        assertEquals(1, notifications)
+        workouts.addSet(day, bench, SetValues(100.0, 5))
+        assertEquals("Set 2 of 2", guide.afterSetLogged(day)?.step)
+        workouts.addSet(day, bench, SetValues(100.0, 5))
+        // The bench's sets are done: on to the squat.
+        assertEquals(squat, guide.afterSetLogged(day)?.exerciseId)
+        // Sets on another day do not move this workout.
+        assertNull(guide.afterSetLogged(day.plusDays(1)))
+
+        val state = guide.state.first { it.completion.percent == 67 }
+        assertEquals(listOf(squat), state.completion.notStarted.map { it.exerciseId })
+        guide.stop()
+        val summary = guide.summary.value
+        assertNotNull(summary)
+        assertTrue(summary!!.stoppedEarly)
+        assertEquals(67, summary.completion.percent)
+        assertEquals(false, guide.isRunning)
     }
 }

@@ -52,7 +52,7 @@ v1 is fully offline, but the data layer follows these rules so sync/accounts can
 - [ ] RPE / RIR per set
 - [ ] Progression suggestions
 - [ ] Home-screen widget
-- [ ] Wear OS companion (Galaxy Watch, Pixel Watch): log sets and run the rest timer from the wrist, synced with the phone
+- [ ] Wear OS companion (Galaxy Watch, Pixel Watch): the guided workout on the wrist (next exercise, log weight and reps, rest, pause and stop), synced with the phone over Bluetooth through the Wear OS Data Layer. Next up
 - [ ] Health Connect: read daily steps (and optionally heart rate) that Samsung Health, Google Fit, Fitbit and watches already record; write finished workouts back so they show up in those apps
 - [ ] Cloud sync + accounts (see "Keeping the door open for cloud sync")
 
@@ -142,7 +142,8 @@ Broaden the library beyond gym lifts. Each group needs the right way to log it:
 - [x] Select several exercises on a day and remove them at once
 - [x] Progress graphs mark the all-time high and low, with a summary under the graph
 - [ ] Later: play videos inside the app (only through YouTube's official player and terms), and your own recorded videos
-- [ ] Later: a foreground service so the timers keep going even if Android closes the app
+- [x] Guided workout (play button): starts a day's plan and opens each exercise in turn, round by round in supersets and straight into planned drop sets. Saving a set moves on by itself; the rest ends with "Next: …". Pause for longer breaks, Skip an exercise, Stop when out of energy. An ongoing notification (a foreground service, so the workout and timers keep going with the screen off) shows the exercise, the plan done and the training time, with Pause, Skip and Stop
+- [x] Day analysis: the percent of the day's plan done, and which exercises were done, partly done and not done (set plans, superset rounds and drop sets count; exercises without a set plan count as 3 sets). A summary with the training time when a guided workout ends
 
 ### Phase 3: Data safety
 - [x] Backup to a JSON file anywhere the file picker reaches (Drive, Downloads…), with "last backup" shown in Settings

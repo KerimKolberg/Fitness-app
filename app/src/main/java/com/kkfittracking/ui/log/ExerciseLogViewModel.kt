@@ -13,6 +13,8 @@ import com.kkfittracking.data.GameRepository
 import com.kkfittracking.data.RoutineRepository
 import com.kkfittracking.data.SettingsRepository
 import com.kkfittracking.data.WorkoutRepository
+import com.kkfittracking.guide.GuideState
+import com.kkfittracking.guide.GuidedWorkout
 import com.kkfittracking.model.Category
 import com.kkfittracking.model.DayExercise
 import com.kkfittracking.model.Exercise
@@ -20,6 +22,7 @@ import com.kkfittracking.model.ExerciseLink
 import com.kkfittracking.model.ExercisePlan
 import com.kkfittracking.model.ExerciseType
 import com.kkfittracking.model.GameStats
+import com.kkfittracking.model.GuideTarget
 import com.kkfittracking.model.HistorySession
 import com.kkfittracking.model.NextStep
 import com.kkfittracking.model.Routine
@@ -103,7 +106,11 @@ class ExerciseLogViewModel(
     private val intervalTimer: IntervalTimer,
     gameRepository: GameRepository,
     private val routineRepository: RoutineRepository,
+    private val guidedWorkout: GuidedWorkout,
 ) : ViewModel() {
+    /** The play button's guided workout, when one runs. */
+    val guide: StateFlow<GuideState> = guidedWorkout.state
+
     /** All plans, to add this exercise to or remove it from. */
     val plans: StateFlow<List<Routine>> =
         routineRepository.routines.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -255,7 +262,9 @@ class ExerciseLogViewModel(
                     if (best != null && score != null && score > best) {
                         celebrate(listOf("⭐ New personal record! +${XpRules.PER_RECORD} XP"))
                     }
-                    afterNewSet(state, exercise, values)
+                    val guided = guidedWorkout.state.value.isActiveOn(date)
+                    val target = if (guided) guidedWorkout.afterSetLogged(date) else null
+                    afterNewSet(state, exercise, values, guided, target)
                 }
             }
         }
@@ -284,14 +293,25 @@ class ExerciseLogViewModel(
      * What happens after a new set (see [nextStep]): straight into a planned drop set with no rest,
      * else the walk to the next superset exercise, else the rest (the superset's after a round).
      */
-    private fun afterNewSet(state: ExerciseLogUiState, exercise: Exercise, saved: SetValues) {
+    private fun afterNewSet(
+        state: ExerciseLogUiState,
+        exercise: Exercise,
+        saved: SetValues,
+        guided: Boolean = false,
+        target: GuideTarget? = null,
+    ) {
         val settings = state.settings
+        // In a guided workout the rest ends with where to go next, and the screen moves there.
+        val nextLabel = target?.let { "Next: ${it.name} · ${it.step}" }
+        val goTo = target?.exerciseId?.takeIf { guided && it != exerciseId }
+        if (guided && target == null) celebrate(listOf("🏁 Everything planned for today is done!"))
         val plan = exercise.plan
         val superset = state.supersetContext
         if (saved.isDropSet && !state.activePlan.dropSets) {
             // Drop sets by hand: lighter again for the next one. The rest runs in case this was the last.
             lowerWeightForDrop(state)
-            if (settings.autoStartRestTimer) restTimer.start(settings.restTimerSeconds)
+            if (settings.autoStartRestTimer) restTimer.start(settings.restTimerSeconds, label = nextLabel.takeIf { goTo != null })
+            goTo?.let { switchTo = it }
             return
         }
         val setsNow = state.sets + SetEntry("new", saved)
@@ -306,14 +326,19 @@ class ExerciseLogViewModel(
                 val nextName = state.superset.firstOrNull { it.exerciseId == step.exerciseId }?.exerciseName
                 if (settings.autoStartRestTimer && step.seconds > 0) restTimer.start(step.seconds, label = "Go to $nextName")
                 if (settings.supersetAutoAdvance) switchTo = step.exerciseId
+                goTo?.let { switchTo = it }
             }
             is NextStep.Rest -> {
                 leaveDrops()
-                if (settings.autoStartRestTimer) restTimer.start(step.seconds)
+                if (settings.autoStartRestTimer) restTimer.start(step.seconds, label = nextLabel.takeIf { goTo != null })
                 val next = step.nextExerciseId
                 if (settings.supersetAutoAdvance && next != null && next != exerciseId) switchTo = next
+                goTo?.let { switchTo = it }
             }
-            NextStep.Done -> leaveDrops()
+            NextStep.Done -> {
+                leaveDrops()
+                goTo?.let { switchTo = it }
+            }
         }
     }
 
@@ -394,6 +419,24 @@ class ExerciseLogViewModel(
         celebration = (listOfNotNull(celebration) + messages).joinToString("\n")
     }
 
+    // Guided workout
+
+    fun pauseGuide() {
+        restTimer.stop()
+        guidedWorkout.pause()
+    }
+
+    fun resumeGuide() = guidedWorkout.resume()
+
+    fun skipInGuide() {
+        guidedWorkout.skip(exerciseId)
+        viewModelScope.launch {
+            guidedWorkout.afterSetLogged(date)?.let { switchTo = it.exerciseId }
+        }
+    }
+
+    fun stopGuide() = guidedWorkout.stop()
+
     fun startTimer(seconds: Int) = restTimer.start(seconds)
 
     fun stopTimer() = restTimer.stop()
@@ -458,6 +501,7 @@ class ExerciseLogViewModel(
                 intervalTimer = container.intervalTimer,
                 gameRepository = container.gameRepository,
                 routineRepository = container.routineRepository,
+                guidedWorkout = container.guidedWorkout,
             )
         }
     }

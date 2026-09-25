@@ -109,6 +109,8 @@ data class DayExercise(
     val memberRounds: Int? = null,
     /** This exercise's own choice about a drop set on its last round; null follows the superset. */
     val memberDropSet: Boolean? = null,
+    /** The exercise's planned sets, reps and drop sets. */
+    val plan: ExercisePlan = ExercisePlan(),
 )
 
 /** An exercise to put on a day, from a plan or an earlier day, with its superset if it is in one. */

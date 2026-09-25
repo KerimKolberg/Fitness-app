@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -48,6 +49,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -65,11 +67,15 @@ import com.kkfittracking.model.DayExercise
 import com.kkfittracking.model.GameStats
 import com.kkfittracking.model.Routine
 import com.kkfittracking.model.UnitSystem
+import com.kkfittracking.model.dayCompletion
 import com.kkfittracking.model.formatSet
 import com.kkfittracking.model.groupDay
 import com.kkfittracking.model.setLabels
 import com.kkfittracking.ui.components.formatFullDate
 import com.kkfittracking.ui.components.relativeDayName
+import com.kkfittracking.ui.components.rememberNotificationPermissionRequester
+import com.kkfittracking.ui.guide.DayCompletionCard
+import com.kkfittracking.ui.guide.GuideBar
 import java.time.LocalDate
 
 @Composable
@@ -88,6 +94,9 @@ fun WorkoutScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val routines by viewModel.routines.collectAsStateWithLifecycle()
     val gameStats by viewModel.gameStats.collectAsStateWithLifecycle()
+    val guide by viewModel.guide.collectAsStateWithLifecycle()
+    val completion = remember(state.exercises) { dayCompletion(state.exercises) }
+    val requestNotificationPermission = rememberNotificationPermissionRequester()
     var exerciseToDelete by remember { mutableStateOf<DayExercise?>(null) }
     var menuOpen by remember { mutableStateOf(false) }
     var choosingRoutine by remember { mutableStateOf(false) }
@@ -97,6 +106,13 @@ fun WorkoutScreen(
     var confirmRemoveSelected by remember { mutableStateOf(false) }
     val toggle = { exercise: DayExercise ->
         selection = selection?.let { if (exercise.workoutExerciseId in it) it - exercise.workoutExerciseId else it + exercise.workoutExerciseId }
+    }
+
+    LaunchedEffect(viewModel.guideOpens) {
+        viewModel.guideOpens?.let {
+            viewModel.consumeGuideOpen()
+            onOpenExercise(state.date, it)
+        }
     }
 
     Scaffold(
@@ -189,6 +205,45 @@ fun WorkoutScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     if (selection == null) {
+                        item(key = "guide") {
+                            val session = guide.session
+                            if (session != null) {
+                                val guideDate = LocalDate.ofEpochDay(session.epochDay)
+                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    if (guideDate != state.date) {
+                                        Text(
+                                            "Guided workout on ${formatFullDate(guideDate)}",
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                    GuideBar(
+                                        state = guide,
+                                        currentExerciseId = null,
+                                        onGo = { onOpenExercise(guideDate, it) },
+                                        onPause = viewModel::pauseGuide,
+                                        onResume = viewModel::resumeGuide,
+                                        onSkip = viewModel::skipInGuide,
+                                        onStop = viewModel::stopGuide,
+                                    )
+                                }
+                            } else if (completion.percent < 100) {
+                                Button(
+                                    onClick = {
+                                        requestNotificationPermission()
+                                        viewModel.startGuide()
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Icon(Icons.Default.PlayArrow, contentDescription = null)
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(if (completion.done == 0) "Start workout" else "Continue workout")
+                                }
+                            }
+                        }
+                        if (completion.done > 0 && !guide.isActiveOn(state.date)) {
+                            item(key = "completion") { DayCompletionCard(completion) }
+                        }
                         item(key = "tools") {
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 if (state.exercises.size >= 2) {

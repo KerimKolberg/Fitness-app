@@ -1,6 +1,7 @@
 package com.kkfittracking.ui
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -64,7 +65,20 @@ object BodyRoute
 data class BodyMetricRoute(val metric: String)
 
 @Composable
-fun AppNavHost(navController: NavHostController = rememberNavController()) {
+fun AppNavHost(
+    navController: NavHostController = rememberNavController(),
+    /** An exercise to open over the day, e.g. from the guided workout's notification. */
+    openRequest: ExerciseLogRoute? = null,
+    onOpened: () -> Unit = {},
+) {
+    LaunchedEffect(openRequest) {
+        openRequest ?: return@LaunchedEffect
+        navController.navigate(openRequest) {
+            popUpTo<WorkoutRoute>()
+            launchSingleTop = true
+        }
+        onOpened()
+    }
     NavHost(navController = navController, startDestination = WorkoutRoute) {
         composable<WorkoutRoute> {
             WorkoutScreen(

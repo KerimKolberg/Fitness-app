@@ -11,6 +11,8 @@ import com.kkfittracking.data.WorkoutRepository
 import com.kkfittracking.data.backup.BackupRepository
 import com.kkfittracking.data.backup.DataTransfer
 import com.kkfittracking.data.db.AppDatabase
+import com.kkfittracking.guide.GuidedWorkout
+import com.kkfittracking.guide.WorkoutGuideService
 import com.kkfittracking.timer.Alerts
 import com.kkfittracking.timer.IntervalAlarm
 import com.kkfittracking.timer.IntervalTimer
@@ -57,4 +59,12 @@ class AppContainer(context: Context) {
     val restTimer = RestTimer(appScope, onFinished = RestTimerAlarm(alerts)::fire)
 
     val intervalTimer = IntervalTimer(appScope, onEvent = IntervalAlarm(alerts)::onEvent)
+
+    /** The play button's guided workout, with its ongoing notification. */
+    val guidedWorkout = GuidedWorkout(
+        scope = appScope,
+        workoutRepository = workoutRepository,
+        settingsRepository = settingsRepository,
+        onStarted = { WorkoutGuideService.start(appContext) },
+    )
 }

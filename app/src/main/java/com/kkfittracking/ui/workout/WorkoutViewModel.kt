@@ -1,5 +1,8 @@
 package com.kkfittracking.ui.workout
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.createSavedStateHandle
@@ -8,6 +11,8 @@ import com.kkfittracking.data.GameRepository
 import com.kkfittracking.data.RoutineRepository
 import com.kkfittracking.data.SettingsRepository
 import com.kkfittracking.data.WorkoutRepository
+import com.kkfittracking.guide.GuideState
+import com.kkfittracking.guide.GuidedWorkout
 import com.kkfittracking.model.DayExercise
 import com.kkfittracking.model.GameStats
 import com.kkfittracking.model.PlannedExercise
@@ -37,7 +42,15 @@ class WorkoutViewModel(
     private val routineRepository: RoutineRepository,
     settingsRepository: SettingsRepository,
     gameRepository: GameRepository,
+    private val guidedWorkout: GuidedWorkout,
 ) : ViewModel() {
+    /** The play button's guided workout, when one runs. */
+    val guide: StateFlow<GuideState> = guidedWorkout.state
+
+    /** The exercise the guide sends the user to right after starting. */
+    var guideOpens by mutableStateOf<String?>(null)
+        private set
+
     val gameStats: StateFlow<GameStats?> =
         gameRepository.stats.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
@@ -103,6 +116,26 @@ class WorkoutViewModel(
         }
     }
 
+    /** Starts guiding the shown day's plan and opens its first exercise. */
+    fun startGuide() {
+        val date = uiState.value.date
+        viewModelScope.launch { guideOpens = guidedWorkout.start(date)?.exerciseId }
+    }
+
+    fun consumeGuideOpen() {
+        guideOpens = null
+    }
+
+    fun pauseGuide() = guidedWorkout.pause()
+
+    fun resumeGuide() = guidedWorkout.resume()
+
+    fun skipInGuide() {
+        guidedWorkout.state.value.target?.let { guidedWorkout.skip(it.exerciseId) }
+    }
+
+    fun stopGuide() = guidedWorkout.stop()
+
     private fun moveDays(days: Long) {
         savedStateHandle[KEY_EPOCH_DAY] = epochDay.value + days
     }
@@ -117,6 +150,7 @@ class WorkoutViewModel(
                 routineRepository = container.routineRepository,
                 settingsRepository = container.settingsRepository,
                 gameRepository = container.gameRepository,
+                guidedWorkout = container.guidedWorkout,
             )
         }
     }

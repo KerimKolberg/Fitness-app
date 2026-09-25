@@ -9,6 +9,7 @@ import com.kkfittracking.data.db.WorkoutSetEntity
 import com.kkfittracking.model.ArrangedExercise
 import com.kkfittracking.model.Block
 import com.kkfittracking.model.DayExercise
+import com.kkfittracking.model.ExercisePlan
 import com.kkfittracking.model.HistorySession
 import com.kkfittracking.model.MAX_SUPERSET_SIZE
 import com.kkfittracking.model.PlannedExercise
@@ -240,6 +241,7 @@ private fun groupDayRows(rows: List<DayRow>): List<DayExercise> =
             supersetDropLast = first.supersetDropLast,
             memberRounds = first.memberRounds,
             memberDropSet = first.memberDropSet,
+            plan = ExercisePlan.fromJson(first.exercisePlan),
             sets = exerciseRows.mapNotNull { row ->
                 row.setId?.let { id ->
                     SetEntry(

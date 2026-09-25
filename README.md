@@ -20,6 +20,8 @@ See [ROADMAP.md](ROADMAP.md) for the plan and progress.
 - **HIIT** (under Cardio): an interval timer for high and low intensity with rounds, a get-ready countdown, beeps and vibration
 - **Drop sets**: planned per exercise, on the last set or as the whole exercise, with the number of drops, reps per drop and a percentage or fixed weight; or tap "Drop set" any time
 - **Supersets**: group 2 to 6 exercises and log them round by round. "+Super-sets" arranges a day or a plan by dragging, with the time to walk to the next exercise and the rest after each round; plans can bring their supersets along. Set the rounds of a superset, a drop set on the last round for all, and per exercise how many rounds it joins or its own drop set choice
+- **Guided workout**: press Start on a day with a plan and the app takes you from exercise to exercise (round by round in supersets), moving on after each set you save. Pause for longer breaks, skip, or stop early; a notification shows what's next with the phone locked
+- **Day analysis**: how much of the day's plan is done, and what was done and what wasn't
 - **How to do it**: a description and video links (YouTube or any page) on every exercise
 - **Progress**: graphs per exercise with the all-time high and low marked, and records
 - **Gamification**: XP and levels, a weekly goal with streaks, 17 achievements, and celebrations when you hit a record

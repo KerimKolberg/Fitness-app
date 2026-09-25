@@ -80,6 +80,7 @@ import com.kkfittracking.timer.IntervalTimerState
 import com.kkfittracking.timer.RestTimerState
 import com.kkfittracking.ui.components.formatShortDate
 import com.kkfittracking.ui.components.rememberNotificationPermissionRequester
+import com.kkfittracking.ui.guide.GuideBar
 import java.time.LocalDate
 
 @Composable
@@ -97,6 +98,7 @@ fun ExerciseLogScreen(
     val plans by viewModel.plans.collectAsStateWithLifecycle()
     val categories by viewModel.categories.collectAsStateWithLifecycle()
     val intervals by viewModel.intervalState.collectAsStateWithLifecycle()
+    val guide by viewModel.guide.collectAsStateWithLifecycle()
     var editingPlan by remember { mutableStateOf(false) }
     var editingDrops by remember { mutableStateOf(false) }
     val requestNotificationPermission = rememberNotificationPermissionRequester()
@@ -161,6 +163,18 @@ fun ExerciseLogScreen(
                 Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }, text = { Text("History") })
                 Tab(selected = selectedTab == 2, onClick = { selectedTab = 2 }, text = { Text("Progress") })
                 Tab(selected = selectedTab == 3, onClick = { selectedTab = 3 }, text = { Text("About") })
+            }
+            if (guide.isActiveOn(viewModel.date)) {
+                GuideBar(
+                    state = guide,
+                    currentExerciseId = viewModel.exerciseId,
+                    onGo = onSwitchExercise,
+                    onPause = viewModel::pauseGuide,
+                    onResume = viewModel::resumeGuide,
+                    onSkip = viewModel::skipInGuide,
+                    onStop = viewModel::stopGuide,
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp),
+                )
             }
             if (state.superset.isNotEmpty()) {
                 SupersetBar(state.superset, currentId = viewModel.exerciseId, onSelect = onSwitchExercise)
