@@ -7,7 +7,7 @@ See [ROADMAP.md](ROADMAP.md) for the plan and progress.
 ## What it does today
 
 - **Workout log**: one screen per day, with previous/next day arrows and a calendar
-- **Exercise library**: about 140 built-in exercises in 9 body sections, each split by muscle and training style (for example Legs → Hamstrings → Eccentric → Nordic curl), with search, filters and your own custom exercises
+- **Exercise library**: about 140 built-in exercises. Browse by body section (Legs → Hamstrings → Eccentrics → Nordic curl) or by training style (Stretching, Mobility, Isometrics… → muscle group). Exercises that train several muscles, like the deadlift, are listed under each of them. Search, filters and your own custom exercises
 - **Logging sets**: weight × reps, reps only, distance and time, or time only. Tap a set to edit or delete it
 - **Set plans**: sets, reps, weight and rest per exercise, with "Set 2 of 3" while you train
 - **Last time** hint and a full **history** per exercise

@@ -51,13 +51,17 @@ data class Exercise(
     val tempo: String = "",
     /** Each side is trained separately, so a set is logged per side. */
     val perSide: Boolean = false,
-    val muscle: Muscle = Muscle.OTHER,
+    /** Every muscle it trains, the main one first. */
+    val muscles: List<Muscle> = listOf(Muscle.OTHER),
     val style: TrainingStyle = TrainingStyle.STRENGTH,
     /** Planned sets, reps, rest, drop sets and interval timings. */
     val plan: ExercisePlan = ExercisePlan(),
     /** Videos and pages showing how the exercise is done. */
     val links: List<ExerciseLink> = emptyList(),
-)
+) {
+    /** The muscle it mainly trains. */
+    val muscle: Muscle get() = muscles.firstOrNull() ?: Muscle.OTHER
+}
 
 /**
  * The measured values of one set. Weight is always stored in kg and distance (or jump height) in

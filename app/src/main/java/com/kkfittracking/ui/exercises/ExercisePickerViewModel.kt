@@ -93,7 +93,11 @@ class ExercisePickerViewModel(
             categories = categories,
             rows = libraryRows(categories, exercises, filter),
             selectedCategoryId = selection.categoryId,
-            muscles = if (selection.categoryId != null) muscleChoices(categories, exercises, filter) else emptyList(),
+            muscles = if (selection.categoryId != null || selection.style != null) {
+                muscleChoices(categories, exercises, filter)
+            } else {
+                emptyList()
+            },
             selectedMuscle = selection.muscle,
             styles = styleChoices(categories, exercises, filter),
             selectedStyle = selection.style,
@@ -145,14 +149,14 @@ class ExercisePickerViewModel(
         selectedPlanId.value = null
     }
 
-    /** Shows one muscle of the chosen section (tap again to show all of them). */
+    /** Shows one muscle of the chosen section or style (tap again to show all of them). */
     fun selectMuscle(muscle: Muscle) {
         selection.value = selection.value.let { it.copy(muscle = if (it.muscle == muscle) null else muscle) }
     }
 
-    /** Shows one way of training, such as isometrics (tap again to show all). */
+    /** Opens a training style section, such as Stretching (tap again to close it). Its muscles become sub-sections. */
     fun selectStyle(style: TrainingStyle) {
-        selection.value = selection.value.let { it.copy(style = if (it.style == style) null else style) }
+        selection.value = selection.value.let { it.copy(style = if (it.style == style) null else style, muscle = null) }
     }
 
     /** Shows only the exercises of a plan (tap again to show all). */

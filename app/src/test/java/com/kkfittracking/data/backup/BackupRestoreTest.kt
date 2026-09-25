@@ -129,7 +129,7 @@ class BackupRestoreTest {
         val older = backup.copy(
             categories = backup.categories + tendons,
             exercises = backup.exercises.map {
-                if (it.id == nordic) it.copy(categoryId = tendons.id, muscle = "", style = "") else it
+                if (it.id == nordic) it.copy(categoryId = tendons.id, muscles = "", style = "") else it
             },
         )
 

@@ -78,7 +78,7 @@ class ExerciseRepository(
                     updatedAt = time,
                     tempo = exercise.tempo,
                     perSide = exercise.perSide,
-                    muscle = exercise.muscle.name,
+                    muscles = Muscle.format(exercise.muscles),
                     style = exercise.style.name,
                     plan = exercise.plan.toJson(),
                 )
@@ -100,20 +100,19 @@ class ExerciseRepository(
         val section = BuiltInExercises.regionKeyOf(row.categoryId)
         val result = when {
             // Never filed: in the catalog's place, unless the user moved it to another section.
-            builtIn != null && row.muscle.isEmpty() ->
-                if (retired != null || section == null || section == builtIn.regionKey) {
-                    row.copy(
-                        categoryId = BuiltInExercises.stableId("category", builtIn.regionKey),
-                        muscle = builtIn.muscle.name,
-                        style = row.style.ifEmpty { builtIn.style.name },
-                    )
+            builtIn != null && row.muscles.isEmpty() -> row.copy(
+                categoryId = if (retired != null || section == null) {
+                    BuiltInExercises.stableId("category", builtIn.regionKey)
                 } else {
-                    row.copy(muscle = Muscle.defaultFor(section).name, style = row.style.ifEmpty { builtIn.style.name })
-                }
+                    row.categoryId
+                },
+                muscles = Muscle.format(builtIn.muscles),
+                style = row.style.ifEmpty { builtIn.style.name },
+            )
             // The user's own exercises in an old category go to its fallback.
             retired != null -> row.copy(
                 categoryId = BuiltInExercises.stableId("category", retired.muscle.regionKey),
-                muscle = row.muscle.ifEmpty { retired.muscle.name },
+                muscles = row.muscles.ifEmpty { retired.muscle.name },
                 style = row.style.ifEmpty { retired.style.name },
             )
             else -> return null
@@ -130,7 +129,8 @@ class ExerciseRepository(
         notes: String,
         tempo: String = "",
         perSide: Boolean = false,
-        muscle: Muscle? = null,
+        /** Every muscle it trains, the main one first. */
+        muscles: List<Muscle>? = null,
         style: TrainingStyle? = null,
         links: List<ExerciseLink>? = null,
     ): String {
@@ -143,7 +143,7 @@ class ExerciseRepository(
             notes = notes.trim(),
             tempo = tempo.trim(),
             perSide = perSide,
-            muscle = muscle?.name ?: existing.muscle,
+            muscles = muscles?.let(Muscle::format) ?: existing.muscles,
             style = style?.name ?: existing.style,
             links = links?.let { ExerciseLinks.format(it) } ?: existing.links,
             updatedAt = time,
@@ -158,7 +158,7 @@ class ExerciseRepository(
             updatedAt = time,
             tempo = tempo.trim(),
             perSide = perSide,
-            muscle = muscle?.name.orEmpty(),
+            muscles = muscles?.let(Muscle::format).orEmpty(),
             style = style?.name.orEmpty(),
             links = links?.let { ExerciseLinks.format(it) }.orEmpty(),
         )
@@ -194,7 +194,7 @@ private fun ExerciseEntity.toModel(): Exercise {
         isCustom = isCustom,
         tempo = tempo,
         perSide = perSide,
-        muscle = Muscle.resolve(muscle, section),
+        muscles = Muscle.resolveAll(muscles, section),
         style = TrainingStyle.resolve(style, section, type),
         plan = ExercisePlan.fromJson(plan),
         links = ExerciseLinks.parse(links),

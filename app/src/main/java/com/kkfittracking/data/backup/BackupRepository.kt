@@ -102,12 +102,12 @@ private fun CategoryDto.toEntity() = CategoryEntity(id, name, color, sortOrder, 
 private fun ExerciseEntity.toDto() = ExerciseDto(
     id = id, name = name, categoryId = categoryId, type = type.name, notes = notes, isCustom = isCustom,
     tempo = tempo, perSide = perSide, createdAt = createdAt, updatedAt = updatedAt, deletedAt = deletedAt,
-    muscle = muscle, style = style, plan = plan, links = links,
+    muscles = muscles, style = style, plan = plan, links = links,
 )
 private fun ExerciseDto.toEntity() = ExerciseEntity(
     id = id, name = name, categoryId = categoryId, type = enumOf<ExerciseType>(type, "exercise type"),
     notes = notes, isCustom = isCustom, createdAt = createdAt, updatedAt = updatedAt, deletedAt = deletedAt,
-    tempo = tempo, perSide = perSide, muscle = muscle, style = style, plan = plan, links = links,
+    tempo = tempo, perSide = perSide, muscles = muscles, style = style, plan = plan, links = links,
 )
 
 private fun WorkoutEntity.toDto() = WorkoutDto(id, date.toString(), comment, createdAt, updatedAt, deletedAt)

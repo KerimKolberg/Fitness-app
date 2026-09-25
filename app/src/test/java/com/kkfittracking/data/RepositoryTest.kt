@@ -407,12 +407,12 @@ class RepositoryTest {
         assertEquals(listOf(link), saved.links)
 
         // Editing the exercise keeps its plan; the muscle and style can be changed.
-        exercises.saveExercise(bench, "Bench", saved.categoryId, ExerciseType.WEIGHT_REPS, saved.notes, muscle = Muscle.OTHER, style = TrainingStyle.ECCENTRIC)
+        exercises.saveExercise(bench, "Bench", saved.categoryId, ExerciseType.WEIGHT_REPS, saved.notes, muscles = listOf(Muscle.OTHER, Muscle.TRICEPS), style = TrainingStyle.ECCENTRIC)
         val edited = exercises.getExercise(bench)!!
         assertEquals(plan, edited.plan)
         assertEquals(listOf(link), edited.links)
         assertEquals(TrainingStyle.ECCENTRIC, edited.style)
-        assertEquals(Muscle.OTHER, edited.muscle)
+        assertEquals(listOf(Muscle.OTHER, Muscle.TRICEPS), edited.muscles)
     }
 
     /** An install from before the library had sections, muscles and styles. */
@@ -446,6 +446,9 @@ class RepositoryTest {
         val movedNordic = exercises.getExercise(nordic)!!
         assertEquals(BuiltInExercises.stableId("category", "legs"), movedNordic.categoryId)
         assertEquals(Muscle.HAMSTRINGS, movedNordic.muscle)
+        // Built-ins arrive with every muscle they train.
+        val deadlift = exercises.getExercise(StarterPlans.exerciseId("Deadlift"))!!
+        assertEquals(listOf(Muscle.LOWER_BACK, Muscle.HAMSTRINGS, Muscle.GLUTES), deadlift.muscles.take(3))
         assertEquals(TrainingStyle.ECCENTRIC, movedNordic.style)
         val filedPlank = exercises.getExercise(plank)!!
         assertEquals(BuiltInExercises.stableId("category", "abs"), filedPlank.categoryId)

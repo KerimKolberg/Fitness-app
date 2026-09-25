@@ -45,8 +45,8 @@ data class ExerciseEntity(
     @ColumnInfo(defaultValue = "") val tempo: String = "",
     /** Added in v3. */
     @ColumnInfo(defaultValue = "0") val perSide: Boolean = false,
-    /** A [com.kkfittracking.model.Muscle] name, or empty when never chosen (added in v5). */
-    @ColumnInfo(defaultValue = "") val muscle: String = "",
+    /** [com.kkfittracking.model.Muscle] names, comma separated, main one first; empty when never chosen (added in v5). */
+    @ColumnInfo(defaultValue = "") val muscles: String = "",
     /** A [com.kkfittracking.model.TrainingStyle] name, or empty when never chosen (added in v5). */
     @ColumnInfo(defaultValue = "") val style: String = "",
     /** A [com.kkfittracking.model.ExercisePlan] as JSON, or empty (added in v5). */

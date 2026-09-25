@@ -50,6 +50,9 @@ class EditExerciseViewModel(
         private set
     var muscle by mutableStateOf(Muscle.OTHER)
         private set
+    /** Other muscles it trains besides [muscle], in any section. */
+    var otherMuscles by mutableStateOf<List<Muscle>>(emptyList())
+        private set
     var style by mutableStateOf(TrainingStyle.STRENGTH)
         private set
     var links by mutableStateOf<List<ExerciseLink>>(emptyList())
@@ -72,6 +75,7 @@ class EditExerciseViewModel(
                 tempo = exercise.tempo
                 perSide = exercise.perSide
                 muscle = exercise.muscle
+                otherMuscles = exercise.muscles.drop(1)
                 style = exercise.style
                 links = exercise.links
             } else if (categoryId == null) {
@@ -98,6 +102,13 @@ class EditExerciseViewModel(
 
     fun updateMuscle(value: Muscle) {
         muscle = value
+        otherMuscles = otherMuscles - value
+    }
+
+    /** Adds or removes a muscle it also trains. */
+    fun toggleOtherMuscle(value: Muscle) {
+        if (value == muscle) return
+        otherMuscles = if (value in otherMuscles) otherMuscles - value else otherMuscles + value
     }
 
     fun updateStyle(value: TrainingStyle) {
@@ -137,7 +148,7 @@ class EditExerciseViewModel(
         }
         if (category == null) return
         viewModelScope.launch {
-            repository.saveExercise(exerciseId, name, category, type, notes, tempo, perSide, muscle, style, links)
+            repository.saveExercise(exerciseId, name, category, type, notes, tempo, perSide, listOf(muscle) + otherMuscles, style, links)
             result = EditExerciseResult.SAVED
         }
     }

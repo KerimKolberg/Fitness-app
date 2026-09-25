@@ -67,7 +67,7 @@ data class ExerciseDto(
     val createdAt: Long,
     val updatedAt: Long,
     val deletedAt: Long? = null,
-    val muscle: String = "",
+    val muscles: String = "",
     val style: String = "",
     val plan: String = "",
     val links: String = "",

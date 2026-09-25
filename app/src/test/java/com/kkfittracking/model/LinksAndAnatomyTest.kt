@@ -57,8 +57,12 @@ class LinksAndAnatomyTest {
         assertEquals(Muscle.CHEST, Muscle.defaultFor(Regions.CHEST))
         assertEquals(Muscle.OTHER, Muscle.defaultFor(Regions.LEGS))
         assertEquals(Muscle.OTHER, Muscle.defaultFor(null))
-        assertEquals(Muscle.HAMSTRINGS, Muscle.resolve("HAMSTRINGS", Regions.LEGS))
-        assertEquals(Muscle.CHEST, Muscle.resolve("", Regions.CHEST))
+        assertEquals(listOf(Muscle.HAMSTRINGS), Muscle.resolveAll("HAMSTRINGS", Regions.LEGS))
+        assertEquals(listOf(Muscle.CHEST), Muscle.resolveAll("", Regions.CHEST))
+        // Several muscles, the main one first; unknown names are skipped.
+        val deadlift = listOf(Muscle.LOWER_BACK, Muscle.HAMSTRINGS, Muscle.GLUTES)
+        assertEquals("LOWER_BACK,HAMSTRINGS,GLUTES", Muscle.format(deadlift))
+        assertEquals(deadlift, Muscle.resolveAll("LOWER_BACK,HAMSTRINGS,NEW_ONE,GLUTES", Regions.BACK))
     }
 
     @Test

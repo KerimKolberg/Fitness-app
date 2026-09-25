@@ -1,21 +1,26 @@
 package com.kkfittracking.model
 
 /**
- * How an exercise trains: the third level of the library, under body section and muscle
- * (e.g. Legs → Hamstrings → Eccentric → Nordic curl). The name is stored in the database.
+ * How an exercise trains. The library can be browsed by body section (Legs → Hamstrings →
+ * Eccentrics → Nordic curl) or by training style (Stretching → Legs → Hamstrings). The name is
+ * stored in the database.
  */
-enum class TrainingStyle(val label: String) {
-    STRENGTH("Strength"),
-    ISOMETRIC("Isometric"),
-    ECCENTRIC("Eccentric & tendon"),
-    PLYOMETRIC("Plyometric"),
-    MOBILITY("Mobility"),
-    STRETCHING("Stretching"),
-    CARDIO("Cardio"),
-    HIIT("HIIT & intervals"),
-    SPORT("Sport");
+enum class TrainingStyle(val label: String, val color: Int) {
+    STRENGTH("Strength", 0xFF607D8B.toInt()),
+    ISOMETRIC("Isometrics", 0xFF5E35B1.toInt()),
+    ECCENTRIC("Eccentrics & tendons", 0xFFD81B60.toInt()),
+    PLYOMETRIC("Plyometrics", 0xFFF4511E.toInt()),
+    MOBILITY("Mobility", 0xFF00ACC1.toInt()),
+    STRETCHING("Stretching", 0xFF7CB342.toInt()),
+    CARDIO("Cardio", 0xFF6D4C41.toInt()),
+    HIIT("HIIT & intervals", 0xFFFFB300.toInt()),
+    SPORT("Sports", 0xFF546E7A.toInt());
 
     companion object {
+        /** The order of the training style sections: the ones beyond the usual gym work first. */
+        val sectionOrder: List<TrainingStyle> =
+            listOf(MOBILITY, STRETCHING, ISOMETRIC, ECCENTRIC, PLYOMETRIC, HIIT, STRENGTH, CARDIO, SPORT)
+
         /** The style an exercise has when none was chosen, from its section and type. */
         fun defaultFor(regionKey: String?, type: ExerciseType): TrainingStyle = when {
             type == ExerciseType.INTERVALS -> HIIT
@@ -31,8 +36,9 @@ enum class TrainingStyle(val label: String) {
 }
 
 /**
- * The muscle (or area) an exercise mainly trains: the second level of the library. [regionKey] is
- * the key of the body section it belongs to. The name is stored in the database.
+ * A muscle (or area) an exercise trains: the level under the body sections. [regionKey] is the key
+ * of the body section it belongs to. An exercise can train several; the first is its main one. The
+ * names are stored in the database.
  */
 enum class Muscle(val label: String, val regionKey: String) {
     CHEST("Chest", Regions.CHEST),
@@ -70,9 +76,16 @@ enum class Muscle(val label: String, val regionKey: String) {
         /** A section's only muscle (such as Chest), or [OTHER] when it has several to pick from. */
         fun defaultFor(regionKey: String?): Muscle = forRegion(regionKey).dropLast(1).singleOrNull() ?: OTHER
 
-        /** The stored muscle, or the default for the section when it is empty (never chosen) or unknown. */
-        fun resolve(stored: String, regionKey: String?): Muscle =
-            entries.firstOrNull { it.name == stored } ?: defaultFor(regionKey)
+        /**
+         * The stored muscles (comma separated, the main one first), or the default for the section
+         * when there are none (never chosen) or none is known.
+         */
+        fun resolveAll(stored: String, regionKey: String?): List<Muscle> =
+            stored.split(',').mapNotNull { name -> entries.firstOrNull { it.name == name.trim() } }.distinct()
+                .ifEmpty { listOf(defaultFor(regionKey)) }
+
+        /** How [muscles] are stored. */
+        fun format(muscles: List<Muscle>): String = muscles.distinct().joinToString(",") { it.name }
     }
 }
 

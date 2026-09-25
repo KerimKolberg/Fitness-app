@@ -13,7 +13,7 @@ class BackupJsonTest {
         exercises = listOf(
             ExerciseDto(
                 id = "e1", name = "Tabata", categoryId = "c1", type = "INTERVALS", isCustom = false, createdAt = 1, updatedAt = 1,
-                muscle = "SPORT", style = "HIIT", plan = """{"highSeconds":20,"lowSeconds":10,"rounds":8}""",
+                muscles = "SPORT", style = "HIIT", plan = """{"highSeconds":20,"lowSeconds":10,"rounds":8}""",
                 links = "Tabata explained | https://youtu.be/abc",
             ),
         ),
@@ -52,7 +52,7 @@ class BackupJsonTest {
         val older = BackupJson.decode(withDayPlans)
         assertEquals(null, older.workoutExercises.single().roundRestSeconds)
         assertEquals("", older.exercises.single().plan)
-        assertEquals("", older.exercises.single().muscle)
+        assertEquals("", older.exercises.single().muscles)
     }
 
     @Test

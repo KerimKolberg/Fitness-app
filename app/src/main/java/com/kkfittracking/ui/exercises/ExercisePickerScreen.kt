@@ -154,17 +154,7 @@ fun ExercisePickerScreen(
                     )
                 }
             }
-            if (state.muscles.size > 1) {
-                FilterRow {
-                    items(state.muscles, key = { "muscle-${it.name}" }) { muscle ->
-                        FilterChip(
-                            selected = state.selectedMuscle == muscle,
-                            onClick = { viewModel.selectMuscle(muscle) },
-                            label = { Text(muscle.label) },
-                        )
-                    }
-                }
-            }
+            // Training styles are main sections too: Stretching → Legs → Hamstrings.
             if (state.styles.size > 1 || state.selectedStyle != null) {
                 FilterRow {
                     items(state.styles, key = { "style-${it.name}" }) { style ->
@@ -172,6 +162,19 @@ fun ExercisePickerScreen(
                             selected = state.selectedStyle == style,
                             onClick = { viewModel.selectStyle(style) },
                             label = { Text(style.label) },
+                            leadingIcon = { ColorDot(style.color) },
+                        )
+                    }
+                }
+            }
+            // Muscle groups as sub-sections of the chosen body section or style.
+            if (state.muscles.size > 1 || state.selectedMuscle != null) {
+                FilterRow {
+                    items(state.muscles, key = { "muscle-${it.name}" }) { muscle ->
+                        FilterChip(
+                            selected = state.selectedMuscle == muscle,
+                            onClick = { viewModel.selectMuscle(muscle) },
+                            label = { Text(muscle.label) },
                         )
                     }
                 }
@@ -208,7 +211,7 @@ fun ExercisePickerScreen(
                             text = row.style.label,
                             modifier = Modifier.padding(start = 28.dp, end = 16.dp, top = 6.dp, bottom = 2.dp),
                             style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.secondary,
+                            color = Color(row.style.color),
                         )
                         is LibraryRow.Item -> ExerciseRow(row, viewModel, onLogExercise, onBack, onEditExercise)
                     }
@@ -240,11 +243,10 @@ private fun ExerciseRow(
     ListItem(
         modifier = Modifier.clickable { viewModel.pick(exercise.id, onLogExercise, onBack) },
         headlineContent = { Text(exercise.name) },
-        supportingContent = if (exercise.type != ExerciseType.WEIGHT_REPS) {
-            { Text(exercise.type.label) }
-        } else {
-            null
-        },
+        supportingContent = listOfNotNull(
+            exercise.type.label.takeIf { exercise.type != ExerciseType.WEIGHT_REPS },
+            "mainly ${exercise.muscle.label.lowercase()}".takeIf { row.secondary },
+        ).joinToString(" · ").takeIf { it.isNotEmpty() }?.let { text -> { Text(text) } },
         leadingContent = { ColorDot(row.category.color) },
         trailingContent = {
             if (viewModel.supersetMode) {

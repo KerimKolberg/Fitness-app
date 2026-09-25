@@ -111,6 +111,10 @@ fun AboutTab(
                     exercise.style.label,
                 )
                 Text(path.joinToString(" › "), style = MaterialTheme.typography.bodyLarge)
+                val others = exercise.muscles.drop(1)
+                if (others.isNotEmpty()) {
+                    Text("Also trains: " + others.joinToString(", ") { it.label }, style = MaterialTheme.typography.bodyMedium)
+                }
                 val details = listOfNotNull(
                     exercise.type.label,
                     exercise.tempo.takeIf { it.isNotBlank() }?.let { "tempo $it" },

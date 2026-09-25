@@ -63,6 +63,7 @@ fun EditExerciseScreen(
     val categories by viewModel.categories.collectAsStateWithLifecycle()
     var confirmDelete by remember { mutableStateOf(false) }
     var addingLink by remember { mutableStateOf(false) }
+    var choosingMuscles by remember { mutableStateOf(false) }
 
     LaunchedEffect(viewModel.result) {
         when (viewModel.result) {
@@ -124,12 +125,28 @@ fun EditExerciseScreen(
                 optionIcon = { ColorDot(it.color) },
             )
             DropdownField(
-                label = "Muscle",
+                label = "Main muscle",
                 value = viewModel.muscle.label,
                 options = Muscle.forRegion(viewModel.regionKey),
                 optionLabel = { it.label },
                 onSelect = viewModel::updateMuscle,
             )
+            Box {
+                OutlinedTextField(
+                    value = viewModel.otherMuscles.joinToString(", ") { it.label }.ifEmpty { "Nothing else" },
+                    onValueChange = {},
+                    modifier = Modifier.fillMaxWidth(),
+                    readOnly = true,
+                    label = { Text("Also trains") },
+                    supportingText = { Text("It is listed under each of these muscles too") },
+                    trailingIcon = { Icon(Icons.Default.ArrowDropDown, contentDescription = null) },
+                )
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .clickable { choosingMuscles = true },
+                )
+            }
             DropdownField(
                 label = "Training style",
                 value = viewModel.style.label,
@@ -198,6 +215,38 @@ fun EditExerciseScreen(
                 TextButton(onClick = { addingLink = true }) { Text("+ Add a video or link") }
             }
         }
+    }
+
+    if (choosingMuscles) {
+        AlertDialog(
+            onDismissRequest = { choosingMuscles = false },
+            title = { Text("Also trains") },
+            text = {
+                Column(Modifier.verticalScroll(rememberScrollState())) {
+                    categories.filter { it.key != null }.forEach { section ->
+                        val muscles = Muscle.forRegion(section.key).filter { it != Muscle.OTHER && it != viewModel.muscle }
+                        if (muscles.isEmpty()) return@forEach
+                        Text(section.name, style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 8.dp))
+                        muscles.forEach { muscle ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .toggleable(
+                                        value = muscle in viewModel.otherMuscles,
+                                        onValueChange = { viewModel.toggleOtherMuscle(muscle) },
+                                        role = Role.Checkbox,
+                                    ),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Checkbox(checked = muscle in viewModel.otherMuscles, onCheckedChange = null)
+                                Text(muscle.label, modifier = Modifier.padding(start = 8.dp))
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { choosingMuscles = false }) { Text("Done") } },
+        )
     }
 
     if (addingLink) {

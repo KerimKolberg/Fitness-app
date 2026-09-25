@@ -28,7 +28,8 @@ class BuiltInExercisesTest {
         val sections = BuiltInExercises.regions.map { it.key }.toSet()
         BuiltInExercises.exercises.forEach {
             assertTrue("${it.name} has no section", it.regionKey in sections)
-            assertTrue("${it.name} needs a muscle", it.muscle != Muscle.OTHER)
+            assertTrue("${it.name} needs a muscle", Muscle.OTHER !in it.muscles)
+            assertEquals("${it.name} lists a muscle twice", it.muscles.size, it.muscles.toSet().size)
         }
         // Every section has exercises, and HIIT is under Sports.
         assertEquals(sections, BuiltInExercises.exercises.map { it.regionKey }.toSet())
@@ -43,6 +44,14 @@ class BuiltInExercisesTest {
         assertEquals("legs", nordic.regionKey)
         assertEquals(Muscle.HAMSTRINGS, nordic.muscle)
         assertEquals(TrainingStyle.ECCENTRIC, nordic.style)
+    }
+
+    @Test
+    fun compoundExercisesTrainSeveralMuscles() {
+        fun muscles(name: String) = BuiltInExercises.exercises.single { it.name == name }.muscles
+        assertEquals(listOf(Muscle.LOWER_BACK, Muscle.HAMSTRINGS, Muscle.GLUTES), muscles("Deadlift").take(3))
+        assertTrue(Muscle.HIPS in muscles("World's Greatest Stretch"))
+        assertEquals("full-body", BuiltInExercises.exercises.single { it.name == "World's Greatest Stretch" }.regionKey)
     }
 
     @Test
