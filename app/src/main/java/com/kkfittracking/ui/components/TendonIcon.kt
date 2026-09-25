@@ -28,7 +28,7 @@ fun TendonIcon(tendon: Tendon, modifier: Modifier = Modifier, size: Dp = 48.dp) 
     val muscle = MaterialTheme.colorScheme.error.copy(alpha = 0.25f)
     val highlight = MaterialTheme.colorScheme.tertiary
     Canvas(modifier.size(size)) {
-        val sketch = Sketch(this, size.minDimension / 24f, bone, muscle, highlight)
+        val sketch = Sketch(this, this.size.minDimension / 24f, bone, muscle, highlight)
         when (tendon.area) {
             TendonArea.KNEE -> sketch.knee(tendon)
             TendonArea.ANKLE -> sketch.ankle(tendon)
