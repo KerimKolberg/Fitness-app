@@ -209,5 +209,6 @@ private fun ExerciseEntity.toModel(): Exercise {
         styles = TrainingStyle.resolveAll(style, section, type),
         plan = ExercisePlan.fromJson(plan),
         links = ExerciseLinks.parse(links),
+        tendons = BuiltInTendons.of(id),
     )
 }

@@ -143,6 +143,7 @@ Broaden the library beyond gym lifts. Each group needs the right way to log it:
 - [x] Progress graphs mark the all-time high and low, with a summary under the graph
 - [ ] Later: play videos inside the app (only through YouTube's official player and terms), and your own recorded videos
 - [x] Guided workout (play button): starts a day's plan and opens each exercise in turn, round by round in supersets and straight into planned drop sets. Saving a set moves on by itself; the rest ends with "Next: …". Pause for longer breaks, Skip an exercise, Stop when out of energy. An ongoing notification (a foreground service, so the workout and timers keep going with the screen off) shows the exercise, the plan done and the training time, with Pause, Skip and Stop
+- [x] Tendons: isometric, eccentric and heavy slow exercises name the tendons they load (patellar, quadriceps, Achilles, plantar fascia, tibialis, hamstring, adductor, gluteal, rotator cuff, biceps, tennis and golfer's elbow, triceps, finger flexors), with a drawing of the joint, what the tendon connects and what it is known for. Filter the Isometrics and Eccentrics sections by tendon, or search "patellar"
 - [x] Day analysis: the percent of the day's plan done, and which exercises were done, partly done and not done (set plans, superset rounds and drop sets count; exercises without a set plan count as 3 sets). A summary with the training time when a guided workout ends
 
 ### Phase 3: Data safety

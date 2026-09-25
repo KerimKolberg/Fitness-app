@@ -30,6 +30,7 @@ import com.kkfittracking.model.ExerciseLinks
 import com.kkfittracking.model.Muscle
 import com.kkfittracking.ui.components.AddLinkDialog
 import com.kkfittracking.ui.components.LinkRow
+import com.kkfittracking.ui.components.TendonIcon
 import com.kkfittracking.ui.components.TextInputDialog
 import com.kkfittracking.ui.components.rememberLinkOpener
 
@@ -65,6 +66,37 @@ fun AboutTab(
                     Text(if (exercise.notes.isBlank()) "Add a description" else "Edit the description")
                 }
                 HorizontalDivider()
+            }
+        }
+        if (exercise.tendons.isNotEmpty()) {
+            item {
+                Text(
+                    text = if (exercise.tendons.size == 1) "The tendon it trains" else "The tendons it trains",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+            }
+            items(exercise.tendons, key = { "tendon-${it.name}" }) { tendon ->
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    TendonIcon(tendon, size = 56.dp)
+                    Column(Modifier.weight(1f)) {
+                        Text(tendon.label, style = MaterialTheme.typography.titleSmall)
+                        Text("Connects ${tendon.connects}.", style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            text = tendon.about,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+            item {
+                Text(
+                    text = "Tendons adapt slower than muscles: build up the load over weeks. Pain that lasts is worth a physio's look.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                HorizontalDivider(Modifier.padding(top = 8.dp))
             }
         }
         item {

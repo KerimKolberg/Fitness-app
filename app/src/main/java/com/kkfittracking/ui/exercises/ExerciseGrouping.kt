@@ -4,6 +4,7 @@ import com.kkfittracking.model.Category
 import com.kkfittracking.model.Exercise
 import com.kkfittracking.model.ExerciseType
 import com.kkfittracking.model.Muscle
+import com.kkfittracking.model.Tendon
 import com.kkfittracking.model.TrainingStyle
 
 /** One row of the exercise library: section, muscle and training style headers, then exercises. */
@@ -36,6 +37,8 @@ data class LibraryFilter(
     val muscle: Muscle? = null,
     /** A training style section, such as Stretching. */
     val style: TrainingStyle? = null,
+    /** A tendon the exercises load, such as the patellar tendon. */
+    val tendon: Tendon? = null,
     /** When set, only these exercises are shown (the exercises of a plan). */
     val allowedIds: Set<String>? = null,
 )
@@ -73,13 +76,17 @@ fun filterExercises(categories: List<Category>, exercises: List<Exercise>, filte
         val places = placements(exercise, categories)
         (filter.allowedIds == null || exercise.id in filter.allowedIds) &&
             (filter.style == null || filter.style in exercise.styles) &&
+            (filter.tendon == null || filter.tendon in exercise.tendons) &&
             places.any { filter.accepts(it) } &&
             (words.isEmpty() || searchText(exercise, places).let { text -> words.all { it in text } })
     }
 }
 
 private fun searchText(exercise: Exercise, places: List<Placement>): String =
-    (listOf(exercise.name) + exercise.styles.map { it.label } + exercise.muscles.map { it.label } + places.map { it.category.name })
+    (
+        listOf(exercise.name) + exercise.styles.map { it.label } + exercise.muscles.map { it.label } +
+            exercise.tendons.map { it.label } + places.map { it.category.name }
+        )
         .joinToString(" ").lowercase()
 
 /**
@@ -125,6 +132,12 @@ fun muscleChoices(categories: List<Category>, exercises: List<Exercise>, filter:
     return filterExercises(categories, exercises, others)
         .flatMap { exercise -> placements(exercise, categories).filter { others.accepts(it) }.map { it.muscle } }
         .distinct().sorted()
+}
+
+/** The tendons to offer: those loaded by the exercises that pass the other filters. */
+fun tendonChoices(categories: List<Category>, exercises: List<Exercise>, filter: LibraryFilter): List<Tendon> {
+    val present = filterExercises(categories, exercises, filter.copy(tendon = null)).flatMap { it.tendons }.toSet()
+    return Tendon.entries.filter { it in present }
 }
 
 /** The training style sections to offer: those of the exercises that pass the other filters. */

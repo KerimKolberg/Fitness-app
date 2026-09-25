@@ -16,6 +16,7 @@ import com.kkfittracking.model.Category
 import com.kkfittracking.model.MAX_SUPERSET_SIZE
 import com.kkfittracking.model.Muscle
 import com.kkfittracking.model.Routine
+import com.kkfittracking.model.Tendon
 import com.kkfittracking.model.TrainingStyle
 import com.kkfittracking.ui.ExercisePickerRoute
 import com.kkfittracking.ui.appViewModelFactory
@@ -37,6 +38,9 @@ data class ExercisePickerUiState(
     val selectedMuscle: Muscle? = null,
     val styles: List<TrainingStyle> = emptyList(),
     val selectedStyle: TrainingStyle? = null,
+    /** Tendons to filter by, offered in the isometric and eccentric sections. */
+    val tendons: List<Tendon> = emptyList(),
+    val selectedTendon: Tendon? = null,
     val plans: List<Routine> = emptyList(),
     val selectedPlanId: String? = null,
 )
@@ -46,6 +50,7 @@ private data class LibrarySelection(
     val categoryId: String? = null,
     val muscle: Muscle? = null,
     val style: TrainingStyle? = null,
+    val tendon: Tendon? = null,
 )
 
 class ExercisePickerViewModel(
@@ -87,6 +92,7 @@ class ExercisePickerViewModel(
             categoryId = selection.categoryId,
             muscle = selection.muscle,
             style = selection.style,
+            tendon = selection.tendon,
             allowedIds = plan?.exercises?.map { it.exerciseId }?.toSet(),
         )
         ExercisePickerUiState(
@@ -101,6 +107,12 @@ class ExercisePickerViewModel(
             selectedMuscle = selection.muscle,
             styles = styleChoices(categories, exercises, filter),
             selectedStyle = selection.style,
+            tendons = if (selection.style in TENDON_STYLES || selection.tendon != null) {
+                tendonChoices(categories, exercises, filter)
+            } else {
+                emptyList()
+            },
+            selectedTendon = selection.tendon,
             plans = plans,
             selectedPlanId = plan?.id,
         )
@@ -156,7 +168,12 @@ class ExercisePickerViewModel(
 
     /** Opens a training style section, such as Stretching (tap again to close it). Its muscles become sub-sections. */
     fun selectStyle(style: TrainingStyle) {
-        selection.value = selection.value.let { it.copy(style = if (it.style == style) null else style, muscle = null) }
+        selection.value = selection.value.let { it.copy(style = if (it.style == style) null else style, muscle = null, tendon = null) }
+    }
+
+    /** Shows the exercises that load one tendon (tap again to show all). */
+    fun selectTendon(tendon: Tendon) {
+        selection.value = selection.value.let { it.copy(tendon = if (it.tendon == tendon) null else tendon) }
     }
 
     /** Shows only the exercises of a plan (tap again to show all). */
@@ -166,6 +183,9 @@ class ExercisePickerViewModel(
     }
 
     companion object {
+        /** The sections where tendons are offered as a filter. */
+        private val TENDON_STYLES = setOf(TrainingStyle.ISOMETRIC, TrainingStyle.ECCENTRIC)
+
         val Factory = appViewModelFactory { container ->
             ExercisePickerViewModel(
                 createSavedStateHandle(),

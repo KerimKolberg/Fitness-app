@@ -5,6 +5,7 @@ import com.kkfittracking.model.Exercise
 import com.kkfittracking.model.ExerciseType
 import com.kkfittracking.model.Muscle
 import com.kkfittracking.model.Regions
+import com.kkfittracking.model.Tendon
 import com.kkfittracking.model.TrainingStyle
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -17,20 +18,25 @@ class LibraryRowsTest {
     private val sports = Category("sports", "Sports", 0, Regions.SPORTS)
     private val categories = listOf(chest, back, legs, fullBody, sports)
 
-    private fun exercise(name: String, category: Category, vararg muscles: Muscle, style: TrainingStyle = TrainingStyle.STRENGTH) =
-        Exercise(
-            id = name, name = name, categoryId = category.id, type = ExerciseType.WEIGHT_REPS, notes = "", isCustom = false,
-            muscles = muscles.toList(), styles = listOf(style),
-        )
+    private fun exercise(
+        name: String,
+        category: Category,
+        vararg muscles: Muscle,
+        style: TrainingStyle = TrainingStyle.STRENGTH,
+        tendons: List<Tendon> = emptyList(),
+    ) = Exercise(
+        id = name, name = name, categoryId = category.id, type = ExerciseType.WEIGHT_REPS, notes = "", isCustom = false,
+        muscles = muscles.toList(), styles = listOf(style), tendons = tendons,
+    )
 
     private val exercises = listOf(
         exercise("Flat Barbell Bench Press", chest, Muscle.CHEST),
         exercise("Deadlift", back, Muscle.LOWER_BACK, Muscle.HAMSTRINGS),
         exercise("Barbell Squat", legs, Muscle.QUADS),
         exercise("Hamstring Stretch", legs, Muscle.HAMSTRINGS, style = TrainingStyle.STRETCHING),
-        exercise("Nordic Hamstring Curl", legs, Muscle.HAMSTRINGS, style = TrainingStyle.ECCENTRIC),
+        exercise("Nordic Hamstring Curl", legs, Muscle.HAMSTRINGS, style = TrainingStyle.ECCENTRIC, tendons = listOf(Tendon.HAMSTRING)),
         exercise("Romanian Deadlift", legs, Muscle.HAMSTRINGS),
-        exercise("Wall Sit", legs, Muscle.QUADS, style = TrainingStyle.ISOMETRIC),
+        exercise("Wall Sit", legs, Muscle.QUADS, style = TrainingStyle.ISOMETRIC, tendons = listOf(Tendon.PATELLAR)),
         exercise("World's Greatest Stretch", fullBody, Muscle.FULL_BODY, Muscle.HAMSTRINGS, style = TrainingStyle.STRETCHING),
         exercise("Tennis", sports, Muscle.SPORT, style = TrainingStyle.SPORT),
     )
@@ -123,5 +129,17 @@ class LibraryRowsTest {
             styleChoices(categories, exercises, LibraryFilter(categoryId = "legs", muscle = Muscle.QUADS)),
         )
         assertEquals(listOf("Tennis"), filterExercises(categories, exercises, LibraryFilter(allowedIds = setOf("Tennis"))).map { it.name })
+    }
+
+    @Test
+    fun tendonsCanBeFoundAndFiltered() {
+        fun search(query: String) = filterExercises(categories, exercises, LibraryFilter(query = query)).map { it.name }
+        assertEquals(listOf("Wall Sit"), search("patellar"))
+        assertEquals(listOf(Tendon.PATELLAR, Tendon.HAMSTRING), tendonChoices(categories, exercises, LibraryFilter()))
+        assertEquals(
+            listOf("Nordic Hamstring Curl"),
+            filterExercises(categories, exercises, LibraryFilter(style = TrainingStyle.ECCENTRIC, tendon = Tendon.HAMSTRING)).map { it.name },
+        )
+        assertEquals(listOf(Tendon.PATELLAR), tendonChoices(categories, exercises, LibraryFilter(style = TrainingStyle.ISOMETRIC)))
     }
 }

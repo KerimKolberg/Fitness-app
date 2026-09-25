@@ -2,6 +2,7 @@ package com.kkfittracking.data
 
 import com.kkfittracking.model.ExerciseType
 import com.kkfittracking.model.Muscle
+import com.kkfittracking.model.Tendon
 import com.kkfittracking.model.TrainingStyle
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -65,6 +66,17 @@ class BuiltInExercisesTest {
         assertEquals(listOf(Muscle.LOWER_BACK, Muscle.HAMSTRINGS, Muscle.GLUTES), muscles("Deadlift").take(3))
         assertTrue(Muscle.HIPS in muscles("World's Greatest Stretch"))
         assertEquals("full-body", BuiltInExercises.exercises.single { it.name == "World's Greatest Stretch" }.regionKey)
+    }
+
+    @Test
+    fun tendonsNameRealExercises() {
+        val names = BuiltInExercises.exercises.map { it.name }.toSet()
+        BuiltInTendons.exerciseNames.forEach { assertTrue("$it is not a built-in exercise", it in names) }
+        val spanish = BuiltInExercises.exercises.single { it.name == "Spanish Squat Hold" }
+        assertEquals(listOf(Tendon.PATELLAR, Tendon.QUADRICEPS), BuiltInTendons.of(spanish.id))
+        // Every tendon has exercises for it.
+        val covered = BuiltInExercises.exercises.flatMap { BuiltInTendons.of(it.id) }.toSet()
+        assertEquals(Tendon.entries.toSet(), covered)
     }
 
     @Test

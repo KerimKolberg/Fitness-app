@@ -47,6 +47,7 @@ import com.kkfittracking.model.ExerciseType
 import com.kkfittracking.model.MAX_SUPERSET_SIZE
 import com.kkfittracking.ui.components.ColorDot
 import com.kkfittracking.ui.components.SectionIcon
+import com.kkfittracking.ui.components.TendonIcon
 
 @Composable
 fun ExercisePickerScreen(
@@ -168,6 +169,19 @@ fun ExercisePickerScreen(
                     }
                 }
             }
+            // Tendons, in the isometric and eccentric sections: Isometrics → Patellar tendon.
+            if (state.tendons.isNotEmpty() || state.selectedTendon != null) {
+                FilterRow {
+                    items(state.tendons, key = { "tendon-${it.name}" }) { tendon ->
+                        FilterChip(
+                            selected = state.selectedTendon == tendon,
+                            onClick = { viewModel.selectTendon(tendon) },
+                            label = { Text(tendon.label) },
+                            leadingIcon = { TendonIcon(tendon, size = 20.dp) },
+                        )
+                    }
+                }
+            }
             // Muscle groups as sub-sections of the chosen body section or style.
             if (state.muscles.size > 1 || state.selectedMuscle != null) {
                 FilterRow {
@@ -253,6 +267,7 @@ private fun ExerciseRow(
         supportingContent = listOfNotNull(
             exercise.type.label.takeIf { exercise.type != ExerciseType.WEIGHT_REPS },
             "mainly ${exercise.muscle.label.lowercase()}".takeIf { row.secondary },
+            exercise.tendons.joinToString(", ") { it.label }.takeIf { it.isNotEmpty() },
         ).joinToString(" · ").takeIf { it.isNotEmpty() }?.let { text -> { Text(text) } },
         leadingContent = { ColorDot(row.category.color) },
         trailingContent = {

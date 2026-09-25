@@ -59,6 +59,8 @@ data class Exercise(
     val plan: ExercisePlan = ExercisePlan(),
     /** Videos and pages showing how the exercise is done. */
     val links: List<ExerciseLink> = emptyList(),
+    /** The tendons it loads most (built-in exercises), for isometric and eccentric tendon work. */
+    val tendons: List<Tendon> = emptyList(),
 ) {
     /** The muscle it mainly trains. */
     val muscle: Muscle get() = muscles.firstOrNull() ?: Muscle.OTHER
