@@ -11,5 +11,6 @@ class FitnessApplication : Application() {
         super.onCreate()
         container = AppContainer(this)
         container.appScope.launch { container.exerciseRepository.syncBuiltIns() }
+        container.watchBridge.start()
     }
 }

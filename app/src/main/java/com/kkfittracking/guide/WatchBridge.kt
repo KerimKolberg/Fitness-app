@@ -1,0 +1,181 @@
+package com.kkfittracking.guide
+
+import android.content.Context
+import android.util.Log
+import com.google.android.gms.wearable.PutDataMapRequest
+import com.google.android.gms.wearable.Wearable
+import com.kkfittracking.data.SettingsRepository
+import com.kkfittracking.data.WorkoutRepository
+import com.kkfittracking.model.ExerciseType
+import com.kkfittracking.model.NextStep
+import com.kkfittracking.model.SetValues
+import com.kkfittracking.model.Settings
+import com.kkfittracking.model.UnitSystem
+import com.kkfittracking.model.guideSuggestion
+import com.kkfittracking.model.nextStep
+import com.kkfittracking.model.supersetContextOf
+import com.kkfittracking.timer.RestTimer
+import com.kkfittracking.wear.WatchCommand
+import com.kkfittracking.wear.WatchFields
+import com.kkfittracking.wear.WatchState
+import com.kkfittracking.wear.WearJson
+import com.kkfittracking.wear.WearPaths
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
+import java.time.LocalDate
+import kotlin.math.roundToInt
+
+/**
+ * Connects the guided workout with the watch app over the Wear OS Data Layer (Bluetooth, or Wi-Fi
+ * when the watch is away from the phone): publishes what to do now as a data item, and carries out
+ * what the watch sends, such as a logged set. The phone stays the one place the data lives.
+ */
+@OptIn(ExperimentalCoroutinesApi::class)
+class WatchBridge(
+    private val context: Context,
+    private val scope: CoroutineScope,
+    private val guide: GuidedWorkout,
+    private val workouts: WorkoutRepository,
+    private val settingsRepository: SettingsRepository,
+    private val restTimer: RestTimer,
+    private val now: () -> Long = System::currentTimeMillis,
+) {
+    private var last: WatchState? = null
+
+    /** The running rest as the watch needs it: when it ends, not every second of it. */
+    private data class Rest(val running: Boolean, val totalSeconds: Int, val label: String?)
+
+    fun start() {
+        scope.launch {
+            val rest = restTimer.state.map { Rest(it.isRunning, it.totalSeconds, it.label) }.distinctUntilChanged()
+            val today = workouts.observeDay(LocalDate.now()).map { it.size }.distinctUntilChanged()
+            combine(guide.state, rest, settingsRepository.settings, today) { state, restNow, settings, count ->
+                Inputs(state, restNow, settings, count)
+            }
+                .mapLatest { build(it) }
+                .collect { publish(it) }
+        }
+    }
+
+    private data class Inputs(val guide: GuideState, val rest: Rest, val settings: Settings, val exercisesToday: Int)
+
+    private suspend fun build(inputs: Inputs): WatchState {
+        val settings = inputs.settings
+        val units = settings.unitSystem
+        val base = WatchState(
+            exercisesToday = inputs.exercisesToday,
+            weightUnit = units.weightUnit,
+            weightStep = if (units == UnitSystem.METRIC) 2.5 else 5.0,
+            sentAtMillis = now(),
+        )
+        val state = inputs.guide
+        val session = state.session ?: return base
+        val target = state.target
+        val exercise = target?.let { t -> state.day.firstOrNull { it.exerciseId == t.exerciseId } }
+        val suggestion = if (target != null) {
+            val date = LocalDate.ofEpochDay(session.epochDay)
+            val lastSession = workouts.observeHistory(target.exerciseId).first().firstOrNull { it.date < date }?.sets.orEmpty()
+            guideSuggestion(state.day, target, settings, lastSession)
+        } else {
+            SetValues()
+        }
+        val type = exercise?.exerciseType
+        val restEndsAt = if (inputs.rest.running) now() + restTimer.state.value.remainingSeconds * 1000L else null
+        return base.copy(
+            active = true,
+            paused = session.isPaused,
+            epochDay = session.epochDay,
+            exerciseId = target?.exerciseId,
+            exerciseName = target?.name.orEmpty(),
+            step = target?.step.orEmpty(),
+            position = target?.position ?: 0,
+            of = target?.of ?: state.day.size,
+            isDrop = target?.isDrop == true,
+            fields = type?.let { WatchFields(weight = it.usesWeight, reps = it.usesReps, seconds = it.usesTime, repsLabel = it.repsLabel) }
+                ?: WatchFields(),
+            phoneOnly = type != null && type !in WATCH_TYPES,
+            weight = suggestion.weightKg?.let { (units.weightFromKg(it) * 10).roundToInt() / 10.0 },
+            reps = suggestion.reps,
+            seconds = suggestion.durationSeconds,
+            percent = state.completion.percent,
+            trainingSinceMillis = if (session.isPaused) null else session.startedAtMillis + session.pausedMillis,
+            trainingMillis = session.activeMillis(now()),
+            restEndsAtMillis = restEndsAt,
+            restLabel = inputs.rest.label.takeIf { restEndsAt != null },
+            allDone = target == null,
+        )
+    }
+
+    private suspend fun publish(state: WatchState) {
+        last = state
+        try {
+            val request = PutDataMapRequest.create(WearPaths.STATE).apply {
+                dataMap.putByteArray(WearPaths.STATE_KEY, WearJson.encode(state))
+            }.asPutDataRequest().setUrgent()
+            Wearable.getDataClient(context).putDataItem(request).await()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // No watch, or no Google Play services: the phone works on its own.
+            Log.d(TAG, "Could not reach the watch", e)
+        }
+    }
+
+    /** Carries out what the watch asked for. */
+    suspend fun handle(command: WatchCommand) {
+        when (command) {
+            WatchCommand.Sync -> last?.let { publish(it.copy(sentAtMillis = now())) }
+            WatchCommand.Start -> if (!guide.isRunning) guide.start(LocalDate.now())
+            WatchCommand.Pause -> {
+                restTimer.stop()
+                guide.pause()
+            }
+            WatchCommand.Resume -> guide.resume()
+            is WatchCommand.Skip -> guide.skip(command.exerciseId)
+            WatchCommand.Stop -> guide.stop()
+            is WatchCommand.Log -> log(command)
+        }
+    }
+
+    /** Saves a set done on the watch, then starts the rest (or not, before a drop set) as the phone would. */
+    private suspend fun log(command: WatchCommand.Log) {
+        val date = LocalDate.ofEpochDay(command.epochDay)
+        val settings = settingsRepository.settings.first()
+        val values = SetValues(
+            weightKg = command.weight?.let { settings.unitSystem.weightToKg(it) },
+            reps = command.reps,
+            durationSeconds = command.seconds,
+            isDropSet = command.isDrop,
+        )
+        workouts.addSet(date, command.exerciseId, values)
+        val day = workouts.observeDay(date).first()
+        val entry = day.firstOrNull { it.exerciseId == command.exerciseId } ?: return
+        val step = nextStep(entry.exerciseId, entry.exerciseType, entry.plan, entry.sets, supersetContextOf(day, entry.exerciseId), settings)
+        val target = guide.afterSetLogged(date)
+        val seconds = when (step) {
+            is NextStep.Rest -> step.seconds
+            is NextStep.Transition -> step.seconds
+            else -> 0
+        }
+        if (settings.autoStartRestTimer && seconds > 0) {
+            restTimer.start(seconds, label = target?.let { "Next: ${it.name} · ${it.step}" })
+        } else {
+            restTimer.stop()
+        }
+    }
+
+    private companion object {
+        const val TAG = "WatchBridge"
+
+        /** What the watch can enter: weight, reps and time. Distance, heights and sessions go on the phone. */
+        val WATCH_TYPES = setOf(ExerciseType.WEIGHT_REPS, ExerciseType.REPS, ExerciseType.TIME, ExerciseType.TIME_WEIGHT)
+    }
+}

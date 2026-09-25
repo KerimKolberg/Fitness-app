@@ -152,6 +152,30 @@ fun guideTarget(day: List<DayExercise>, skipped: Set<String> = emptySet(), setti
 }
 
 /**
+ * The values to suggest for the guide's next set: a due drop set's lighter weight (and its reps),
+ * else today's last set of the exercise, else the plan's reps and weight over [lastSession]'s last
+ * set. Empty when there is nothing to go on.
+ */
+fun guideSuggestion(day: List<DayExercise>, target: GuideTarget, settings: Settings, lastSession: List<SetEntry> = emptyList()): SetValues {
+    val exercise = day.firstOrNull { it.exerciseId == target.exerciseId } ?: return SetValues()
+    if (target.isDrop) {
+        val plan = targetOf(exercise, supersetContextOf(day, exercise.exerciseId)).plan
+        pendingDrop(plan, exercise.exerciseType, exercise.sets, settings.dropSetPercent, settings.unitSystem)?.let {
+            return SetValues(weightKg = it.weightKg, reps = it.reps, isDropSet = true)
+        }
+    }
+    exercise.sets.lastOrNull { !it.values.isDropSet }?.let { return it.values.copy(note = "", rpe = null) }
+    val last = lastSession.lastOrNull { !it.values.isDropSet }?.values ?: SetValues()
+    val plan = exercise.plan
+    return SetValues(
+        weightKg = plan.weightKg ?: last.weightKg,
+        reps = plan.reps ?: last.reps,
+        distanceMeters = last.distanceMeters,
+        durationSeconds = last.durationSeconds,
+    )
+}
+
+/**
  * A guided workout in progress on [epochDay]. Times are wall-clock milliseconds; time spent paused
  * does not count as training time.
  */

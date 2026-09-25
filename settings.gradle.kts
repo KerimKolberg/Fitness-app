@@ -22,3 +22,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "KK-Fittracking"
 include(":app")
+include(":wear")
+include(":wearprotocol")

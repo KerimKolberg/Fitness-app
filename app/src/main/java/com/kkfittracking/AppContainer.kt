@@ -12,6 +12,7 @@ import com.kkfittracking.data.backup.BackupRepository
 import com.kkfittracking.data.backup.DataTransfer
 import com.kkfittracking.data.db.AppDatabase
 import com.kkfittracking.guide.GuidedWorkout
+import com.kkfittracking.guide.WatchBridge
 import com.kkfittracking.guide.WorkoutGuideService
 import com.kkfittracking.timer.Alerts
 import com.kkfittracking.timer.IntervalAlarm
@@ -65,6 +66,18 @@ class AppContainer(context: Context) {
         scope = appScope,
         workoutRepository = workoutRepository,
         settingsRepository = settingsRepository,
-        onStarted = { WorkoutGuideService.start(appContext) },
+        // Started from the watch while the phone app is in the background, Android may refuse the
+        // notification; the workout still runs.
+        onStarted = { runCatching { WorkoutGuideService.start(appContext) } },
+    )
+
+    /** The watch app's link to the guided workout. */
+    val watchBridge = WatchBridge(
+        context = appContext,
+        scope = appScope,
+        guide = guidedWorkout,
+        workouts = workoutRepository,
+        settingsRepository = settingsRepository,
+        restTimer = restTimer,
     )
 }

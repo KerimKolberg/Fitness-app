@@ -12,3 +12,6 @@ build/
 *.aab
 *.jks
 *.keystore
+
+# The shared debug key, so the phone and watch apps match and updates install over each other.
+!signing/debug.keystore

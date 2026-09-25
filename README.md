@@ -21,6 +21,7 @@ See [ROADMAP.md](ROADMAP.md) for the plan and progress.
 - **Drop sets**: planned per exercise, on the last set or as the whole exercise, with the number of drops, reps per drop and a percentage or fixed weight; or tap "Drop set" any time
 - **Supersets**: group 2 to 6 exercises and log them round by round. "+Super-sets" arranges a day or a plan by dragging, with the time to walk to the next exercise and the rest after each round; plans can bring their supersets along. Set the rounds of a superset, a drop set on the last round for all, and per exercise how many rounds it joins or its own drop set choice
 - **Tendons**: isometric and eccentric exercises show the tendons they train (patellar, Achilles, rotator cuff, elbow tendons…) with a drawing and what each one connects; filter by tendon in the library
+- **Watch app** (Wear OS): follow the guided workout on the wrist and log sets there, synced with the phone
 - **Guided workout**: press Start on a day with a plan and the app takes you from exercise to exercise (round by round in supersets), moving on after each set you save. Pause for longer breaks, skip, or stop early; a notification shows what's next with the phone locked
 - **Day analysis**: how much of the day's plan is done, and what was done and what wasn't
 - **How to do it**: a description and video links (YouTube or any page) on every exercise
@@ -36,6 +37,24 @@ Every push builds a debug APK on GitHub:
 1. Open the repository's **Actions** tab and pick the latest green **Android build** run.
 2. Download the **fitness-app-debug-apk** artifact and unzip it.
 3. Copy the `.apk` to your phone and open it (allow "Install unknown apps" when asked).
+
+Builds are signed with the shared debug key in `signing/`, so a newer build installs over an older one.
+(Builds from before the watch app used a different key each time: back up in Settings, uninstall once,
+install the new build and restore.)
+
+## Try it on your watch (Wear OS 3+: Galaxy Watch 4 and later, Pixel Watch)
+
+The watch app shows the guided workout: the exercise and set, weight and reps to adjust with + and −,
+Log set, the rest countdown (it buzzes when the rest is over), Pause, Skip and Stop. It talks to the phone
+over Bluetooth (or Wi-Fi) through the Wear OS Data Layer; the phone keeps all the data.
+
+1. Download the **fitness-app-watch-debug-apk** artifact from the same run as the phone APK, and unzip it.
+2. On the watch: Settings → About watch → Software → tap *Software version* 5 times to turn on Developer
+   options; then in Developer options turn on *ADB debugging* and *Wireless debugging* (same Wi-Fi as the computer).
+3. Pair and install from a computer with `adb pair <ip:port>` (the pairing code is on the watch),
+   `adb connect <ip:port>`, then `adb install wear-debug.apk`. Without a computer, a phone app such as
+   Bugjaeger or Wear Installer can install the APK over the same Wi-Fi.
+4. Open KK-Fittracking on the phone once, then on the watch. Start a workout from either one.
 
 ## Build it yourself
 
@@ -54,7 +73,10 @@ app/src/main/java/com/kkfittracking/
   data/       repositories, built-in exercises, settings
   data/db/    Room entities, DAOs, and the database
   timer/      rest and interval timers, beeps, vibration and notifications
+  guide/      the guided workout, its notification, and the link to the watch
   ui/         Compose screens, one package per screen, plus navigation
+wear/         the Wear OS app (Compose for Wear OS)
+wearprotocol/ what the phone and the watch send each other (plain Kotlin)
 ```
 
 Stack: Kotlin, Jetpack Compose (Material 3), Room, DataStore, Navigation Compose.

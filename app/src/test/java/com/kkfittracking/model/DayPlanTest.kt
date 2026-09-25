@@ -116,4 +116,20 @@ class DayPlanTest {
         assertEquals(120_000, session.activeMillis(360_000))
         assertEquals(setOf("curl"), session.skip("curl").skipped)
     }
+
+    @Test
+    fun theGuideSuggestsWhatToLift() {
+        val settings = Settings(dropSetPercent = 20)
+        fun target(day: List<DayExercise>) = guideTarget(day, settings = settings)!!
+        // Nothing today: the plan's reps over last session's weight.
+        val fresh = listOf(exercise("bench", ExercisePlan(sets = 3, reps = 10)))
+        val last = listOf(SetEntry("x", SetValues(90.0, 6)))
+        assertEquals(SetValues(weightKg = 90.0, reps = 10), guideSuggestion(fresh, target(fresh), settings, last))
+        // After a set today: the same again.
+        val started = listOf(exercise("bench", ExercisePlan(sets = 3), done = 1))
+        assertEquals(SetValues(100.0, 8), guideSuggestion(started, target(started), settings, last))
+        // A due drop set: 20% lighter.
+        val dropping = listOf(exercise("bench", ExercisePlan(sets = 2, dropSets = true), done = 2))
+        assertEquals(SetValues(weightKg = 80.0, reps = 8, isDropSet = true), guideSuggestion(dropping, target(dropping), settings))
+    }
 }
