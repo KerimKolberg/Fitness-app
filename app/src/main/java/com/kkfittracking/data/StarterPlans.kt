@@ -38,7 +38,7 @@ object StarterPlans {
                 "Slow High Cable External Rotation" to sets(reps = 8, kg = 20.0),
             ),
             listOf(
-                "Seated Dumbbell Press" to sets(reps = 10, kg = 12.0),
+                "Arnold Dumbbell Press" to sets(reps = 10, kg = 12.0),
                 "Band Internal Rotation Hold" to sets(),
                 "Slow High Cable Internal Rotation" to sets(reps = 8, kg = 20.0),
             ),
@@ -49,7 +49,7 @@ object StarterPlans {
                 "Eccentric Wrist Extension" to sets(reps = 8, kg = 10.0),
             ),
             listOf(
-                "Lateral Dumbbell Raise" to sets(reps = 15, kg = 8.0),
+                "Lu Raise" to sets(reps = 15, kg = 8.0),
                 "One-Arm Dumbbell Row" to sets(reps = 10, kg = 36.0),
                 "Plate Pinch Hold" to sets(kg = 15.0),
             ),

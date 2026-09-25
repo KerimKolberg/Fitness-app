@@ -621,6 +621,8 @@ object BuiltInExercises {
         )
         group(ROTATOR_CUFF, ISOMETRIC, e("Band Internal Rotation Hold", TIME, perSide = true))
         group(TRICEPS, STRENGTH, e("Overhead Cable Triceps Extension"))
+        // A lateral raise that keeps going overhead: more range of motion under the weight.
+        group(SIDE_DELTS, STRENGTH, e("Lu Raise", also = listOf(FRONT_DELTS, UPPER_BACK)))
         group(ABS, STRENGTH, e("Sit-Up"))
     }
 
