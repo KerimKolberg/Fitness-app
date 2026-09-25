@@ -41,7 +41,7 @@ Open the project in Android Studio, or from a terminal (JDK 17+ and the Android 
 ## Project layout
 
 ```
-app/src/main/java/com/kerimkolberg/fitnessapp/
+app/src/main/java/com/kkfittracking/
   model/      plain data types, units, and formatting
   data/       repositories, built-in exercises, settings
   data/db/    Room entities, DAOs, and the database
@@ -51,3 +51,10 @@ app/src/main/java/com/kerimkolberg/fitnessapp/
 
 Stack: Kotlin, Jetpack Compose (Material 3), Room, DataStore, Navigation Compose.
 The database is designed so cloud sync can be added later without migrating data (see the roadmap).
+
+## Icon
+
+The launcher icon is generated from `branding/logo.jpg`. To change it, replace that file and run
+`python3 branding/make_icons.py` (needs Pillow). It writes the adaptive icon layers for every screen
+density, a monochrome layer for Android 13+ themed icons, and the 512 px icon Google Play asks for.
+

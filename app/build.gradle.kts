@@ -9,11 +9,11 @@ plugins {
 }
 
 android {
-    namespace = "com.kerimkolberg.fitnessapp"
+    namespace = "com.kkfittracking"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.kerimkolberg.fitnessapp"
+        applicationId = "com.kkfittracking"
         minSdk = 26
         targetSdk = 36
         versionCode = 1
