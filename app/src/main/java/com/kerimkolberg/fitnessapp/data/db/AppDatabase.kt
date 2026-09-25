@@ -37,6 +37,8 @@ abstract class AppDatabase : RoomDatabase() {
 
     abstract fun bodyDao(): BodyDao
 
+    abstract fun backupDao(): BackupDao
+
     companion object {
         // Once the app is released, every schema change needs a Migration: never use destructive migrations.
         fun build(context: Context): AppDatabase =

@@ -8,6 +8,8 @@ import com.kerimkolberg.fitnessapp.data.GameRepository
 import com.kerimkolberg.fitnessapp.data.RoutineRepository
 import com.kerimkolberg.fitnessapp.data.SettingsRepository
 import com.kerimkolberg.fitnessapp.data.WorkoutRepository
+import com.kerimkolberg.fitnessapp.data.backup.BackupRepository
+import com.kerimkolberg.fitnessapp.data.backup.DataTransfer
 import com.kerimkolberg.fitnessapp.data.db.AppDatabase
 import com.kerimkolberg.fitnessapp.timer.RestTimer
 import com.kerimkolberg.fitnessapp.timer.RestTimerAlarm
@@ -37,6 +39,14 @@ class AppContainer(context: Context) {
     val settingsRepository = SettingsRepository(appContext.settingsDataStore)
 
     val gameRepository = GameRepository(database.workoutDao(), settingsRepository)
+
+    val dataTransfer = DataTransfer(
+        context = appContext,
+        backups = BackupRepository(database, settingsRepository, BuildConfig.VERSION_NAME),
+        workoutDao = database.workoutDao(),
+        bodyRepository = bodyRepository,
+        settingsRepository = settingsRepository,
+    )
 
     val restTimer = RestTimer(appScope, onFinished = RestTimerAlarm(appContext)::fire)
 }

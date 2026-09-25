@@ -18,6 +18,7 @@ See [ROADMAP.md](ROADMAP.md) for the plan and progress.
 - **Beyond the gym**: mobility, stretching, isometric holds, slow eccentrics for tendons (with tempo), plyometrics (with jump height) and sports sessions (with intensity and notes)
 - **Gamification**: XP and levels, a weekly goal with streaks, 14 achievements, and celebrations when you hit a record
 - **Body tracker**: bodyweight, body fat and body measurements with graphs
+- **Your data**: back up to a file (e.g. on Google Drive) and restore it on any phone; export workouts and body measurements as CSV
 
 ## Try it on your phone
 

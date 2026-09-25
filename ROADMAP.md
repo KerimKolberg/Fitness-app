@@ -52,7 +52,7 @@ v1 is fully offline, but the data layer follows these rules so sync/accounts can
 - [ ] RPE / RIR per set
 - [ ] Progression suggestions
 - [ ] Home-screen widget
-- [ ] Wear OS companion
+- [ ] Wear OS companion (Galaxy Watch, Pixel Watch): log sets and run the rest timer from the wrist, synced with the phone
 - [ ] Cloud sync + accounts (see "Keeping the door open for cloud sync")
 
 ## Data model
@@ -122,9 +122,10 @@ Broaden the library beyond gym lifts. Each group needs the right way to log it:
 - [ ] Ideas for later: challenges (e.g. "30 days of mobility"), yearly summary, share cards
 
 ### Phase 3: Data safety
-- [ ] Backup/restore
-- [ ] CSV export
-- [ ] Database migration tests
+- [x] Backup to a JSON file anywhere the file picker reaches (Drive, Downloads…), with "last backup" shown in Settings
+- [x] Restore with a summary and confirmation; all-or-nothing, so a damaged file changes nothing
+- [x] CSV export of workouts and body measurements, in the user's units
+- [x] Database migration tests: real v1 and v2 databases upgraded to the current version with no data lost
 - **Goal:** safe for other users' data
 
 ### Phase 4: Google Play release

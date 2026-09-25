@@ -34,6 +34,15 @@ data class LoggedSetRow(
     @Embedded val set: WorkoutSetEntity,
 )
 
+/** A logged set with names, for CSV export. */
+data class ExportRow(
+    val date: LocalDate,
+    val exerciseName: String,
+    val categoryName: String,
+    val exerciseType: ExerciseType,
+    @Embedded val set: WorkoutSetEntity,
+)
+
 data class HistoryRow(
     val date: LocalDate,
     @Embedded val set: WorkoutSetEntity,
@@ -145,4 +154,18 @@ interface WorkoutDao {
         """,
     )
     fun observeAllSets(): Flow<List<LoggedSetRow>>
+
+    @Query(
+        """
+        SELECT w.date AS date, e.name AS exerciseName, c.name AS categoryName, e.type AS exerciseType, s.*
+        FROM workout_sets s
+        JOIN workout_exercises we ON we.id = s.workoutExerciseId AND we.deletedAt IS NULL
+        JOIN workouts w ON w.id = we.workoutId AND w.deletedAt IS NULL
+        JOIN exercises e ON e.id = we.exerciseId
+        JOIN categories c ON c.id = e.categoryId
+        WHERE s.deletedAt IS NULL
+        ORDER BY w.date, we.sortOrder, s.sortOrder
+        """,
+    )
+    suspend fun exportRows(): List<ExportRow>
 }
