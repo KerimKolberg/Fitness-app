@@ -40,6 +40,11 @@ android {
     }
 }
 
+// The APK is called KK-Fittracking-watch-debug.apk, so the phone and watch files cannot be mixed up.
+base {
+    archivesName.set("KK-Fittracking-watch")
+}
+
 kotlin {
     compilerOptions {
         jvmTarget.set(JvmTarget.JVM_17)

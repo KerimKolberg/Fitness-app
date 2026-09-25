@@ -26,6 +26,15 @@ jobs:
       - name: Build the phone and watch debug APKs and run unit tests
         run: ./gradlew assembleDebug testDebugUnitTest --stacktrace
 
+      - name: Check the APKs are complete, readable and signed with the shared key
+        run: |
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          for apk in app/build/outputs/apk/debug/*.apk wear/build/outputs/apk/debug/*.apk; do
+            echo "== $(basename "$apk"): $(stat -c %s "$apk") bytes, SHA-256 $(sha256sum "$apk" | cut -c1-16)…"
+            "$BT/aapt2" dump badging "$apk" | grep -E "^(package|sdkVersion|targetSdkVersion|application-label:|uses-feature: name='android.hardware.type.watch')"
+            "$BT/apksigner" verify --verbose --print-certs "$apk" | grep -E "^(Verified using|Signer #1 certificate SHA-256)"
+          done
+
       - name: Check the database schema is committed
         run: |
           if [ -n "$(git status --porcelain app/schemas)" ]; then
