@@ -571,4 +571,19 @@ class RepositoryTest {
         assertEquals(67, summary.completion.percent)
         assertEquals(false, guide.isRunning)
     }
+
+    @Test
+    fun theRestOfADayMovesToAnotherDay() = runTest {
+        exercises.syncBuiltIns()
+        exercises.savePlan(bench, ExercisePlan(sets = 3))
+        exercises.savePlan(squat, ExercisePlan(sets = 3))
+        workouts.addPlannedExercises(day, listOf(PlannedExercise(bench), PlannedExercise(squat)), withSupersets = false)
+        workouts.addSet(day, bench, SetValues(100.0, 5))
+
+        assertEquals(2, workouts.moveUnfinished(day, day.plusDays(1)))
+        // The bench keeps its set here; the squat, not started, left the day.
+        assertEquals(listOf(bench), workouts.observeDay(day).first().map { it.exerciseId })
+        assertEquals(listOf(bench, squat), workouts.observeDay(day.plusDays(1)).first().map { it.exerciseId })
+        assertEquals(0, workouts.moveUnfinished(day, day))
+    }
 }

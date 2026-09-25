@@ -12,11 +12,15 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -35,6 +39,9 @@ import com.kkfittracking.model.ExerciseCompletion
 import com.kkfittracking.model.GuideSummary
 import com.kkfittracking.model.formatDuration
 import kotlinx.coroutines.delay
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneOffset
 
 /** The current time, updated every second while shown. */
 @Composable
@@ -179,9 +186,64 @@ private fun CompletionGroup(title: String, exercises: List<ExerciseCompletion>) 
     }
 }
 
-/** Shown when a guided workout ends: the training time and what was done and what was not. */
+/** "Next day" or "Pick a day": where to move what is left of [from]. */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun GuideSummaryDialog(summary: GuideSummary, onDismiss: () -> Unit) {
+fun MoveRestButtons(from: LocalDate, onMove: (LocalDate) -> Unit) {
+    var picking by remember { mutableStateOf(false) }
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        OutlinedButton(onClick = { onMove(from.plusDays(1)) }) { Text("Next day") }
+        OutlinedButton(onClick = { picking = true }) { Text("Pick a day") }
+    }
+    if (picking) {
+        // The date picker works in UTC midnights.
+        val state = rememberDatePickerState(
+            initialSelectedDateMillis = from.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli(),
+        )
+        DatePickerDialog(
+            onDismissRequest = { picking = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        picking = false
+                        state.selectedDateMillis?.let { onMove(Instant.ofEpochMilli(it).atZone(ZoneOffset.UTC).toLocalDate()) }
+                    },
+                    enabled = state.selectedDateMillis != null,
+                ) { Text("Move") }
+            },
+            dismissButton = { TextButton(onClick = { picking = false }) { Text("Cancel") } },
+        ) {
+            DatePicker(state = state)
+        }
+    }
+}
+
+/** Asks where to move what is left of [from]. */
+@Composable
+fun MoveRestDialog(from: LocalDate, leftCount: Int, onMove: (LocalDate) -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Move what's left") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    "$leftCount unfinished ${if (leftCount == 1) "exercise moves" else "exercises move"} to another day, " +
+                        "with their supersets. What you already logged stays here.",
+                )
+                MoveRestButtons(from, onMove)
+            }
+        },
+        confirmButton = {},
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
+}
+
+/**
+ * Shown when a guided workout ends: the training time and what was done and what was not. When it
+ * ended early, [onMoveRest] moves what is left to another day.
+ */
+@Composable
+fun GuideSummaryDialog(summary: GuideSummary, onDismiss: () -> Unit, onMoveRest: ((LocalDate) -> Unit)? = null) {
     val completion = summary.completion
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -194,6 +256,15 @@ fun GuideSummaryDialog(summary: GuideSummary, onDismiss: () -> Unit) {
                 )
                 LinearProgressIndicator(progress = { completion.percent / 100f }, modifier = Modifier.fillMaxWidth())
                 CompletionLists(completion)
+                val left = completion.exercises.count { !it.isDone }
+                if (onMoveRest != null && left > 0) {
+                    Text(
+                        "Out of energy? Do the rest on another day:",
+                        style = MaterialTheme.typography.titleSmall,
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
+                    MoveRestButtons(LocalDate.ofEpochDay(summary.epochDay), onMoveRest)
+                }
             }
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text("OK") } },

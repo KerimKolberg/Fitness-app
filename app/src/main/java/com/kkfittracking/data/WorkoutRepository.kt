@@ -16,7 +16,9 @@ import com.kkfittracking.model.PlannedExercise
 import com.kkfittracking.model.SetEntry
 import com.kkfittracking.model.SetValues
 import com.kkfittracking.model.groupSupersets
+import com.kkfittracking.model.unfinishedPart
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import java.time.LocalDate
 import java.util.UUID
@@ -203,6 +205,19 @@ class WorkoutRepository(
     /** Turns a superset back into separate exercises. */
     suspend fun ungroupSuperset(supersetId: String) {
         dao.clearSuperset(supersetId, now())
+    }
+
+    /**
+     * Moves what is left of [from] to [to] (see [unfinishedPart]): the unfinished exercises with
+     * their supersets are added there; those not started leave [from]. Returns how many moved.
+     */
+    suspend fun moveUnfinished(from: LocalDate, to: LocalDate): Int {
+        if (from == to) return 0
+        val move = unfinishedPart(observeDay(from).first())
+        if (move.toAdd.isEmpty()) return 0
+        addPlannedExercises(to, move.toAdd, withSupersets = true)
+        if (move.toRemove.isNotEmpty()) deleteWorkoutExercises(move.toRemove)
+        return move.toAdd.size
     }
 
     /** Removes several exercises and all their sets from a day at once. */

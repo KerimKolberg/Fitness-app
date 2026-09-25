@@ -4,6 +4,7 @@ package com.kkfittracking.ui.workout
 
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -85,6 +86,7 @@ import com.kkfittracking.ui.components.relativeDayName
 import com.kkfittracking.ui.components.rememberNotificationPermissionRequester
 import com.kkfittracking.ui.guide.DayCompletionCard
 import com.kkfittracking.ui.guide.GuideBar
+import com.kkfittracking.ui.guide.MoveRestDialog
 import java.time.LocalDate
 
 @Composable
@@ -122,6 +124,7 @@ fun WorkoutScreen(
     // Selecting exercises to remove several at once; null when not selecting.
     var selection by remember(state.date) { mutableStateOf<Set<String>?>(null) }
     var confirmRemoveSelected by remember { mutableStateOf(false) }
+    var movingRest by remember { mutableStateOf(false) }
     val toggle = { exercise: DayExercise ->
         selection = selection?.let { if (exercise.workoutExerciseId in it) it - exercise.workoutExerciseId else it + exercise.workoutExerciseId }
     }
@@ -174,6 +177,9 @@ fun WorkoutScreen(
                                 }
                                 if (state.exercises.isNotEmpty()) {
                                     MenuItem("Select exercises to remove", close) { selection = emptySet() }
+                                }
+                                if (completion.exercises.any { !it.isDone } && !guide.isActiveOn(state.date)) {
+                                    MenuItem("Move what's left to another day", close) { movingRest = true }
                                 }
                                 if (state.exercises.isNotEmpty() && state.date != LocalDate.now()) {
                                     MenuItem("Copy exercises to today", close, viewModel::copyExercisesToToday)
@@ -363,6 +369,21 @@ fun WorkoutScreen(
                     },
                 ) { Text("One by one") }
             },
+        )
+    }
+
+    if (movingRest) {
+        MoveRestDialog(
+            from = state.date,
+            leftCount = completion.exercises.count { !it.isDone },
+            onMove = { to ->
+                movingRest = false
+                viewModel.moveUnfinished(to) { moved ->
+                    val what = if (moved == 1) "1 exercise" else "$moved exercises"
+                    Toast.makeText(context, "Moved $what to ${formatFullDate(to)}", Toast.LENGTH_LONG).show()
+                }
+            },
+            onDismiss = { movingRest = false },
         )
     }
 

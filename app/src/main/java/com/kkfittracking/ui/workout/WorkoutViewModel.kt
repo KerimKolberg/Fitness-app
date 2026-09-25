@@ -179,6 +179,12 @@ class WorkoutViewModel(
 
     fun stopGuide() = guidedWorkout.stop()
 
+    /** Moves the shown day's unfinished exercises to [to]; [onMoved] gets how many moved. */
+    fun moveUnfinished(to: LocalDate, onMoved: (Int) -> Unit) {
+        val from = uiState.value.date
+        viewModelScope.launch { onMoved(workoutRepository.moveUnfinished(from, to)) }
+    }
+
     private fun moveDays(days: Long) {
         savedStateHandle[KEY_EPOCH_DAY] = epochDay.value + days
     }

@@ -204,3 +204,42 @@ data class GuideSession(
 
 /** What a stopped guided workout did: shown once it ends. */
 data class GuideSummary(val epochDay: Long, val activeMillis: Long, val completion: DayCompletion, val stoppedEarly: Boolean)
+
+/** What moving a day's unfinished part to another day does: exercises to add there, entries to take off here. */
+data class Postponement(
+    val toAdd: List<PlannedExercise>,
+    /** Exercises not started at all leave this day; partly done ones stay with the sets that were done. */
+    val toRemove: List<String>,
+)
+
+/**
+ * The unfinished part of a day, to do on another day: every exercise not done yet, with its
+ * superset. A superset with planned rounds keeps only the rounds that are left.
+ */
+fun unfinishedPart(day: List<DayExercise>): Postponement {
+    val completion = dayCompletion(day).exercises.associateBy { it.exerciseId }
+    val left = day.filter { completion[it.exerciseId]?.isDone == false }
+    fun roundsLeft(supersetId: String?, planned: Int?): Int? {
+        if (supersetId == null || planned == null) return planned
+        val members = left.filter { it.supersetId == supersetId }
+        val superset = members.firstOrNull()?.let { supersetContextOf(day, it.exerciseId) } ?: return planned
+        return members.maxOf { member ->
+            (superset.roundsOf(member.exerciseId) ?: planned) - (completion[member.exerciseId]?.doneSets ?: 0)
+        }.coerceIn(1, planned)
+    }
+    return Postponement(
+        toAdd = left.map {
+            PlannedExercise(
+                exerciseId = it.exerciseId,
+                supersetId = it.supersetId,
+                transitionSeconds = it.transitionSeconds,
+                roundRestSeconds = it.roundRestSeconds,
+                supersetRounds = roundsLeft(it.supersetId, it.supersetRounds),
+                supersetDropLast = it.supersetDropLast,
+                memberRounds = it.memberRounds,
+                memberDropSet = it.memberDropSet,
+            )
+        },
+        toRemove = left.filter { it.sets.isEmpty() }.map { it.workoutExerciseId },
+    )
+}

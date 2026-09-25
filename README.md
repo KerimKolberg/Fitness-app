@@ -24,7 +24,7 @@ See [ROADMAP.md](ROADMAP.md) for the plan and progress.
 - **Watch app** (Wear OS): follow the guided workout on the wrist and log sets there, synced with the phone
 - **Daily steps**: the day's steps and distance from Health Connect (what Samsung Health, Google Fit and your watch record), shown on each day
 - **Your library order**: Settings → Exercise library puts the body sections and training styles in the order you like
-- **Guided workout**: press Start on a day with a plan and the app takes you from exercise to exercise (round by round in supersets), moving on after each set you save. Pause for longer breaks, skip, or stop early; a notification shows what's next with the phone locked
+- **Guided workout**: press Start on a day with a plan and the app takes you from exercise to exercise (round by round in supersets), moving on after each set you save. Pause for longer breaks, skip, or stop early and move what's left to the next day or any day you pick; a notification shows what's next with the phone locked
 - **Day analysis**: how much of the day's plan is done, and what was done and what wasn't
 - **How to do it**: a description and video links (YouTube or any page) on every exercise
 - **Progress**: graphs per exercise with the all-time high and low marked, and records

@@ -132,4 +132,22 @@ class DayPlanTest {
         val dropping = listOf(exercise("bench", ExercisePlan(sets = 2, dropSets = true), done = 2))
         assertEquals(SetValues(weightKg = 80.0, reps = 8, isDropSet = true), guideSuggestion(dropping, target(dropping), settings))
     }
+
+    @Test
+    fun theUnfinishedPartMovesToAnotherDay() {
+        val day = listOf(
+            exercise("bench", ExercisePlan(sets = 3), done = 3),
+            exercise("row", ExercisePlan(sets = 4), done = 2),
+            exercise("curl", ExercisePlan(sets = 3)),
+            // A 3-round superset: 1 round done, 2 left.
+            exercise("squat", done = 1, superset = "s", rounds = 3),
+            exercise("lunge", done = 1, superset = "s", rounds = 3),
+        )
+        val move = unfinishedPart(day)
+        assertEquals(listOf("row", "curl", "squat", "lunge"), move.toAdd.map { it.exerciseId })
+        // Only the exercise not started leaves the day; the row keeps its two sets here.
+        assertEquals(listOf("we-curl"), move.toRemove)
+        assertEquals(listOf(2, 2), move.toAdd.filter { it.supersetId == "s" }.map { it.supersetRounds })
+        assertTrue(unfinishedPart(listOf(exercise("bench", ExercisePlan(sets = 1), done = 1))).toAdd.isEmpty())
+    }
 }
