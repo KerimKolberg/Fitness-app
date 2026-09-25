@@ -68,6 +68,10 @@ class WorkoutViewModel(
         savedStateHandle[KEY_EPOCH_DAY] = LocalDate.now().toEpochDay()
     }
 
+    fun ungroupSuperset(supersetId: String) {
+        viewModelScope.launch { workoutRepository.ungroupSuperset(supersetId) }
+    }
+
     fun deleteExercise(workoutExerciseId: String) {
         viewModelScope.launch { workoutRepository.deleteWorkoutExercise(workoutExerciseId) }
     }

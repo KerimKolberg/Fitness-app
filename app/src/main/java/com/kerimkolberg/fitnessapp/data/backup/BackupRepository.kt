@@ -113,19 +113,19 @@ private fun WorkoutEntity.toDto() = WorkoutDto(id, date.toString(), comment, cre
 private fun WorkoutDto.toEntity() = WorkoutEntity(id, dateOf(date), comment, createdAt, updatedAt, deletedAt)
 
 private fun WorkoutExerciseEntity.toDto() =
-    WorkoutExerciseDto(id, workoutId, exerciseId, sortOrder, createdAt, updatedAt, deletedAt)
+    WorkoutExerciseDto(id, workoutId, exerciseId, sortOrder, createdAt, updatedAt, deletedAt, supersetId)
 private fun WorkoutExerciseDto.toEntity() =
-    WorkoutExerciseEntity(id, workoutId, exerciseId, sortOrder, createdAt, updatedAt, deletedAt)
+    WorkoutExerciseEntity(id, workoutId, exerciseId, sortOrder, createdAt, updatedAt, deletedAt, supersetId)
 
 private fun WorkoutSetEntity.toDto() = SetDto(
     id = id, workoutExerciseId = workoutExerciseId, sortOrder = sortOrder, weightKg = weightKg, reps = reps,
     distanceMeters = distanceMeters, durationSeconds = durationSeconds, rpe = rpe, comment = comment,
-    createdAt = createdAt, updatedAt = updatedAt, deletedAt = deletedAt,
+    isDropSet = isDropSet, createdAt = createdAt, updatedAt = updatedAt, deletedAt = deletedAt,
 )
 private fun SetDto.toEntity() = WorkoutSetEntity(
     id = id, workoutExerciseId = workoutExerciseId, sortOrder = sortOrder, weightKg = weightKg, reps = reps,
     distanceMeters = distanceMeters, durationSeconds = durationSeconds, comment = comment,
-    createdAt = createdAt, updatedAt = updatedAt, deletedAt = deletedAt, rpe = rpe,
+    createdAt = createdAt, updatedAt = updatedAt, deletedAt = deletedAt, rpe = rpe, isDropSet = isDropSet,
 )
 
 private fun RoutineEntity.toDto() = PlanDto(id, name, notes, createdAt, updatedAt, deletedAt)
@@ -142,8 +142,16 @@ private fun BodyMeasurementDto.toEntity() = BodyMeasurementEntity(
     id, dateOf(date), enumOf<BodyMetric>(metric, "body measurement"), value, createdAt, updatedAt, deletedAt,
 )
 
-private fun Settings.toDto() =
-    SettingsDto(unitSystem.name, restTimerSeconds, autoStartRestTimer, themeMode.name, weeklyGoal)
+private fun Settings.toDto() = SettingsDto(
+    unitSystem = unitSystem.name,
+    restTimerSeconds = restTimerSeconds,
+    autoStartRestTimer = autoStartRestTimer,
+    themeMode = themeMode.name,
+    weeklyGoal = weeklyGoal,
+    dropSetsEnabled = dropSetsEnabled,
+    dropSetPercent = dropSetPercent,
+    supersetAutoAdvance = supersetAutoAdvance,
+)
 
 /** Unknown values fall back to the defaults: settings are not worth failing a restore over. */
 private fun SettingsDto.toSettings(): Settings {
@@ -154,5 +162,8 @@ private fun SettingsDto.toSettings(): Settings {
         autoStartRestTimer = autoStartRestTimer,
         themeMode = ThemeMode.entries.firstOrNull { it.name == themeMode } ?: defaults.themeMode,
         weeklyGoal = weeklyGoal,
+        dropSetsEnabled = dropSetsEnabled,
+        dropSetPercent = dropSetPercent,
+        supersetAutoAdvance = supersetAutoAdvance,
     )
 }

@@ -52,4 +52,10 @@ data class Settings(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     /** Workouts per week that keep a streak going. */
     val weeklyGoal: Int = 3,
+    /** Show the drop set option when logging weighted sets. */
+    val dropSetsEnabled: Boolean = true,
+    /** How much lighter each drop set is, in percent. */
+    val dropSetPercent: Int = 20,
+    /** After saving a set in a superset, open the next exercise of the superset. */
+    val supersetAutoAdvance: Boolean = true,
 )

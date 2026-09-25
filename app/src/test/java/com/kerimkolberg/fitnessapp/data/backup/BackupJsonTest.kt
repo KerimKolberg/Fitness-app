@@ -40,7 +40,7 @@ class BackupJsonTest {
     @Test
     fun rejectsOtherFilesAndNewerVersions() {
         val notJson = assertThrows(BackupException::class.java) { BackupJson.decode("hello") }
-        assertTrue(notJson.message!!.contains("not a Fitness App backup"))
+        assertTrue(notJson.message!!.contains("not a KK-Fittracking backup"))
         val newer = assertThrows(BackupException::class.java) {
             BackupJson.decode("""{"formatVersion":99,"createdAt":1}""")
         }

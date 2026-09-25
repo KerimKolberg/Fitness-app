@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -56,11 +57,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.kerimkolberg.fitnessapp.model.DayBlock
 import com.kerimkolberg.fitnessapp.model.DayExercise
 import com.kerimkolberg.fitnessapp.model.GameStats
 import com.kerimkolberg.fitnessapp.model.Routine
 import com.kerimkolberg.fitnessapp.model.UnitSystem
 import com.kerimkolberg.fitnessapp.model.formatSet
+import com.kerimkolberg.fitnessapp.model.groupDay
+import com.kerimkolberg.fitnessapp.model.setLabels
 import com.kerimkolberg.fitnessapp.ui.components.formatFullDate
 import com.kerimkolberg.fitnessapp.ui.components.relativeDayName
 import java.time.LocalDate
@@ -74,6 +78,7 @@ fun WorkoutScreen(
     onOpenRoutines: () -> Unit,
     onOpenBody: () -> Unit,
     onOpenAchievements: () -> Unit,
+    onNewSuperset: (LocalDate) -> Unit,
     viewModel: WorkoutViewModel = viewModel(factory = WorkoutViewModel.Factory),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -98,6 +103,7 @@ fun WorkoutScreen(
                         DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                             val close = { menuOpen = false }
                             MenuItem("Add a plan to this day", close) { choosingRoutine = true }
+                            MenuItem("New superset (2–6 exercises)", close) { onNewSuperset(state.date) }
                             if (state.exercises.isNotEmpty() && state.date != LocalDate.now()) {
                                 MenuItem("Copy exercises to today", close, viewModel::copyExercisesToToday)
                             }
@@ -144,13 +150,28 @@ fun WorkoutScreen(
                     contentPadding = PaddingValues(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 96.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    items(state.exercises, key = { it.workoutExerciseId }) { exercise ->
-                        DayExerciseCard(
-                            exercise = exercise,
-                            units = state.units,
-                            onClick = { onOpenExercise(state.date, exercise.exerciseId) },
-                            onDelete = { exerciseToDelete = exercise },
-                        )
+                    val blocks = groupDay(state.exercises)
+                    items(blocks, key = { block ->
+                        when (block) {
+                            is DayBlock.Single -> block.exercise.workoutExerciseId
+                            is DayBlock.Superset -> "superset-${block.id}"
+                        }
+                    }) { block ->
+                        when (block) {
+                            is DayBlock.Single -> DayExerciseCard(
+                                exercise = block.exercise,
+                                units = state.units,
+                                onClick = { onOpenExercise(state.date, block.exercise.exerciseId) },
+                                onDelete = { exerciseToDelete = block.exercise },
+                            )
+                            is DayBlock.Superset -> SupersetCard(
+                                superset = block,
+                                units = state.units,
+                                onOpen = { onOpenExercise(state.date, it.exerciseId) },
+                                onDelete = { exerciseToDelete = it },
+                                onUngroup = { viewModel.ungroupSuperset(block.id) },
+                            )
+                        }
                     }
                 }
             }
@@ -269,57 +290,117 @@ private fun DayExerciseCard(
     onClick: () -> Unit,
     onDelete: () -> Unit,
 ) {
-    var menuOpen by remember { mutableStateOf(false) }
     Card(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
-        Row(modifier = Modifier.height(IntrinsicSize.Min)) {
-            Box(
-                modifier = Modifier
-                    .width(6.dp)
-                    .fillMaxHeight()
-                    .background(Color(exercise.categoryColor)),
+        ExerciseBody(exercise, units, onDelete)
+    }
+}
+
+/** Several exercises done back to back, shown together in one card. */
+@Composable
+private fun SupersetCard(
+    superset: DayBlock.Superset,
+    units: UnitSystem,
+    onOpen: (DayExercise) -> Unit,
+    onDelete: (DayExercise) -> Unit,
+    onUngroup: () -> Unit,
+) {
+    var menuOpen by remember { mutableStateOf(false) }
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+    ) {
+        Row(
+            modifier = Modifier.padding(start = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "Superset · ${superset.exercises.size} exercises",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f),
             )
-            Column(modifier = Modifier.padding(start = 16.dp, top = 4.dp, bottom = 12.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = exercise.exerciseName,
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.weight(1f),
+            Box {
+                IconButton(onClick = { menuOpen = true }) {
+                    Icon(Icons.Default.MoreVert, contentDescription = "Superset options")
+                }
+                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    DropdownMenuItem(
+                        text = { Text("Ungroup superset") },
+                        onClick = {
+                            menuOpen = false
+                            onUngroup()
+                        },
                     )
-                    Box {
-                        IconButton(onClick = { menuOpen = true }) {
-                            Icon(Icons.Default.MoreVert, contentDescription = "More options")
-                        }
-                        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                            DropdownMenuItem(
-                                text = { Text("Remove from day") },
-                                onClick = {
-                                    menuOpen = false
-                                    onDelete()
-                                },
-                            )
-                        }
+                }
+            }
+        }
+        superset.exercises.forEachIndexed { index, exercise ->
+            if (index > 0) HorizontalDivider(Modifier.padding(start = 22.dp))
+            Box(Modifier.clickable { onOpen(exercise) }) {
+                ExerciseBody(exercise, units, onDelete = { onDelete(exercise) }, position = index + 1)
+            }
+        }
+    }
+}
+
+/** An exercise's name, menu and sets, with its category color on the left. */
+@Composable
+private fun ExerciseBody(
+    exercise: DayExercise,
+    units: UnitSystem,
+    onDelete: () -> Unit,
+    position: Int? = null,
+) {
+    var menuOpen by remember { mutableStateOf(false) }
+    Row(modifier = Modifier.height(IntrinsicSize.Min)) {
+        Box(
+            modifier = Modifier
+                .width(6.dp)
+                .fillMaxHeight()
+                .background(Color(exercise.categoryColor)),
+        )
+        Column(modifier = Modifier.padding(start = 16.dp, top = 4.dp, bottom = 12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = position?.let { "$it. ${exercise.exerciseName}" } ?: exercise.exerciseName,
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.weight(1f),
+                )
+                Box {
+                    IconButton(onClick = { menuOpen = true }) {
+                        Icon(Icons.Default.MoreVert, contentDescription = "More options")
+                    }
+                    DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                        DropdownMenuItem(
+                            text = { Text("Remove from day") },
+                            onClick = {
+                                menuOpen = false
+                                onDelete()
+                            },
+                        )
                     }
                 }
-                if (exercise.sets.isEmpty()) {
+            }
+            if (exercise.sets.isEmpty()) {
+                Text(
+                    text = "Not started yet",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            val labels = setLabels(exercise.sets)
+            exercise.sets.forEachIndexed { index, set ->
+                Row(modifier = Modifier.padding(end = 16.dp, top = 2.dp)) {
                     Text(
-                        text = "Not started yet",
+                        text = labels[index],
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.width(28.dp),
                     )
-                }
-                exercise.sets.forEachIndexed { index, set ->
-                    Row(modifier = Modifier.padding(end = 16.dp, top = 2.dp)) {
-                        Text(
-                            text = "${index + 1}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.width(28.dp),
-                        )
-                        Text(
-                            text = formatSet(set.values, exercise.exerciseType, units),
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                    }
+                    Text(
+                        text = formatSet(set.values, exercise.exerciseType, units),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
                 }
             }
         }

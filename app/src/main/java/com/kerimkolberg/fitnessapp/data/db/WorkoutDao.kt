@@ -23,6 +23,8 @@ data class DayRow(
     val durationSeconds: Int?,
     val rpe: Int?,
     val comment: String?,
+    val isDropSet: Boolean?,
+    val supersetId: String?,
 )
 
 /** Every logged set with its date and exercise details, for the game stats. */
@@ -97,6 +99,17 @@ interface WorkoutDao {
     )
     suspend fun softDeleteSetsOf(workoutExerciseId: String, now: Long)
 
+    @Query("UPDATE workout_exercises SET supersetId = :supersetId, updatedAt = :now WHERE id IN (:ids)")
+    suspend fun setSuperset(ids: List<String>, supersetId: String?, now: Long)
+
+    @Query(
+        """
+        UPDATE workout_exercises SET supersetId = NULL, updatedAt = :now
+        WHERE supersetId = :supersetId AND deletedAt IS NULL
+        """,
+    )
+    suspend fun clearSuperset(supersetId: String, now: Long)
+
     @Query("UPDATE workout_exercises SET deletedAt = :now, updatedAt = :now WHERE id = :id")
     suspend fun softDeleteWorkoutExercise(id: String, now: Long)
 
@@ -106,7 +119,7 @@ interface WorkoutDao {
                e.type AS exerciseType, c.color AS categoryColor,
                s.id AS setId, s.weightKg AS weightKg, s.reps AS reps,
                s.distanceMeters AS distanceMeters, s.durationSeconds AS durationSeconds,
-               s.rpe AS rpe, s.comment AS comment
+               s.rpe AS rpe, s.comment AS comment, s.isDropSet AS isDropSet, we.supersetId AS supersetId
         FROM workouts w
         JOIN workout_exercises we ON we.workoutId = w.id AND we.deletedAt IS NULL
         JOIN exercises e ON e.id = we.exerciseId

@@ -46,6 +46,7 @@ class DataTransfer(
                     durationSeconds = row.set.durationSeconds,
                     rpe = row.set.rpe,
                     note = row.set.comment,
+                    isDropSet = row.set.isDropSet,
                 ),
             )
         }

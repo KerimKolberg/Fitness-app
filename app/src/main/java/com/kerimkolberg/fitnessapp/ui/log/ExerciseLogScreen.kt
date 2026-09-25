@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -29,6 +30,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -63,11 +65,13 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kerimkolberg.fitnessapp.R
+import com.kerimkolberg.fitnessapp.model.DayExercise
 import com.kerimkolberg.fitnessapp.model.ExerciseType
 import com.kerimkolberg.fitnessapp.model.HistorySession
 import com.kerimkolberg.fitnessapp.model.UnitSystem
 import com.kerimkolberg.fitnessapp.model.formatDuration
 import com.kerimkolberg.fitnessapp.model.formatSet
+import com.kerimkolberg.fitnessapp.model.setLabels
 import com.kerimkolberg.fitnessapp.timer.RestTimerState
 import com.kerimkolberg.fitnessapp.ui.components.formatShortDate
 import com.kerimkolberg.fitnessapp.ui.components.rememberNotificationPermissionRequester
@@ -77,6 +81,7 @@ import java.time.LocalDate
 fun ExerciseLogScreen(
     onBack: () -> Unit,
     onEditExercise: (String) -> Unit,
+    onSwitchExercise: (String) -> Unit,
     viewModel: ExerciseLogViewModel = viewModel(factory = ExerciseLogViewModel.Factory),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -87,6 +92,13 @@ fun ExerciseLogScreen(
     val plans by viewModel.plans.collectAsStateWithLifecycle()
     val requestNotificationPermission = rememberNotificationPermissionRequester()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(viewModel.switchTo) {
+        viewModel.switchTo?.let {
+            viewModel.consumeSwitch()
+            onSwitchExercise(it)
+        }
+    }
 
     LaunchedEffect(viewModel.celebration) {
         viewModel.celebration?.let { message ->
@@ -139,6 +151,9 @@ fun ExerciseLogScreen(
                 Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }, text = { Text("Track") })
                 Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }, text = { Text("History") })
                 Tab(selected = selectedTab == 2, onClick = { selectedTab = 2 }, text = { Text("Progress") })
+            }
+            if (state.superset.isNotEmpty()) {
+                SupersetBar(state.superset, currentId = viewModel.exerciseId, onSelect = onSwitchExercise)
             }
             val exercise = state.exercise
             when {
@@ -315,6 +330,21 @@ private fun TrackTab(
                 viewModel.errorMessage?.let { message ->
                     Text(message, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
                 }
+                if (!isEditing && viewModel.canUseDropSets(state)) {
+                    FilterChip(
+                        selected = viewModel.dropMode,
+                        onClick = viewModel::toggleDropMode,
+                        label = {
+                            Text(
+                                if (viewModel.dropMode) {
+                                    "Drop sets on: each save is ${state.settings.dropSetPercent}% lighter"
+                                } else {
+                                    "Drop set (−${state.settings.dropSetPercent}%)"
+                                },
+                            )
+                        },
+                    )
+                }
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Button(onClick = onSave, modifier = Modifier.weight(1f)) {
                         Text(if (isEditing) "Update" else "Save")
@@ -365,6 +395,7 @@ private fun TrackTab(
                 )
             }
         }
+        val labels = setLabels(state.sets)
         itemsIndexed(state.sets, key = { _, set -> set.id }) { index, set ->
             val selected = set.id == viewModel.selectedSetId
             Row(
@@ -379,10 +410,12 @@ private fun TrackTab(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = "${index + 1}",
-                    modifier = Modifier.width(32.dp),
+                    text = labels[index],
+                    modifier = Modifier.width(if (set.values.isDropSet) 48.dp else 32.dp),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = if (set.values.isDropSet) TextAlign.End else TextAlign.Start,
                 )
+                if (set.values.isDropSet) Spacer(Modifier.width(8.dp))
                 Text(
                     text = formatSet(set.values, type, units),
                     style = MaterialTheme.typography.bodyLarge,
@@ -459,10 +492,11 @@ private fun LazyListScope.historySessions(
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
                     )
+                    val labels = setLabels(session.sets)
                     session.sets.forEachIndexed { index, set ->
                         Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                             Text(
-                                text = "${index + 1}",
+                                text = labels[index],
                                 modifier = Modifier.width(28.dp),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -471,6 +505,31 @@ private fun LazyListScope.historySessions(
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+/** The exercises of a superset, with the current one highlighted. Tap one to switch to it. */
+@Composable
+private fun SupersetBar(members: List<DayExercise>, currentId: String, onSelect: (String) -> Unit) {
+    Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp)) {
+        val position = members.indexOfFirst { it.exerciseId == currentId } + 1
+        Text(
+            text = "Superset · exercise $position of ${members.size}",
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary,
+        )
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(vertical = 4.dp),
+        ) {
+            itemsIndexed(members, key = { _, member -> member.exerciseId }) { index, member ->
+                FilterChip(
+                    selected = member.exerciseId == currentId,
+                    onClick = { if (member.exerciseId != currentId) onSelect(member.exerciseId) },
+                    label = { Text("${index + 1}. ${member.exerciseName}") },
+                )
             }
         }
     }

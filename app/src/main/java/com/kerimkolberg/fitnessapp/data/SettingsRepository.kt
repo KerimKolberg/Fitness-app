@@ -22,6 +22,9 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
             autoStartRestTimer = prefs[AUTO_START_REST_TIMER] ?: defaults.autoStartRestTimer,
             themeMode = prefs[THEME_MODE].toEnumOr(defaults.themeMode),
             weeklyGoal = prefs[WEEKLY_GOAL] ?: defaults.weeklyGoal,
+            dropSetsEnabled = prefs[DROP_SETS_ENABLED] ?: defaults.dropSetsEnabled,
+            dropSetPercent = prefs[DROP_SET_PERCENT] ?: defaults.dropSetPercent,
+            supersetAutoAdvance = prefs[SUPERSET_AUTO_ADVANCE] ?: defaults.supersetAutoAdvance,
         )
     }
 
@@ -46,13 +49,25 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         it[AUTO_START_REST_TIMER] = settings.autoStartRestTimer
         it[THEME_MODE] = settings.themeMode.name
         it[WEEKLY_GOAL] = settings.weeklyGoal.coerceIn(1, 7)
+        it[DROP_SETS_ENABLED] = settings.dropSetsEnabled
+        it[DROP_SET_PERCENT] = settings.dropSetPercent.coerceIn(MIN_DROP_PERCENT, MAX_DROP_PERCENT)
+        it[SUPERSET_AUTO_ADVANCE] = settings.supersetAutoAdvance
     }
+
+    suspend fun setDropSetsEnabled(value: Boolean) = dataStore.edit { it[DROP_SETS_ENABLED] = value }
+
+    suspend fun setDropSetPercent(value: Int) =
+        dataStore.edit { it[DROP_SET_PERCENT] = value.coerceIn(MIN_DROP_PERCENT, MAX_DROP_PERCENT) }
+
+    suspend fun setSupersetAutoAdvance(value: Boolean) = dataStore.edit { it[SUPERSET_AUTO_ADVANCE] = value }
 
     suspend fun setWeeklyGoal(value: Int) = dataStore.edit { it[WEEKLY_GOAL] = value.coerceIn(1, 7) }
 
     companion object {
         const val MIN_REST_SECONDS = 15
         const val MAX_REST_SECONDS = 15 * 60
+        const val MIN_DROP_PERCENT = 5
+        const val MAX_DROP_PERCENT = 50
 
         private val UNIT_SYSTEM = stringPreferencesKey("unit_system")
         private val REST_TIMER_SECONDS = intPreferencesKey("rest_timer_seconds")
@@ -60,6 +75,9 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         private val THEME_MODE = stringPreferencesKey("theme_mode")
         private val WEEKLY_GOAL = intPreferencesKey("weekly_goal")
         private val LAST_BACKUP_AT = longPreferencesKey("last_backup_at")
+        private val DROP_SETS_ENABLED = booleanPreferencesKey("drop_sets_enabled")
+        private val DROP_SET_PERCENT = intPreferencesKey("drop_set_percent")
+        private val SUPERSET_AUTO_ADVANCE = booleanPreferencesKey("superset_auto_advance")
     }
 }
 

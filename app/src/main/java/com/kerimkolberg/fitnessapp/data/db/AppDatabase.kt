@@ -18,13 +18,15 @@ import androidx.room.TypeConverters
         RoutineExerciseEntity::class,
         BodyMeasurementEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = true,
     autoMigrations = [
         // v2 adds routines and body measurements (new tables only).
         AutoMigration(from = 1, to = 2),
         // v3 adds exercise tempo and per-side flag, and set effort (RPE).
         AutoMigration(from = 2, to = 3),
+        // v4 adds drop sets and supersets.
+        AutoMigration(from = 3, to = 4),
     ],
 )
 @TypeConverters(Converters::class)

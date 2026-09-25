@@ -52,6 +52,8 @@ data class SetValues(
     val durationSeconds: Int? = null,
     val rpe: Int? = null,
     val note: String = "",
+    /** Done right after the previous set with less weight, without rest. */
+    val isDropSet: Boolean = false,
 )
 
 data class SetEntry(
@@ -67,7 +69,12 @@ data class DayExercise(
     val exerciseType: ExerciseType,
     val categoryColor: Int,
     val sets: List<SetEntry>,
+    /** Exercises of the same day with the same id are done as a superset. */
+    val supersetId: String? = null,
 )
+
+/** Supersets can hold at most this many exercises. */
+const val MAX_SUPERSET_SIZE = 6
 
 /** All sets of one exercise on one date, used for history and "last time" hints. */
 data class HistorySession(

@@ -11,7 +11,9 @@ import androidx.lifecycle.viewModelScope
 import androidx.navigation.toRoute
 import com.kerimkolberg.fitnessapp.data.ExerciseRepository
 import com.kerimkolberg.fitnessapp.data.RoutineRepository
+import com.kerimkolberg.fitnessapp.data.WorkoutRepository
 import com.kerimkolberg.fitnessapp.model.Category
+import com.kerimkolberg.fitnessapp.model.MAX_SUPERSET_SIZE
 import com.kerimkolberg.fitnessapp.model.Routine
 import com.kerimkolberg.fitnessapp.ui.ExercisePickerRoute
 import com.kerimkolberg.fitnessapp.ui.appViewModelFactory
@@ -21,6 +23,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 
 data class ExercisePickerUiState(
     val categories: List<Category> = emptyList(),
@@ -34,9 +37,19 @@ class ExercisePickerViewModel(
     savedStateHandle: SavedStateHandle,
     repository: ExerciseRepository,
     private val routineRepository: RoutineRepository,
+    private val workoutRepository: WorkoutRepository,
 ) : ViewModel() {
+    private val route = savedStateHandle.toRoute<ExercisePickerRoute>()
+
     /** Set when picking an exercise to add to this routine instead of logging it. */
-    val routineId: String? = savedStateHandle.toRoute<ExercisePickerRoute>().routineId
+    val routineId: String? = route.routineId
+
+    /** True when picking several exercises to group as a superset. */
+    val supersetMode: Boolean = route.superset
+
+    /** The exercises picked for the superset, in the order they will be done. */
+    var supersetPicks by mutableStateOf<List<String>>(emptyList())
+        private set
 
     /** Held as Compose state (not a flow) so the search field never lags behind typing. */
     var query by mutableStateOf("")
@@ -76,13 +89,33 @@ class ExercisePickerViewModel(
     /** Logs the exercise, or adds it to the routine being edited and then calls [onAddedToRoutine]. */
     fun pick(exerciseId: String, onLog: (String) -> Unit, onAddedToRoutine: () -> Unit) {
         val routine = routineId
-        if (routine == null) {
+        if (supersetMode) {
+            togglePick(exerciseId)
+        } else if (routine == null) {
             onLog(exerciseId)
         } else {
             viewModelScope.launch {
                 routineRepository.addExercise(routine, exerciseId)
                 onAddedToRoutine()
             }
+        }
+    }
+
+    private fun togglePick(exerciseId: String) {
+        supersetPicks = when {
+            exerciseId in supersetPicks -> supersetPicks - exerciseId
+            supersetPicks.size < MAX_SUPERSET_SIZE -> supersetPicks + exerciseId
+            else -> supersetPicks
+        }
+    }
+
+    /** Groups the picked exercises as a superset on the day, then calls [onCreated] with the first one. */
+    fun createSuperset(onCreated: (String) -> Unit) {
+        val picks = supersetPicks
+        if (picks.size < 2) return
+        viewModelScope.launch {
+            workoutRepository.createSuperset(LocalDate.ofEpochDay(route.epochDay), picks)
+            onCreated(picks.first())
         }
     }
 
@@ -100,7 +133,12 @@ class ExercisePickerViewModel(
 
     companion object {
         val Factory = appViewModelFactory { container ->
-            ExercisePickerViewModel(createSavedStateHandle(), container.exerciseRepository, container.routineRepository)
+            ExercisePickerViewModel(
+                createSavedStateHandle(),
+                container.exerciseRepository,
+                container.routineRepository,
+                container.workoutRepository,
+            )
         }
     }
 }

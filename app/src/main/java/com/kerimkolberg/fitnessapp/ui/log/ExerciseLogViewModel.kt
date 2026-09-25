@@ -13,17 +13,24 @@ import com.kerimkolberg.fitnessapp.data.GameRepository
 import com.kerimkolberg.fitnessapp.data.RoutineRepository
 import com.kerimkolberg.fitnessapp.data.SettingsRepository
 import com.kerimkolberg.fitnessapp.data.WorkoutRepository
+import com.kerimkolberg.fitnessapp.model.DayExercise
 import com.kerimkolberg.fitnessapp.model.Exercise
+import com.kerimkolberg.fitnessapp.model.ExerciseType
 import com.kerimkolberg.fitnessapp.model.GameStats
-import com.kerimkolberg.fitnessapp.model.XpRules
-import com.kerimkolberg.fitnessapp.model.celebrationsBetween
-import com.kerimkolberg.fitnessapp.model.recordScore
 import com.kerimkolberg.fitnessapp.model.HistorySession
 import com.kerimkolberg.fitnessapp.model.Routine
 import com.kerimkolberg.fitnessapp.model.SetEntry
 import com.kerimkolberg.fitnessapp.model.Settings
 import com.kerimkolberg.fitnessapp.model.UnitSystem
+import com.kerimkolberg.fitnessapp.model.XpRules
+import com.kerimkolberg.fitnessapp.model.celebrationsBetween
+import com.kerimkolberg.fitnessapp.model.dropSetWeightKg
+import com.kerimkolberg.fitnessapp.model.formatNumber
+import com.kerimkolberg.fitnessapp.model.isLastInSuperset
+import com.kerimkolberg.fitnessapp.model.nextInSuperset
+import com.kerimkolberg.fitnessapp.model.parseDecimal
 import com.kerimkolberg.fitnessapp.model.personalRecordSetIds
+import com.kerimkolberg.fitnessapp.model.recordScore
 import com.kerimkolberg.fitnessapp.timer.RestTimer
 import com.kerimkolberg.fitnessapp.timer.RestTimerState
 import com.kerimkolberg.fitnessapp.ui.ExerciseLogRoute
@@ -47,6 +54,8 @@ data class ExerciseLogUiState(
     /** Sets that were a personal record when logged. */
     val recordSetIds: Set<String> = emptySet(),
     val settings: Settings = Settings(),
+    /** The exercises of this exercise's superset on the screen's date, in order; empty if none. */
+    val superset: List<DayExercise> = emptyList(),
     val isLoading: Boolean = true,
 )
 
@@ -81,14 +90,26 @@ class ExerciseLogViewModel(
     var celebration by mutableStateOf<String?>(null)
         private set
 
+    /** When on, new sets are saved as drop sets and the weight is lowered for the next one. */
+    var dropMode by mutableStateOf(false)
+        private set
+
+    /** The superset exercise to open next, after a set was saved. */
+    var switchTo by mutableStateOf<String?>(null)
+        private set
+
     val timerState: StateFlow<RestTimerState> = restTimer.state
 
     val uiState: StateFlow<ExerciseLogUiState> = combine(
         exerciseRepository.observeExercise(exerciseId),
         workoutRepository.observeHistory(exerciseId),
         settingsRepository.settings,
-    ) { exercise, history, settings ->
+        workoutRepository.observeDay(date),
+    ) { exercise, history, settings, day ->
+        val supersetId = day.firstOrNull { it.exerciseId == exerciseId }?.supersetId
+        val superset = supersetId?.let { id -> day.filter { it.supersetId == id } }.orEmpty()
         ExerciseLogUiState(
+            superset = if (superset.size >= 2) superset else emptyList(),
             exercise = exercise,
             units = settings.unitSystem,
             sets = history.firstOrNull { it.date == date }?.sets.orEmpty(),
@@ -137,19 +158,31 @@ class ExerciseLogViewModel(
             is SetInput.Result.Valid -> {
                 val editingId = selectedSetId
                 selectedSetId = null
+                if (editingId != null) {
+                    // Editing keeps whether the set was a drop set.
+                    val wasDrop = state.sets.firstOrNull { it.id == editingId }?.values?.isDropSet == true
+                    viewModelScope.launch { workoutRepository.updateSet(editingId, result.values.copy(isDropSet = wasDrop)) }
+                    return
+                }
+                val isDrop = dropMode && canUseDropSets(state)
+                val values = result.values.copy(isDropSet = isDrop)
+                val memberIds = state.superset.map { it.exerciseId }
                 viewModelScope.launch {
-                    if (editingId != null) {
-                        workoutRepository.updateSet(editingId, result.values)
-                    } else {
-                        val best = state.history.flatMap { it.sets }.mapNotNull { recordScore(it.values, exercise.type) }.maxOrNull()
-                        val score = recordScore(result.values, exercise.type)
-                        workoutRepository.addSet(date, exerciseId, result.values)
-                        if (best != null && score != null && score > best) {
-                            celebrate(listOf("⭐ New personal record! +${XpRules.PER_RECORD} XP"))
-                        }
-                        if (state.settings.autoStartRestTimer) {
-                            restTimer.start(state.settings.restTimerSeconds)
-                        }
+                    val best = state.history.flatMap { it.sets }.mapNotNull { recordScore(it.values, exercise.type) }.maxOrNull()
+                    val score = recordScore(values, exercise.type)
+                    workoutRepository.addSet(date, exerciseId, values)
+                    if (best != null && score != null && score > best) {
+                        celebrate(listOf("⭐ New personal record! +${XpRules.PER_RECORD} XP"))
+                    }
+                    // In a superset, rest only after the last exercise of the round.
+                    if (state.settings.autoStartRestTimer && isLastInSuperset(memberIds, exerciseId)) {
+                        restTimer.start(state.settings.restTimerSeconds)
+                    }
+                    if (isDrop) {
+                        // Ready for the next drop: lighter again.
+                        lowerWeightForDrop(state)
+                    } else if (state.settings.supersetAutoAdvance) {
+                        switchTo = nextInSuperset(memberIds, exerciseId)
                     }
                 }
             }
@@ -174,6 +207,25 @@ class ExerciseLogViewModel(
     }
 
     fun clearInput() = updateInput(SetInput())
+
+    fun canUseDropSets(state: ExerciseLogUiState = uiState.value): Boolean =
+        state.settings.dropSetsEnabled && state.exercise?.type == ExerciseType.WEIGHT_REPS
+
+    /** Turns drop set mode on (lowering the weight right away) or off. */
+    fun toggleDropMode() {
+        dropMode = !dropMode
+        if (dropMode) lowerWeightForDrop(uiState.value)
+    }
+
+    private fun lowerWeightForDrop(state: ExerciseLogUiState) {
+        val current = parseDecimal(input.weight) ?: return
+        val kg = dropSetWeightKg(state.units.weightToKg(current), state.settings.dropSetPercent, state.units)
+        updateInput(input.copy(weight = formatNumber(state.units.weightFromKg(kg))))
+    }
+
+    fun consumeSwitch() {
+        switchTo = null
+    }
 
     fun setInPlan(planId: String, inPlan: Boolean) {
         viewModelScope.launch {

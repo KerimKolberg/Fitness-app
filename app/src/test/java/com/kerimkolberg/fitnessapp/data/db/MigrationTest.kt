@@ -69,12 +69,28 @@ class MigrationTest {
         db.close()
     }
 
+    /** Rows using only the version 1 columns, which every later version still has. */
     private fun SQLiteDatabase.seedVersion1Rows() {
-        execSQL("INSERT INTO categories VALUES ('c', 'Chest', -1, 0, 1, 1, NULL)")
-        execSQL("INSERT INTO exercises VALUES ('e', 'Bench', 'c', 'WEIGHT_REPS', '', 1, 1, 1, NULL)")
-        execSQL("INSERT INTO workouts VALUES ('w', ${day.toEpochDay()}, '', 1, 1, NULL)")
-        execSQL("INSERT INTO workout_exercises VALUES ('we', 'w', 'e', 0, 1, 1, NULL)")
-        execSQL("INSERT INTO workout_sets VALUES ('s', 'we', 0, 100.0, 5, NULL, NULL, '', 1, 1, NULL)")
+        execSQL(
+            "INSERT INTO categories (id, name, color, sortOrder, createdAt, updatedAt) " +
+                "VALUES ('c', 'Chest', -1, 0, 1, 1)",
+        )
+        execSQL(
+            "INSERT INTO exercises (id, name, categoryId, type, notes, isCustom, createdAt, updatedAt) " +
+                "VALUES ('e', 'Bench', 'c', 'WEIGHT_REPS', '', 1, 1, 1)",
+        )
+        execSQL(
+            "INSERT INTO workouts (id, date, comment, createdAt, updatedAt) " +
+                "VALUES ('w', ${day.toEpochDay()}, '', 1, 1)",
+        )
+        execSQL(
+            "INSERT INTO workout_exercises (id, workoutId, exerciseId, sortOrder, createdAt, updatedAt) " +
+                "VALUES ('we', 'w', 'e', 0, 1, 1)",
+        )
+        execSQL(
+            "INSERT INTO workout_sets (id, workoutExerciseId, sortOrder, weightKg, reps, comment, createdAt, updatedAt) " +
+                "VALUES ('s', 'we', 0, 100.0, 5, '', 1, 1)",
+        )
     }
 
     private fun openCurrent(): AppDatabase =
@@ -112,5 +128,22 @@ class MigrationTest {
         assertEquals(listOf("e"), RoutineRepository(db).exerciseIds("r"))
         assertEquals(80.5, BodyRepository(db.bodyDao()).measurements.first().single().value, 0.0)
         assertEquals(5, WorkoutRepository(db).observeDay(day).first().single().sets.single().values.reps)
+    }
+
+    @Test
+    fun fromVersion3() = runTest {
+        createOldDatabase(3) {
+            seedVersion1Rows()
+            execSQL("UPDATE exercises SET tempo = '5-0-1-0', perSide = 1 WHERE id = 'e'")
+            execSQL("UPDATE workout_sets SET rpe = 8 WHERE id = 's'")
+        }
+        val db = openCurrent()
+
+        val logged = WorkoutRepository(db).observeDay(day).first().single()
+        val set = logged.sets.single().values
+        assertEquals(8, set.rpe)
+        assertFalse(set.isDropSet)
+        assertNull(logged.supersetId)
+        assertEquals("5-0-1-0", ExerciseRepository(db.exerciseDao()).getExercise("e")!!.tempo)
     }
 }

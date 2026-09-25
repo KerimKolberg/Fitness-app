@@ -251,4 +251,33 @@ class RepositoryTest {
         assertEquals(1, stats.totalWorkouts)
         assertTrue(stats.xp > 0)
     }
+
+    @Test
+    fun supersetsGroupExercisesOnADay() = runTest {
+        exercises.addMissingBuiltIns()
+        val row = BuiltInExercises.stableId("exercise", "barbell-row")
+        // Bench is already on the day with a set; squat and row are added by the superset.
+        workouts.addSet(day, bench, SetValues(weightKg = 100.0, reps = 5))
+        val supersetId = workouts.createSuperset(day, listOf(bench, squat, row))
+
+        val logged = workouts.observeDay(day).first()
+        assertEquals(listOf(bench, squat, row), logged.map { it.exerciseId })
+        assertTrue(logged.all { it.supersetId == supersetId })
+        assertEquals(1, logged.first().sets.size)
+
+        workouts.ungroupSuperset(supersetId)
+        assertTrue(workouts.observeDay(day).first().all { it.supersetId == null })
+    }
+
+    @Test
+    fun dropSetsAreStored() = runTest {
+        exercises.addMissingBuiltIns()
+        workouts.addSet(day, bench, SetValues(weightKg = 100.0, reps = 8))
+        val drop = workouts.addSet(day, bench, SetValues(weightKg = 80.0, reps = 6, isDropSet = true))
+        val sets = workouts.observeDay(day).first().single().sets
+        assertEquals(listOf(false, true), sets.map { it.values.isDropSet })
+
+        workouts.updateSet(drop, SetValues(weightKg = 75.0, reps = 6, isDropSet = true))
+        assertTrue(workouts.observeHistory(bench).first().single().sets.last().values.isDropSet)
+    }
 }

@@ -24,9 +24,12 @@ import kotlinx.serialization.Serializable
 @Serializable
 object WorkoutRoute
 
-/** Picks an exercise to log on a day, or to add to a routine when [routineId] is set. */
+/**
+ * Picks an exercise to log on a day, or to add to a routine when [routineId] is set, or several
+ * exercises to group as a superset on the day when [superset] is true.
+ */
 @Serializable
-data class ExercisePickerRoute(val epochDay: Long = 0, val routineId: String? = null)
+data class ExercisePickerRoute(val epochDay: Long = 0, val routineId: String? = null, val superset: Boolean = false)
 
 @Serializable
 data class EditExerciseRoute(val exerciseId: String? = null)
@@ -69,6 +72,7 @@ fun AppNavHost(navController: NavHostController = rememberNavController()) {
                 onOpenRoutines = { navController.navigate(RoutinesRoute) },
                 onOpenBody = { navController.navigate(BodyRoute) },
                 onOpenAchievements = { navController.navigate(AchievementsRoute) },
+                onNewSuperset = { date -> navController.navigate(ExercisePickerRoute(date.toEpochDay(), superset = true)) },
             )
         }
         composable<ExercisePickerRoute> { entry ->
@@ -82,6 +86,11 @@ fun AppNavHost(navController: NavHostController = rememberNavController()) {
                 },
                 onCreateExercise = { navController.navigate(EditExerciseRoute()) },
                 onEditExercise = { exerciseId -> navController.navigate(EditExerciseRoute(exerciseId)) },
+                onSupersetCreated = { firstExerciseId ->
+                    navController.navigate(ExerciseLogRoute(route.epochDay, firstExerciseId)) {
+                        popUpTo<ExercisePickerRoute> { inclusive = true }
+                    }
+                },
             )
         }
         composable<EditExerciseRoute> {
@@ -99,10 +108,17 @@ fun AppNavHost(navController: NavHostController = rememberNavController()) {
                 },
             )
         }
-        composable<ExerciseLogRoute> {
+        composable<ExerciseLogRoute> { entry ->
+            val route = entry.toRoute<ExerciseLogRoute>()
             ExerciseLogScreen(
                 onBack = { navController.popBackStack() },
                 onEditExercise = { exerciseId -> navController.navigate(EditExerciseRoute(exerciseId)) },
+                onSwitchExercise = { exerciseId ->
+                    // Swap to the other superset exercise, so Back still returns to the day.
+                    navController.navigate(ExerciseLogRoute(route.epochDay, exerciseId)) {
+                        popUpTo<ExerciseLogRoute> { inclusive = true }
+                    }
+                },
             )
         }
         composable<CalendarRoute> {

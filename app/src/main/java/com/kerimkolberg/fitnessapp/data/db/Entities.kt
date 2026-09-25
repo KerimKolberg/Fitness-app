@@ -73,6 +73,8 @@ data class WorkoutExerciseEntity(
     val createdAt: Long,
     val updatedAt: Long,
     val deletedAt: Long? = null,
+    /** Exercises sharing this id are done as a superset (added in v4). */
+    val supersetId: String? = null,
 )
 
 @Entity(
@@ -100,6 +102,8 @@ data class WorkoutSetEntity(
     val deletedAt: Long? = null,
     /** Effort 1-10, added in v3. */
     val rpe: Int? = null,
+    /** A drop set: done right after the previous set with less weight (added in v4). */
+    @ColumnInfo(defaultValue = "0") val isDropSet: Boolean = false,
 )
 
 @Entity(tableName = "routines")

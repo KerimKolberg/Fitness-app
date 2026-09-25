@@ -1,4 +1,4 @@
-# Fitness App — Roadmap
+# KK-Fittracking — Roadmap
 
 A customized Android gym workout tracker inspired by FitNotes, published on Google Play.
 
@@ -53,11 +53,12 @@ v1 is fully offline, but the data layer follows these rules so sync/accounts can
 - [ ] Progression suggestions
 - [ ] Home-screen widget
 - [ ] Wear OS companion (Galaxy Watch, Pixel Watch): log sets and run the rest timer from the wrist, synced with the phone
+- [ ] Health Connect: read daily steps (and optionally heart rate) that Samsung Health, Google Fit, Fitbit and watches already record; write finished workouts back so they show up in those apps
 - [ ] Cloud sync + accounts (see "Keeping the door open for cloud sync")
 
 ## Data model
 
-Category, Exercise, Workout, WorkoutExercise and Set exist since Phase 1; Routine, RoutineExercise and BodyMeasurement since Phase 2 (database version 2); exercise tempo/perSide and set RPE since Phase 2b (version 3) (`app/src/main/java/.../data/db/Entities.kt`); the rest are planned. All tables use `id: UUID`, `createdAt`, `updatedAt`, `deletedAt?`.
+Category, Exercise, Workout, WorkoutExercise and Set exist since Phase 1; Routine, RoutineExercise and BodyMeasurement since Phase 2 (database version 2); exercise tempo/perSide and set RPE since Phase 2b (version 3); drop sets and supersets since Phase 2c (version 4) (`app/src/main/java/.../data/db/Entities.kt`); the rest are planned. All tables use `id: UUID`, `createdAt`, `updatedAt`, `deletedAt?`.
 
 - **Category**: name, color, sortOrder
 - **Exercise**: name, categoryId, type (WEIGHT_REPS / REPS / DISTANCE_TIME / TIME), notes, isCustom
@@ -120,6 +121,11 @@ Broaden the library beyond gym lifts. Each group needs the right way to log it:
 - [x] 14 achievements, including variety ones for mobility, tendons, plyometrics and sports
 - [x] Celebrations after saving a set (record, achievement, level up, weekly goal)
 - [ ] Ideas for later: challenges (e.g. "30 days of mobility"), yearly summary, share cards
+
+### Phase 2c: Training techniques
+- [x] Drop sets: a "Drop set" option when logging, each drop lighter by a set percentage (Settings, default 20%, rounded to 0.5 kg / 1 lb); shown as ↘ under the set they continue
+- [x] Supersets and circuits of 2 to 6 exercises on a workout day: pick them in order, log round by round (the app opens the next exercise after each set), rest timer only after the last exercise of a round, ungroup any time
+- [ ] Supersets saved inside plans
 
 ### Phase 3: Data safety
 - [x] Backup to a JSON file anywhere the file picker reaches (Drive, Downloads…), with "last backup" shown in Settings

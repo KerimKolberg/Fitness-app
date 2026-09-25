@@ -96,6 +96,19 @@ class SettingsViewModel(
         viewModelScope.launch { repository.setAutoStartRestTimer(value) }
     }
 
+    fun setDropSetsEnabled(value: Boolean) {
+        viewModelScope.launch { repository.setDropSetsEnabled(value) }
+    }
+
+    fun changeDropSetPercent(delta: Int) {
+        val current = settings.value ?: return
+        viewModelScope.launch { repository.setDropSetPercent(current.dropSetPercent + delta) }
+    }
+
+    fun setSupersetAutoAdvance(value: Boolean) {
+        viewModelScope.launch { repository.setSupersetAutoAdvance(value) }
+    }
+
     fun setThemeMode(value: ThemeMode) {
         viewModelScope.launch { repository.setThemeMode(value) }
     }

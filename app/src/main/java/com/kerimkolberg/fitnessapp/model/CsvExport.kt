@@ -21,16 +21,19 @@ object CsvExport {
             "Date", "Exercise", "Category", "Set",
             "Weight (${units.weightUnit})", "Reps",
             "Distance (${units.distanceUnit})", "Height (${units.lengthUnit})",
-            "Time (s)", "RPE", "Note",
+            "Time (s)", "RPE", "Note", "Drop set",
         )
         val rows = sets.groupBy { it.date to it.exercise }.values.flatMap { exerciseSets ->
-            exerciseSets.mapIndexed { index, set ->
+            // Drop sets share the number of the set they continue.
+            var number = 0
+            exerciseSets.map { set ->
                 val v = set.values
+                if (!v.isDropSet || number == 0) number++
                 listOf(
                     set.date.toString(),
                     set.exercise,
                     set.category,
-                    (index + 1).toString(),
+                    number.toString(),
                     v.weightKg?.takeIf { set.type.usesWeight }?.let { formatNumber(units.weightFromKg(it)) }.orEmpty(),
                     v.reps?.toString().orEmpty(),
                     v.distanceMeters?.takeIf { set.type.usesDistance }?.let { formatNumber(units.distanceFromMeters(it)) }.orEmpty(),
@@ -38,6 +41,7 @@ object CsvExport {
                     v.durationSeconds?.toString().orEmpty(),
                     v.rpe?.toString().orEmpty(),
                     v.note,
+                    if (v.isDropSet) "yes" else "",
                 )
             }
         }

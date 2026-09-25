@@ -8,6 +8,7 @@ import com.kerimkolberg.fitnessapp.data.db.WorkoutExerciseEntity
 import com.kerimkolberg.fitnessapp.data.db.WorkoutSetEntity
 import com.kerimkolberg.fitnessapp.model.DayExercise
 import com.kerimkolberg.fitnessapp.model.HistorySession
+import com.kerimkolberg.fitnessapp.model.MAX_SUPERSET_SIZE
 import com.kerimkolberg.fitnessapp.model.SetEntry
 import com.kerimkolberg.fitnessapp.model.SetValues
 import kotlinx.coroutines.flow.Flow
@@ -53,6 +54,7 @@ class WorkoutRepository(
                 durationSeconds = values.durationSeconds,
                 comment = values.note,
                 rpe = values.rpe,
+                isDropSet = values.isDropSet,
                 createdAt = time,
                 updatedAt = time,
             )
@@ -70,6 +72,7 @@ class WorkoutRepository(
                 durationSeconds = values.durationSeconds,
                 rpe = values.rpe,
                 comment = values.note,
+                isDropSet = values.isDropSet,
                 updatedAt = now(),
             ),
         )
@@ -123,6 +126,28 @@ class WorkoutRepository(
             updatedAt = time,
         ).also { dao.insertWorkoutExercise(it) }
 
+    /**
+     * Groups exercises into a superset on [date], adding any that are not on that day yet. Exercises
+     * already in another superset leave it. Returns the new superset id.
+     */
+    suspend fun createSuperset(date: LocalDate, exerciseIds: List<String>): String {
+        val ids = exerciseIds.distinct()
+        require(ids.size in 2..MAX_SUPERSET_SIZE) { "A superset has 2 to $MAX_SUPERSET_SIZE exercises" }
+        return database.withTransaction {
+            val time = now()
+            val workout = getOrCreateWorkout(date, time)
+            val entries = ids.map { getOrCreateWorkoutExercise(workout, it, time) }
+            val supersetId = newId()
+            dao.setSuperset(entries.map { it.id }, supersetId, time)
+            supersetId
+        }
+    }
+
+    /** Turns a superset back into separate exercises. */
+    suspend fun ungroupSuperset(supersetId: String) {
+        dao.clearSuperset(supersetId, now())
+    }
+
     /** Removes an exercise and all its sets from a day. */
     suspend fun deleteWorkoutExercise(workoutExerciseId: String) {
         database.withTransaction {
@@ -142,6 +167,7 @@ private fun groupDayRows(rows: List<DayRow>): List<DayExercise> =
             exerciseName = first.exerciseName,
             exerciseType = first.exerciseType,
             categoryColor = first.categoryColor,
+            supersetId = first.supersetId,
             sets = exerciseRows.mapNotNull { row ->
                 row.setId?.let { id ->
                     SetEntry(
@@ -153,6 +179,7 @@ private fun groupDayRows(rows: List<DayRow>): List<DayExercise> =
                             durationSeconds = row.durationSeconds,
                             rpe = row.rpe,
                             note = row.comment.orEmpty(),
+                            isDropSet = row.isDropSet == true,
                         ),
                     )
                 }
@@ -169,5 +196,6 @@ private fun WorkoutSetEntity.toSetEntry() = SetEntry(
         durationSeconds = durationSeconds,
         rpe = rpe,
         note = comment,
+        isDropSet = isDropSet,
     ),
 )

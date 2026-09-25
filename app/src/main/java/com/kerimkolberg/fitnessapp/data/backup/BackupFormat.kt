@@ -88,6 +88,7 @@ data class WorkoutExerciseDto(
     val createdAt: Long,
     val updatedAt: Long,
     val deletedAt: Long? = null,
+    val supersetId: String? = null,
 )
 
 @Serializable
@@ -101,6 +102,7 @@ data class SetDto(
     val durationSeconds: Int? = null,
     val rpe: Int? = null,
     val comment: String = "",
+    val isDropSet: Boolean = false,
     val createdAt: Long,
     val updatedAt: Long,
     val deletedAt: Long? = null,
@@ -145,6 +147,9 @@ data class SettingsDto(
     val autoStartRestTimer: Boolean,
     val themeMode: String,
     val weeklyGoal: Int = 3,
+    val dropSetsEnabled: Boolean = true,
+    val dropSetPercent: Int = 20,
+    val supersetAutoAdvance: Boolean = true,
 )
 
 /** A backup that cannot be restored, with a message for the user. */
@@ -163,9 +168,9 @@ object BackupJson {
         val file = try {
             json.decodeFromString(BackupFile.serializer(), text)
         } catch (e: SerializationException) {
-            throw BackupException("This is not a Fitness App backup file, or it is damaged.", e)
+            throw BackupException("This is not a KK-Fittracking backup file, or it is damaged.", e)
         } catch (e: IllegalArgumentException) {
-            throw BackupException("This is not a Fitness App backup file, or it is damaged.", e)
+            throw BackupException("This is not a KK-Fittracking backup file, or it is damaged.", e)
         }
         if (file.formatVersion > BackupFile.CURRENT_FORMAT_VERSION) {
             throw BackupException("This backup was made by a newer version of the app. Update the app first.")

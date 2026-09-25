@@ -137,27 +137,55 @@ fun SettingsScreen(
                     Text("+", style = MaterialTheme.typography.titleLarge)
                 }
             }
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .toggleable(
-                        value = current.autoStartRestTimer,
-                        onValueChange = viewModel::setAutoStartRestTimer,
-                        role = Role.Switch,
-                    )
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Start automatically")
+            SwitchRow(
+                title = "Start automatically",
+                subtitle = "Start the timer each time you save a set (in a superset: after the last exercise of each round)",
+                checked = current.autoStartRestTimer,
+                onCheckedChange = viewModel::setAutoStartRestTimer,
+            )
+            HorizontalDivider(Modifier.padding(vertical = 8.dp))
+
+            SectionTitle("Drop sets and supersets")
+            SwitchRow(
+                title = "Drop sets",
+                subtitle = "Show a \"Drop set\" option when logging weight and reps",
+                checked = current.dropSetsEnabled,
+                onCheckedChange = viewModel::setDropSetsEnabled,
+            )
+            if (current.dropSetsEnabled) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Weight drop per drop set")
+                        Text(
+                            text = "Rounded to 0.5 kg or 1 lb",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    FilledTonalIconButton(onClick = { viewModel.changeDropSetPercent(-5) }) {
+                        Text("−", style = MaterialTheme.typography.titleLarge)
+                    }
                     Text(
-                        text = "Start the timer each time you save a set",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        text = "${current.dropSetPercent}%",
+                        modifier = Modifier.padding(horizontal = 12.dp),
+                        style = MaterialTheme.typography.titleMedium,
                     )
+                    FilledTonalIconButton(onClick = { viewModel.changeDropSetPercent(5) }) {
+                        Text("+", style = MaterialTheme.typography.titleLarge)
+                    }
                 }
-                Switch(checked = current.autoStartRestTimer, onCheckedChange = null)
             }
+            SwitchRow(
+                title = "Supersets: go to the next exercise",
+                subtitle = "After saving a set in a superset, open the next exercise of the superset",
+                checked = current.supersetAutoAdvance,
+                onCheckedChange = viewModel::setSupersetAutoAdvance,
+            )
             HorizontalDivider(Modifier.padding(vertical = 8.dp))
 
             SectionTitle("Theme")
@@ -185,16 +213,16 @@ fun SettingsScreen(
                 color = if (lastBackupAt == null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
             )
             ActionRow("Back up to a file", "Saves all workouts, plans, body measurements and settings", viewModel.isBusy) {
-                backupLauncher.launch("fitness-backup-$today.json")
+                backupLauncher.launch("kk-fittracking-backup-$today.json")
             }
             ActionRow("Restore from a backup file", "Replaces the data in the app with the backup", viewModel.isBusy) {
                 restoreLauncher.launch(arrayOf("application/json", "application/octet-stream", "text/plain"))
             }
             ActionRow("Export workouts as CSV", "For Excel or Google Sheets", viewModel.isBusy) {
-                workoutsCsvLauncher.launch("fitness-workouts-$today.csv")
+                workoutsCsvLauncher.launch("kk-fittracking-workouts-$today.csv")
             }
             ActionRow("Export body measurements as CSV", "For Excel or Google Sheets", viewModel.isBusy) {
-                bodyCsvLauncher.launch("fitness-body-$today.csv")
+                bodyCsvLauncher.launch("kk-fittracking-body-$today.csv")
             }
             HorizontalDivider(Modifier.padding(vertical = 8.dp))
 
@@ -209,6 +237,27 @@ fun SettingsScreen(
 
     viewModel.pendingRestore?.let { file ->
         RestoreDialog(file, onConfirm = viewModel::confirmRestore, onDismiss = viewModel::cancelRestore)
+    }
+}
+
+@Composable
+private fun SwitchRow(title: String, subtitle: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .toggleable(value = checked, onValueChange = onCheckedChange, role = Role.Switch)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(title)
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Switch(checked = checked, onCheckedChange = null)
     }
 }
 

@@ -17,10 +17,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -40,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kerimkolberg.fitnessapp.model.ExerciseType
+import com.kerimkolberg.fitnessapp.model.MAX_SUPERSET_SIZE
 import com.kerimkolberg.fitnessapp.ui.components.ColorDot
 
 @Composable
@@ -48,6 +52,7 @@ fun ExercisePickerScreen(
     onLogExercise: (String) -> Unit,
     onCreateExercise: () -> Unit,
     onEditExercise: (String) -> Unit,
+    onSupersetCreated: (firstExerciseId: String) -> Unit = {},
     viewModel: ExercisePickerViewModel = viewModel(factory = ExercisePickerViewModel.Factory),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -55,7 +60,15 @@ fun ExercisePickerScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (viewModel.routineId != null) "Add to plan" else "Choose exercise") },
+                title = {
+                    Text(
+                        when {
+                            viewModel.supersetMode -> "New superset (${viewModel.supersetPicks.size}/$MAX_SUPERSET_SIZE)"
+                            viewModel.routineId != null -> "Add to plan"
+                            else -> "Choose exercise"
+                        },
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -68,12 +81,30 @@ fun ExercisePickerScreen(
                 },
             )
         },
+        floatingActionButton = {
+            if (viewModel.supersetMode && viewModel.supersetPicks.size >= 2) {
+                ExtendedFloatingActionButton(
+                    onClick = { viewModel.createSuperset(onSupersetCreated) },
+                    text = { Text("Create superset (${viewModel.supersetPicks.size})") },
+                    icon = { Icon(Icons.Default.Check, contentDescription = null) },
+                )
+            }
+        },
     ) { padding ->
         Column(
             modifier = Modifier
                 .padding(padding)
                 .fillMaxSize(),
         ) {
+            if (viewModel.supersetMode) {
+                Text(
+                    text = "Tick 2 to $MAX_SUPERSET_SIZE exercises in the order you will do them. " +
+                        "Exercises already on this day are moved into the superset.",
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             OutlinedTextField(
                 value = viewModel.query,
                 onValueChange = viewModel::updateQuery,
@@ -160,8 +191,21 @@ fun ExercisePickerScreen(
                             },
                             leadingContent = { ColorDot(group.category.color) },
                             trailingContent = {
-                                IconButton(onClick = { onEditExercise(exercise.id) }) {
-                                    Icon(Icons.Default.Edit, contentDescription = "Edit ${exercise.name}")
+                                if (viewModel.supersetMode) {
+                                    val position = viewModel.supersetPicks.indexOf(exercise.id)
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        if (position >= 0) {
+                                            Text("${position + 1}", color = MaterialTheme.colorScheme.primary)
+                                        }
+                                        Checkbox(
+                                            checked = position >= 0,
+                                            onCheckedChange = { viewModel.pick(exercise.id, onLogExercise, onBack) },
+                                        )
+                                    }
+                                } else {
+                                    IconButton(onClick = { onEditExercise(exercise.id) }) {
+                                        Icon(Icons.Default.Edit, contentDescription = "Edit ${exercise.name}")
+                                    }
                                 }
                             },
                         )
