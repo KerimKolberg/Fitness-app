@@ -46,8 +46,12 @@ install the new build and restore.)
 
 ## Try it on your watch (Wear OS 3+: Galaxy Watch 4 and later, Pixel Watch)
 
-The watch app shows the guided workout: the exercise and set, weight and reps to adjust with + and −,
-Log set, the rest countdown (it buzzes when the rest is over), Pause, Skip and Stop. It talks to the phone
+The watch app shows the guided workout: the exercise and set, the values to adjust with + and − (weight,
+reps, time, distance, jump height, effort), Log set, the rest countdown (it buzzes when the rest is over),
+Pause, Skip and Stop, and your live heart rate (saved with each set). Runs, walks, rides and sessions can be
+recorded with the watch's sensors: time, GPS distance, steps, heart rate and calories. A **Workout** tile
+shows the exercise and progress at a glance (long-press the watch face or swipe to the tiles to add it).
+On first start the watch asks for heart rate, physical activity and location; each one is optional. It talks to the phone
 over Bluetooth (or Wi-Fi) through the Wear OS Data Layer; the phone keeps all the data.
 
 1. Download the **fitness-app-watch-debug-apk** artifact from the same run as the phone APK, and unzip it.

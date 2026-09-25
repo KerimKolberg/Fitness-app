@@ -25,9 +25,19 @@ data class WatchFields(
     val weight: Boolean = false,
     val reps: Boolean = false,
     val seconds: Boolean = false,
+    /** Distance, in [WatchState.distanceUnit]. */
+    val distance: Boolean = false,
+    /** Jump height or distance, in [WatchState.heightUnit]. */
+    val height: Boolean = false,
+    /** Effort from 1 (very easy) to 10 (maximal). */
+    val intensity: Boolean = false,
     /** "Reps", or "Rounds". */
     val repsLabel: String = "Reps",
 )
+
+/** What the watch can record with its sensors (Health Services), for cardio and sessions. */
+@Serializable
+enum class TrackKind { RUNNING, WALKING, HIKING, BIKING, ROWING, SWIMMING, ELLIPTICAL, STAIRS, HIIT, SPORT, WORKOUT }
 
 /**
  * The guided workout as the watch shows it. Weights are in the user's unit ([weightUnit]), so the
@@ -49,13 +59,18 @@ data class WatchState(
     val of: Int = 0,
     val isDrop: Boolean = false,
     val fields: WatchFields = WatchFields(),
-    /** This exercise's values cannot be entered on the watch (e.g. distance): log it on the phone. */
-    val phoneOnly: Boolean = false,
+    /** The exercise can be recorded with the watch's sensors (time, distance, steps, heart rate). */
+    val track: TrackKind? = null,
     /** Suggested values: the last set, the plan, or the drop set's lighter weight. */
     val weight: Double? = null,
     val reps: Int? = null,
     val seconds: Int? = null,
+    val distance: Double? = null,
+    val height: Double? = null,
+    val intensity: Int? = null,
     val weightUnit: String = "kg",
+    val distanceUnit: String = "km",
+    val heightUnit: String = "cm",
     val weightStep: Double = 2.5,
     val percent: Int = 0,
     /** When the training time started, pauses taken out; null while paused. */
@@ -101,6 +116,13 @@ sealed interface WatchCommand {
         val weight: Double? = null,
         val reps: Int? = null,
         val seconds: Int? = null,
+        /** In the state's distance unit. */
+        val distance: Double? = null,
+        /** In the state's height unit. */
+        val height: Double? = null,
+        val intensity: Int? = null,
+        /** E.g. "♥ 132 bpm" or "8,432 steps · ♥ avg 141 bpm". */
+        val note: String = "",
         val isDrop: Boolean = false,
     ) : WatchCommand
 }

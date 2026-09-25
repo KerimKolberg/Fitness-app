@@ -137,8 +137,9 @@ private fun AllDone(state: WatchState, viewModel: WatchViewModel) {
 @Composable
 private fun Guiding(state: WatchState, viewModel: WatchViewModel) {
     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        val heart = viewModel.health.heartRate?.let { " · ♥ $it" }.orEmpty()
         Text(
-            "${state.position}/${state.of} · ${state.percent}% · ${trainingTime(state)}",
+            "${state.position}/${state.of} · ${state.percent}% · ${trainingTime(state)}$heart",
             style = MaterialTheme.typography.caption2,
             color = MaterialTheme.colors.onSurfaceVariant,
         )
@@ -151,31 +152,12 @@ private fun Guiding(state: WatchState, viewModel: WatchViewModel) {
         )
         Text(state.step, style = MaterialTheme.typography.caption1, color = MaterialTheme.colors.secondary)
         RestCountdown(state)
-        if (state.phoneOnly) {
-            Text("Log this one on the phone", style = MaterialTheme.typography.caption2, textAlign = TextAlign.Center)
+        val tracking = viewModel.health.tracking
+        if (tracking != null) {
+            Tracking(tracking, state, viewModel)
         } else {
-            val fields = state.fields
-            if (fields.weight) {
-                Stepper(
-                    value = "${formatNumber(viewModel.weight)} ${state.weightUnit}",
-                    onMinus = { viewModel.changeWeight(-1) },
-                    onPlus = { viewModel.changeWeight(1) },
-                )
-            }
-            if (fields.reps) {
-                Stepper(
-                    value = "${viewModel.reps} ${fields.repsLabel.lowercase()}",
-                    onMinus = { viewModel.changeReps(-1) },
-                    onPlus = { viewModel.changeReps(1) },
-                )
-            }
-            if (fields.seconds) {
-                Stepper(
-                    value = formatTime(viewModel.seconds * 1000L),
-                    onMinus = { viewModel.changeSeconds(-1) },
-                    onPlus = { viewModel.changeSeconds(1) },
-                )
-            }
+            if (state.track != null) WideChip("▶ Record with the watch", onClick = viewModel::startTracking)
+            Inputs(state, viewModel)
             WideChip(if (state.isDrop) "✓ Log drop set" else "✓ Log set", primary = true, onClick = viewModel::logSet)
         }
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -184,6 +166,46 @@ private fun Guiding(state: WatchState, viewModel: WatchViewModel) {
         }
         StopChip(viewModel)
     }
+}
+
+/** Steppers for the values this exercise records. */
+@Composable
+private fun Inputs(state: WatchState, viewModel: WatchViewModel) {
+    val fields = state.fields
+    if (fields.weight) {
+        Stepper("${formatNumber(viewModel.weight)} ${state.weightUnit}", { viewModel.changeWeight(-1) }, { viewModel.changeWeight(1) })
+    }
+    if (fields.reps) {
+        Stepper("${viewModel.reps} ${fields.repsLabel.lowercase()}", { viewModel.changeReps(-1) }, { viewModel.changeReps(1) })
+    }
+    if (fields.distance) {
+        Stepper("${formatNumber(viewModel.distance)} ${state.distanceUnit}", { viewModel.changeDistance(-1) }, { viewModel.changeDistance(1) })
+    }
+    if (fields.height) {
+        Stepper("${formatNumber(viewModel.height)} ${state.heightUnit}", { viewModel.changeHeight(-1) }, { viewModel.changeHeight(1) })
+    }
+    if (fields.seconds) {
+        Stepper(formatTime(viewModel.seconds * 1000L), { viewModel.changeSeconds(-1) }, { viewModel.changeSeconds(1) })
+    }
+    if (fields.intensity) {
+        val effort = viewModel.intensity.takeIf { it > 0 }?.let { "Effort $it/10" } ?: "Effort –"
+        Stepper(effort, { viewModel.changeIntensity(-1) }, { viewModel.changeIntensity(1) })
+    }
+}
+
+/** Live values while the watch records an activity, and the button to finish it. */
+@Composable
+private fun Tracking(tracking: TrackedActivity, state: WatchState, viewModel: WatchViewModel) {
+    val now = rememberNow()
+    Text(formatTime(tracking.seconds(now) * 1000L), style = MaterialTheme.typography.display3)
+    val perUnit = if (state.distanceUnit == "mi") 1609.344 else 1000.0
+    val details = listOfNotNull(
+        tracking.distanceMeters?.let { "${formatNumber(((it / perUnit) * 100).toInt() / 100.0)} ${state.distanceUnit}" },
+        tracking.steps?.let { "$it steps" },
+        tracking.heartRate?.let { "♥ $it" },
+    )
+    if (details.isNotEmpty()) Text(details.joinToString(" · "), style = MaterialTheme.typography.caption1, textAlign = TextAlign.Center)
+    WideChip("■ Finish", primary = true, onClick = viewModel::finishTracking)
 }
 
 /** The rest the phone's timer is counting down, and what comes after it. */

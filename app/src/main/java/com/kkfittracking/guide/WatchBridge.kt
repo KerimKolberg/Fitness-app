@@ -6,12 +6,12 @@ import com.google.android.gms.wearable.PutDataMapRequest
 import com.google.android.gms.wearable.Wearable
 import com.kkfittracking.data.SettingsRepository
 import com.kkfittracking.data.WorkoutRepository
-import com.kkfittracking.model.ExerciseType
 import com.kkfittracking.model.NextStep
 import com.kkfittracking.model.SetValues
 import com.kkfittracking.model.Settings
 import com.kkfittracking.model.UnitSystem
 import com.kkfittracking.model.guideSuggestion
+import com.kkfittracking.model.trackKind
 import com.kkfittracking.model.nextStep
 import com.kkfittracking.model.supersetContextOf
 import com.kkfittracking.timer.RestTimer
@@ -74,6 +74,8 @@ class WatchBridge(
             exercisesToday = inputs.exercisesToday,
             weightUnit = units.weightUnit,
             weightStep = if (units == UnitSystem.METRIC) 2.5 else 5.0,
+            distanceUnit = units.distanceUnit,
+            heightUnit = units.lengthUnit,
             sentAtMillis = now(),
         )
         val state = inputs.guide
@@ -99,12 +101,19 @@ class WatchBridge(
             position = target?.position ?: 0,
             of = target?.of ?: state.day.size,
             isDrop = target?.isDrop == true,
-            fields = type?.let { WatchFields(weight = it.usesWeight, reps = it.usesReps, seconds = it.usesTime, repsLabel = it.repsLabel) }
-                ?: WatchFields(),
-            phoneOnly = type != null && type !in WATCH_TYPES,
-            weight = suggestion.weightKg?.let { (units.weightFromKg(it) * 10).roundToInt() / 10.0 },
+            fields = type?.let {
+                WatchFields(
+                    weight = it.usesWeight, reps = it.usesReps, seconds = it.usesTime, distance = it.usesDistance,
+                    height = it.usesHeight, intensity = it.usesIntensity, repsLabel = it.repsLabel,
+                )
+            } ?: WatchFields(),
+            track = exercise?.let { trackKind(it.exerciseName, it.exerciseType) },
+            weight = suggestion.weightKg?.let { oneDecimal(units.weightFromKg(it)) },
             reps = suggestion.reps,
             seconds = suggestion.durationSeconds,
+            distance = suggestion.distanceMeters?.takeIf { type?.usesDistance == true }?.let { oneDecimal(units.distanceFromMeters(it)) },
+            height = suggestion.distanceMeters?.takeIf { type?.usesHeight == true }?.let { oneDecimal(units.heightFromMeters(it)) },
+            intensity = suggestion.rpe,
             percent = state.completion.percent,
             trainingSinceMillis = if (session.isPaused) null else session.startedAtMillis + session.pausedMillis,
             trainingMillis = session.activeMillis(now()),
@@ -149,10 +158,14 @@ class WatchBridge(
     private suspend fun log(command: WatchCommand.Log) {
         val date = LocalDate.ofEpochDay(command.epochDay)
         val settings = settingsRepository.settings.first()
+        val units = settings.unitSystem
         val values = SetValues(
-            weightKg = command.weight?.let { settings.unitSystem.weightToKg(it) },
+            weightKg = command.weight?.let { units.weightToKg(it) },
             reps = command.reps,
+            distanceMeters = command.distance?.let { units.distanceToMeters(it) } ?: command.height?.let { units.heightToMeters(it) },
             durationSeconds = command.seconds,
+            rpe = command.intensity?.coerceIn(1, 10),
+            note = command.note,
             isDropSet = command.isDrop,
         )
         workouts.addSet(date, command.exerciseId, values)
@@ -175,7 +188,6 @@ class WatchBridge(
     private companion object {
         const val TAG = "WatchBridge"
 
-        /** What the watch can enter: weight, reps and time. Distance, heights and sessions go on the phone. */
-        val WATCH_TYPES = setOf(ExerciseType.WEIGHT_REPS, ExerciseType.REPS, ExerciseType.TIME, ExerciseType.TIME_WEIGHT)
+        fun oneDecimal(value: Double): Double = (value * 10).roundToInt() / 10.0
     }
 }

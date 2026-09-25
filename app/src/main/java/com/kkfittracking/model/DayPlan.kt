@@ -164,7 +164,7 @@ fun guideSuggestion(day: List<DayExercise>, target: GuideTarget, settings: Setti
             return SetValues(weightKg = it.weightKg, reps = it.reps, isDropSet = true)
         }
     }
-    exercise.sets.lastOrNull { !it.values.isDropSet }?.let { return it.values.copy(note = "", rpe = null) }
+    exercise.sets.lastOrNull { !it.values.isDropSet }?.let { return it.values.copy(note = "") }
     val last = lastSession.lastOrNull { !it.values.isDropSet }?.values ?: SetValues()
     val plan = exercise.plan
     return SetValues(
@@ -172,6 +172,7 @@ fun guideSuggestion(day: List<DayExercise>, target: GuideTarget, settings: Setti
         reps = plan.reps ?: last.reps,
         distanceMeters = last.distanceMeters,
         durationSeconds = last.durationSeconds,
+        rpe = last.rpe,
     )
 }
 

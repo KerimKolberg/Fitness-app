@@ -53,7 +53,8 @@ v1 is fully offline, but the data layer follows these rules so sync/accounts can
 - [ ] Progression suggestions
 - [ ] Home-screen widget
 - [x] Wear OS companion (Galaxy Watch, Pixel Watch): the guided workout on the wrist (next exercise, log weight and reps, rest countdown with a buzz, pause, skip and stop, start today's plan), synced with the phone over Bluetooth through the Wear OS Data Layer; stays on screen dimmed (always-on)
-- [ ] Later on the watch: heart rate during sets, a tile, and logging distance and sessions
+- [x] On the watch: live heart rate (saved with each set), a Workout tile, every exercise type (distance, height, effort, rounds), and recording cardio and sessions with the watch's sensors (time, GPS distance, steps, heart rate, calories)
+- [ ] Daily steps and distance all day (not only in workouts) from Health Connect, where Samsung Health, Google Fit and the watch already store them
 - [ ] Health Connect: read daily steps (and optionally heart rate) that Samsung Health, Google Fit, Fitbit and watches already record; write finished workouts back so they show up in those apps
 - [ ] Cloud sync + accounts (see "Keeping the door open for cloud sync")
 

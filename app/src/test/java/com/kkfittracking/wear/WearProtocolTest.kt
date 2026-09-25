@@ -1,5 +1,7 @@
 package com.kkfittracking.wear
 
+import com.kkfittracking.model.ExerciseType
+import com.kkfittracking.model.trackKind
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -30,5 +32,16 @@ class WearProtocolTest {
     fun aNewerAppsExtraFieldsAreIgnored() {
         val json = """{"active":true,"exerciseName":"Squat","somethingNew":42}"""
         assertEquals(WatchState(active = true, exerciseName = "Squat"), WearJson.decodeState(json.encodeToByteArray()))
+    }
+
+    @Test
+    fun cardioAndSessionsCanBeTrackedByTheWatch() {
+        assertEquals(TrackKind.RUNNING, trackKind("Running", ExerciseType.DISTANCE_TIME))
+        assertEquals(TrackKind.ROWING, trackKind("Rowing Machine", ExerciseType.DISTANCE_TIME))
+        assertEquals(TrackKind.HIIT, trackKind("Tabata", ExerciseType.INTERVALS))
+        assertEquals(TrackKind.SPORT, trackKind("Tennis", ExerciseType.SESSION))
+        assertEquals(TrackKind.WORKOUT, trackKind("Salsa", ExerciseType.SESSION))
+        // Weights are entered by hand, even with "row" in the name.
+        assertNull(trackKind("Barbell Row", ExerciseType.WEIGHT_REPS))
     }
 }

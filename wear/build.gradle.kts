@@ -64,6 +64,12 @@ dependencies {
     implementation(libs.wear.compose.material)
     implementation(libs.wear.compose.foundation)
 
+    implementation(libs.health.services.client)
+    implementation(libs.wear.tiles)
+    implementation(libs.wear.protolayout)
+    implementation(libs.wear.protolayout.material)
+    implementation(libs.androidx.concurrent.futures.ktx)
+
     implementation(libs.play.services.wearable)
     implementation(libs.kotlinx.coroutines.play.services)
 }

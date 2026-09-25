@@ -53,6 +53,24 @@ class WatchViewModel(application: Application) : AndroidViewModel(application), 
         private set
     var seconds by mutableStateOf(0)
         private set
+    var distance by mutableStateOf(0.0)
+        private set
+    var height by mutableStateOf(0.0)
+        private set
+    var intensity by mutableStateOf(0)
+        private set
+
+    /** The heart rate and activity recording, from the watch's sensors. */
+    val health = HealthTracker(application)
+
+    /** What the recording measured, saved with the next set. */
+    private var trackedNote: String = ""
+
+    /** Whether the heart rate, activity and location permissions were given. */
+    var hasHeartRatePermission by mutableStateOf(false)
+        private set
+    private var hasLocationPermission = false
+    private var visible = false
 
     /** A short note after an action, such as "Saved ✓". */
     var note by mutableStateOf<String?>(null)
@@ -66,10 +84,28 @@ class WatchViewModel(application: Application) : AndroidViewModel(application), 
     init {
         dataClient.addListener(this)
         refresh()
+        viewModelScope.launch { health.reattach() }
     }
 
     override fun onCleared() {
         dataClient.removeListener(this)
+        health.measureHeartRate(false)
+    }
+
+    fun onPermissions(heartRate: Boolean, location: Boolean) {
+        hasHeartRatePermission = heartRate
+        hasLocationPermission = location
+        updateHeartRate()
+    }
+
+    /** The app is on screen (or dimmed on it), so the heart rate is worth measuring. */
+    fun onVisible(isVisible: Boolean) {
+        visible = isVisible
+        updateHeartRate()
+    }
+
+    private fun updateHeartRate() {
+        health.measureHeartRate(visible && hasHeartRatePermission && state?.active == true)
     }
 
     /** Reads the last state the phone published, and asks it for a fresh one. */
@@ -108,6 +144,8 @@ class WatchViewModel(application: Application) : AndroidViewModel(application), 
         val old = state
         if (old != null && new.sentAtMillis < old.sentAtMillis) return
         state = new
+        WatchStore.saveState(getApplication(), WearJson.encode(new))
+        updateHeartRate()
         connection = Connection.CONNECTED
         val key = "${new.epochDay}|${new.exerciseId}|${new.step}"
         if (key != inputKey) {
@@ -115,6 +153,10 @@ class WatchViewModel(application: Application) : AndroidViewModel(application), 
             weight = new.weight ?: 0.0
             reps = new.reps ?: 0
             seconds = new.seconds ?: 0
+            distance = new.distance ?: 0.0
+            height = new.height ?: 0.0
+            intensity = new.intensity ?: 0
+            trackedNote = ""
             // A new exercise: a short buzz to look at the watch.
             if (old?.exerciseId != null && new.exerciseId != null && old.exerciseId != new.exerciseId) vibrate(0, 150)
         }
@@ -147,6 +189,42 @@ class WatchViewModel(application: Application) : AndroidViewModel(application), 
         seconds = (seconds + direction * 5).coerceAtLeast(0)
     }
 
+    fun changeDistance(direction: Int) {
+        distance = (((distance + direction * 0.1) * 10).roundToInt() / 10.0).coerceAtLeast(0.0)
+    }
+
+    fun changeHeight(direction: Int) {
+        height = (height + direction).coerceAtLeast(0.0)
+    }
+
+    fun changeIntensity(direction: Int) {
+        intensity = (intensity + direction).coerceIn(1, 10)
+    }
+
+    /** Starts recording the current exercise with the watch's sensors. */
+    fun startTracking() {
+        val kind = state?.track ?: return
+        viewModelScope.launch {
+            health.start(kind, hasLocationPermission)?.let { note = it }
+            updateHeartRate()
+        }
+    }
+
+    /** Stops recording and fills in the time, distance and a note with steps and heart rate. */
+    fun finishTracking() {
+        viewModelScope.launch {
+            val done = health.finish() ?: return@launch
+            seconds = done.seconds(System.currentTimeMillis())
+            done.distanceMeters?.takeIf { it > 0 }?.let { meters ->
+                val perUnit = if (state?.distanceUnit == "mi") 1609.344 else 1000.0
+                distance = ((meters / perUnit) * 100).roundToInt() / 100.0
+            }
+            trackedNote = done.summary
+            if (intensity == 0) intensity = 5
+            note = "Check the values, then log"
+        }
+    }
+
     /** Sends the set to the phone, which saves it and moves the guide on. */
     fun logSet() {
         val current = state ?: return
@@ -158,10 +236,14 @@ class WatchViewModel(application: Application) : AndroidViewModel(application), 
             weight = weight.takeIf { fields.weight },
             reps = reps.takeIf { fields.reps && it > 0 },
             seconds = seconds.takeIf { fields.seconds && it > 0 },
+            distance = distance.takeIf { fields.distance && it > 0 },
+            height = height.takeIf { fields.height && it > 0 },
+            intensity = intensity.takeIf { fields.intensity && it > 0 },
+            note = trackedNote.ifEmpty { health.heartRate?.let { "♥ $it bpm" }.orEmpty() },
             isDrop = current.isDrop,
         )
-        if (!fields.weight && command.reps == null && command.seconds == null) {
-            note = "Enter the ${fields.repsLabel.lowercase()} or time first"
+        if (!fields.weight && command.reps == null && command.seconds == null && command.distance == null) {
+            note = "Enter the values first"
             return
         }
         launchSend(command, done = "Saved ✓")
