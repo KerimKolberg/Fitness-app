@@ -22,7 +22,7 @@ healthServices = "1.0.0-beta03"
 wearTiles = "1.4.0"
 protolayout = "1.2.0"
 concurrentFutures = "1.2.0"
-listenableFuture = "1.0"
+guava = "33.3.1-android"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -55,7 +55,7 @@ wear-tiles = { group = "androidx.wear.tiles", name = "tiles", version.ref = "wea
 wear-protolayout = { group = "androidx.wear.protolayout", name = "protolayout", version.ref = "protolayout" }
 wear-protolayout-material = { group = "androidx.wear.protolayout", name = "protolayout-material", version.ref = "protolayout" }
 androidx-concurrent-futures-ktx = { group = "androidx.concurrent", name = "concurrent-futures-ktx", version.ref = "concurrentFutures" }
-guava-listenablefuture = { group = "com.google.guava", name = "listenablefuture", version.ref = "listenableFuture" }
+guava = { group = "com.google.guava", name = "guava", version.ref = "guava" }
 wear-compose-material = { group = "androidx.wear.compose", name = "compose-material", version.ref = "wearCompose" }
 wear-compose-foundation = { group = "androidx.wear.compose", name = "compose-foundation", version.ref = "wearCompose" }
 
