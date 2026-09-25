@@ -55,6 +55,10 @@ class EditExerciseViewModel(
         private set
     var style by mutableStateOf(TrainingStyle.STRENGTH)
         private set
+
+    /** Other training styles it counts as, such as stretching for a yoga pose. */
+    var otherStyles by mutableStateOf<List<TrainingStyle>>(emptyList())
+        private set
     var links by mutableStateOf<List<ExerciseLink>>(emptyList())
         private set
     var nameError by mutableStateOf<String?>(null)
@@ -77,6 +81,7 @@ class EditExerciseViewModel(
                 muscle = exercise.muscle
                 otherMuscles = exercise.muscles.drop(1)
                 style = exercise.style
+                otherStyles = exercise.styles.drop(1)
                 links = exercise.links
             } else if (categoryId == null) {
                 repository.categories.first().firstOrNull()?.let { updateCategory(it.id) }
@@ -113,6 +118,12 @@ class EditExerciseViewModel(
 
     fun updateStyle(value: TrainingStyle) {
         style = value
+        otherStyles = otherStyles - value
+    }
+
+    fun toggleOtherStyle(value: TrainingStyle) {
+        if (value == style) return
+        otherStyles = if (value in otherStyles) otherStyles - value else otherStyles + value
     }
 
     fun updateType(value: ExerciseType) {
@@ -148,7 +159,7 @@ class EditExerciseViewModel(
         }
         if (category == null) return
         viewModelScope.launch {
-            repository.saveExercise(exerciseId, name, category, type, notes, tempo, perSide, listOf(muscle) + otherMuscles, style, links)
+            repository.saveExercise(exerciseId, name, category, type, notes, tempo, perSide, listOf(muscle) + otherMuscles, listOf(style) + otherStyles, links)
             result = EditExerciseResult.SAVED
         }
     }

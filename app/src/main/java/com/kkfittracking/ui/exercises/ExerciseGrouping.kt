@@ -72,14 +72,14 @@ fun filterExercises(categories: List<Category>, exercises: List<Exercise>, filte
     return exercises.filter { exercise ->
         val places = placements(exercise, categories)
         (filter.allowedIds == null || exercise.id in filter.allowedIds) &&
-            (filter.style == null || exercise.style == filter.style) &&
+            (filter.style == null || filter.style in exercise.styles) &&
             places.any { filter.accepts(it) } &&
             (words.isEmpty() || searchText(exercise, places).let { text -> words.all { it in text } })
     }
 }
 
 private fun searchText(exercise: Exercise, places: List<Placement>): String =
-    (listOf(exercise.name, exercise.style.label) + exercise.muscles.map { it.label } + places.map { it.category.name })
+    (listOf(exercise.name) + exercise.styles.map { it.label } + exercise.muscles.map { it.label } + places.map { it.category.name })
         .joinToString(" ").lowercase()
 
 /**
@@ -129,6 +129,6 @@ fun muscleChoices(categories: List<Category>, exercises: List<Exercise>, filter:
 
 /** The training style sections to offer: those of the exercises that pass the other filters. */
 fun styleChoices(categories: List<Category>, exercises: List<Exercise>, filter: LibraryFilter): List<TrainingStyle> {
-    val present = filterExercises(categories, exercises, filter.copy(style = null)).map { it.style }.toSet()
+    val present = filterExercises(categories, exercises, filter.copy(style = null)).flatMap { it.styles }.toSet()
     return TrainingStyle.sectionOrder.filter { it in present }
 }

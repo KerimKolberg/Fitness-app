@@ -23,12 +23,15 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -89,38 +92,68 @@ fun WorkoutScreen(
     var menuOpen by remember { mutableStateOf(false) }
     var choosingRoutine by remember { mutableStateOf(false) }
     var routineWithSupersets by remember { mutableStateOf<Routine?>(null) }
+    // Selecting exercises to remove several at once; null when not selecting.
+    var selection by remember(state.date) { mutableStateOf<Set<String>?>(null) }
+    var confirmRemoveSelected by remember { mutableStateOf(false) }
+    val toggle = { exercise: DayExercise ->
+        selection = selection?.let { if (exercise.workoutExerciseId in it) it - exercise.workoutExerciseId else it + exercise.workoutExerciseId }
+    }
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Workout log") },
-                actions = {
-                    IconButton(onClick = { onOpenCalendar(state.date) }) {
-                        Icon(Icons.Default.DateRange, contentDescription = "Calendar")
-                    }
-                    Box {
-                        IconButton(onClick = { menuOpen = true }) {
-                            Icon(Icons.Default.MoreVert, contentDescription = "More options")
+            val selected = selection
+            if (selected != null) {
+                TopAppBar(
+                    title = { Text("${selected.size} selected") },
+                    navigationIcon = {
+                        IconButton(onClick = { selection = null }) {
+                            Icon(Icons.Default.Close, contentDescription = "Stop selecting")
                         }
-                        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                            val close = { menuOpen = false }
-                            MenuItem("Add a plan to this day", close) { choosingRoutine = true }
-                            MenuItem("New superset (2–6 exercises)", close) { onNewSuperset(state.date) }
-                            if (state.exercises.size >= 2) {
-                                MenuItem("+Super-sets", close) { onSupersets(state.date) }
-                            }
-                            if (state.exercises.isNotEmpty() && state.date != LocalDate.now()) {
-                                MenuItem("Copy exercises to today", close, viewModel::copyExercisesToToday)
-                            }
-                            HorizontalDivider()
-                            MenuItem("Plans", close, onOpenRoutines)
-                            MenuItem("Body tracker", close, onOpenBody)
-                            MenuItem("Progress & achievements", close, onOpenAchievements)
-                            MenuItem("Settings", close, onOpenSettings)
+                    },
+                    actions = {
+                        val all = state.exercises.map { it.workoutExerciseId }.toSet()
+                        TextButton(onClick = { selection = if (selected.containsAll(all)) emptySet() else all }) {
+                            Text(if (selected.containsAll(all)) "None" else "All")
                         }
-                    }
-                },
-            )
+                        IconButton(onClick = { confirmRemoveSelected = true }, enabled = selected.isNotEmpty()) {
+                            Icon(Icons.Default.Delete, contentDescription = "Remove the selected exercises")
+                        }
+                    },
+                )
+            } else {
+                TopAppBar(
+                    title = { Text("Workout log") },
+                    actions = {
+                        IconButton(onClick = { onOpenCalendar(state.date) }) {
+                            Icon(Icons.Default.DateRange, contentDescription = "Calendar")
+                        }
+                        Box {
+                            IconButton(onClick = { menuOpen = true }) {
+                                Icon(Icons.Default.MoreVert, contentDescription = "More options")
+                            }
+                            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                                val close = { menuOpen = false }
+                                MenuItem("Add a plan to this day", close) { choosingRoutine = true }
+                                MenuItem("New superset (2–6 exercises)", close) { onNewSuperset(state.date) }
+                                if (state.exercises.size >= 2) {
+                                    MenuItem("+Super-sets", close) { onSupersets(state.date) }
+                                }
+                                if (state.exercises.isNotEmpty()) {
+                                    MenuItem("Select exercises to remove", close) { selection = emptySet() }
+                                }
+                                if (state.exercises.isNotEmpty() && state.date != LocalDate.now()) {
+                                    MenuItem("Copy exercises to today", close, viewModel::copyExercisesToToday)
+                                }
+                                HorizontalDivider()
+                                MenuItem("Plans", close, onOpenRoutines)
+                                MenuItem("Body tracker", close, onOpenBody)
+                                MenuItem("Progress & achievements", close, onOpenAchievements)
+                                MenuItem("Settings", close, onOpenSettings)
+                            }
+                        }
+                    },
+                )
+            }
         },
         floatingActionButton = {
             if (state.exercises.isNotEmpty()) {
@@ -155,10 +188,15 @@ fun WorkoutScreen(
                     contentPadding = PaddingValues(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 96.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    if (state.exercises.size >= 2) {
-                        item(key = "supersets") {
-                            OutlinedButton(onClick = { onSupersets(state.date) }, modifier = Modifier.fillMaxWidth()) {
-                                Text("+Super-sets")
+                    if (selection == null) {
+                        item(key = "tools") {
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                if (state.exercises.size >= 2) {
+                                    OutlinedButton(onClick = { onSupersets(state.date) }, modifier = Modifier.weight(1f)) {
+                                        Text("+Super-sets")
+                                    }
+                                }
+                                OutlinedButton(onClick = { selection = emptySet() }) { Text("Select") }
                             }
                         }
                     }
@@ -173,13 +211,17 @@ fun WorkoutScreen(
                             is Block.Single -> DayExerciseCard(
                                 exercise = block.item,
                                 units = state.units,
-                                onClick = { onOpenExercise(state.date, block.item.exerciseId) },
+                                onClick = {
+                                    if (selection != null) toggle(block.item) else onOpenExercise(state.date, block.item.exerciseId)
+                                },
                                 onDelete = { exerciseToDelete = block.item },
+                                selected = selection?.let { block.item.workoutExerciseId in it },
                             )
                             is Block.Superset -> SupersetCard(
                                 superset = block,
                                 units = state.units,
-                                onOpen = { onOpenExercise(state.date, it.exerciseId) },
+                                onOpen = { if (selection != null) toggle(it) else onOpenExercise(state.date, it.exerciseId) },
+                                selection = selection,
                                 onDelete = { exerciseToDelete = it },
                                 onUngroup = { viewModel.ungroupSuperset(block.id) },
                             )
@@ -239,6 +281,25 @@ fun WorkoutScreen(
                     },
                 ) { Text("One by one") }
             },
+        )
+    }
+
+    val toRemove = selection.orEmpty()
+    if (confirmRemoveSelected && toRemove.isNotEmpty()) {
+        AlertDialog(
+            onDismissRequest = { confirmRemoveSelected = false },
+            title = { Text("Remove ${toRemove.size} exercises?") },
+            text = { Text("They and their sets will be removed from this day.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.deleteExercises(toRemove)
+                        confirmRemoveSelected = false
+                        selection = null
+                    },
+                ) { Text("Remove") }
+            },
+            dismissButton = { TextButton(onClick = { confirmRemoveSelected = false }) { Text("Cancel") } },
         )
     }
 
@@ -338,9 +399,10 @@ private fun DayExerciseCard(
     units: UnitSystem,
     onClick: () -> Unit,
     onDelete: () -> Unit,
+    selected: Boolean? = null,
 ) {
     Card(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
-        ExerciseBody(exercise, units, onDelete)
+        ExerciseBody(exercise, units, onDelete, selected = selected)
     }
 }
 
@@ -352,6 +414,8 @@ private fun SupersetCard(
     onOpen: (DayExercise) -> Unit,
     onDelete: (DayExercise) -> Unit,
     onUngroup: () -> Unit,
+    /** The selected exercises while selecting; null when not selecting. */
+    selection: Set<String>? = null,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     Card(
@@ -386,7 +450,10 @@ private fun SupersetCard(
         superset.items.forEachIndexed { index, exercise ->
             if (index > 0) HorizontalDivider(Modifier.padding(start = 22.dp))
             Box(Modifier.clickable { onOpen(exercise) }) {
-                ExerciseBody(exercise, units, onDelete = { onDelete(exercise) }, position = index + 1)
+                ExerciseBody(
+                    exercise, units, onDelete = { onDelete(exercise) }, position = index + 1,
+                    selected = selection?.let { exercise.workoutExerciseId in it },
+                )
             }
         }
     }
@@ -399,6 +466,8 @@ private fun ExerciseBody(
     units: UnitSystem,
     onDelete: () -> Unit,
     position: Int? = null,
+    /** While selecting: whether it is selected; null when not selecting. */
+    selected: Boolean? = null,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     Row(modifier = Modifier.height(IntrinsicSize.Min)) {
@@ -415,7 +484,9 @@ private fun ExerciseBody(
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.weight(1f),
                 )
-                Box {
+                if (selected != null) {
+                    Checkbox(checked = selected, onCheckedChange = null, modifier = Modifier.padding(12.dp))
+                } else Box {
                     IconButton(onClick = { menuOpen = true }) {
                         Icon(Icons.Default.MoreVert, contentDescription = "More options")
                     }

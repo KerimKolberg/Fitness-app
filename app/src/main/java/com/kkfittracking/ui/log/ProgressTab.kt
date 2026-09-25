@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -21,6 +22,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.kkfittracking.model.ExerciseType
@@ -30,6 +32,7 @@ import com.kkfittracking.model.UnitSystem
 import com.kkfittracking.model.formatNumber
 import com.kkfittracking.model.personalRecords
 import com.kkfittracking.model.progressPoints
+import com.kkfittracking.model.progressSummary
 import com.kkfittracking.model.repMaxes
 import com.kkfittracking.ui.components.LineChart
 import com.kkfittracking.ui.components.formatShortDate
@@ -96,6 +99,19 @@ fun ProgressTab(history: List<HistorySession>, type: ExerciseType, units: UnitSy
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             LineChart(points = points, formatValue = { metric.format(it, units) })
+            progressSummary(points)?.takeIf { points.size > 1 }?.let { summary ->
+                Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SummaryTile("All-time high", metric.format(summary.high.value, units), formatShortDate(summary.high.date), MaterialTheme.colorScheme.tertiary)
+                    SummaryTile("All-time low", metric.format(summary.low.value, units), formatShortDate(summary.low.date), MaterialTheme.colorScheme.error)
+                    val change = summary.change
+                    SummaryTile(
+                        "Since the start",
+                        (if (change >= 0) "+" else "−") + metric.format(kotlin.math.abs(change), units),
+                        formatShortDate(summary.first.date),
+                        MaterialTheme.colorScheme.primary,
+                    )
+                }
+            }
         }
         if (maxes.isNotEmpty()) {
             item {
@@ -116,6 +132,18 @@ fun ProgressTab(history: List<HistorySession>, type: ExerciseType, units: UnitSy
                     }
                 }
             }
+        }
+    }
+}
+
+/** One figure under the graph, such as the all-time high, with its date. */
+@Composable
+private fun RowScope.SummaryTile(label: String, value: String, date: String, color: Color) {
+    Card(modifier = Modifier.weight(1f)) {
+        Column(Modifier.padding(8.dp)) {
+            Text(label, style = MaterialTheme.typography.labelSmall, color = color)
+            Text(value, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+            Text(date, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

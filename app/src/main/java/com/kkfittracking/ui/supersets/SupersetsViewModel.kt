@@ -23,6 +23,7 @@ import com.kkfittracking.model.moveToNewSuperset
 import com.kkfittracking.model.moveToSuperset
 import com.kkfittracking.model.oversizedSupersets
 import com.kkfittracking.model.removeSuperset
+import com.kkfittracking.model.updateItem
 import com.kkfittracking.model.updateSuperset
 import com.kkfittracking.ui.SupersetsRoute
 import com.kkfittracking.ui.appViewModelFactory
@@ -79,6 +80,10 @@ class SupersetsViewModel(
                         supersetId = it.supersetId,
                         transitionSeconds = it.transitionSeconds,
                         roundRestSeconds = it.roundRestSeconds,
+                        supersetRounds = it.supersetRounds,
+                        supersetDropLast = it.supersetDropLast,
+                        memberRounds = it.memberRounds,
+                        memberDropSet = it.memberDropSet,
                         ownRestSeconds = ownRest[it.exerciseId],
                     )
                 }
@@ -93,6 +98,10 @@ class SupersetsViewModel(
                         supersetId = it.supersetId,
                         transitionSeconds = it.transitionSeconds,
                         roundRestSeconds = it.roundRestSeconds,
+                        supersetRounds = it.supersetRounds,
+                        supersetDropLast = it.supersetDropLast,
+                        memberRounds = it.memberRounds,
+                        memberDropSet = it.memberDropSet,
                         detail = it.sets.size.takeIf { count -> count > 0 }?.let { count ->
                             if (count == 1) "1 set logged" else "$count sets logged"
                         },
@@ -149,6 +158,31 @@ class SupersetsViewModel(
         }
     }
 
+    /** Rounds of the superset: off (keep going) or 1 to [MAX_ROUNDS]. */
+    fun changeRounds(supersetId: String, delta: Int) {
+        rows = updateSuperset(rows, supersetId) {
+            val next = (it.rounds ?: 0) + delta
+            it.copy(rounds = next.takeIf { rounds -> rounds > 0 }?.coerceAtMost(MAX_ROUNDS))
+        }
+    }
+
+    fun setDropOnLastRound(supersetId: String, value: Boolean) {
+        rows = updateSuperset(rows, supersetId) { it.copy(dropOnLastRound = value) }
+    }
+
+    /** The rounds one exercise joins (the last ones): all of them, or fewer. */
+    fun changeMemberRounds(itemKey: String, delta: Int, supersetRounds: Int) {
+        rows = updateItem(rows, itemKey) {
+            val next = (it.memberRounds ?: supersetRounds) + delta
+            it.copy(memberRounds = next.coerceIn(1, supersetRounds).takeIf { rounds -> rounds < supersetRounds })
+        }
+    }
+
+    /** One exercise's drop set on its last round: yes, no, or as the superset says (null). */
+    fun setMemberDropSet(itemKey: String, value: Boolean?) {
+        rows = updateItem(rows, itemKey) { it.copy(memberDropSet = value) }
+    }
+
     fun save() {
         if (oversized.isNotEmpty()) return
         viewModelScope.launch {
@@ -161,6 +195,8 @@ class SupersetsViewModel(
     private fun newStart() = ArrangeRow.Start(UUID.randomUUID().toString(), defaults.transitionSeconds, defaults.roundRestSeconds)
 
     companion object {
+        const val MAX_ROUNDS = 10
+
         val Factory = appViewModelFactory { container ->
             SupersetsViewModel(
                 savedStateHandle = createSavedStateHandle(),

@@ -27,6 +27,10 @@ data class DayRow(
     val supersetId: String?,
     val transitionSeconds: Int?,
     val roundRestSeconds: Int?,
+    val supersetRounds: Int?,
+    val supersetDropLast: Boolean,
+    val memberRounds: Int?,
+    val memberDropSet: Boolean?,
 )
 
 /** Every logged set with its date and exercise details, for the game stats. */
@@ -120,7 +124,9 @@ interface WorkoutDao {
         """
         UPDATE workout_exercises
         SET sortOrder = :sortOrder, supersetId = :supersetId, transitionSeconds = :transitionSeconds,
-            roundRestSeconds = :roundRestSeconds, updatedAt = :now
+            roundRestSeconds = :roundRestSeconds, supersetRounds = :supersetRounds,
+            supersetDropLast = :supersetDropLast, memberRounds = :memberRounds, memberDropSet = :memberDropSet,
+            updatedAt = :now
         WHERE id = :id
         """,
     )
@@ -130,12 +136,34 @@ interface WorkoutDao {
         supersetId: String?,
         transitionSeconds: Int?,
         roundRestSeconds: Int?,
+        supersetRounds: Int?,
+        supersetDropLast: Boolean,
+        memberRounds: Int?,
+        memberDropSet: Boolean?,
         now: Long,
     )
 
     @Query(
         """
-        UPDATE workout_exercises SET supersetId = NULL, transitionSeconds = NULL, roundRestSeconds = NULL, updatedAt = :now
+        UPDATE workout_exercises
+        SET supersetRounds = :supersetRounds, supersetDropLast = :supersetDropLast, memberRounds = :memberRounds,
+            memberDropSet = :memberDropSet, updatedAt = :now
+        WHERE id = :id
+        """,
+    )
+    suspend fun setSupersetPlan(
+        id: String,
+        supersetRounds: Int?,
+        supersetDropLast: Boolean,
+        memberRounds: Int?,
+        memberDropSet: Boolean?,
+        now: Long,
+    )
+
+    @Query(
+        """
+        UPDATE workout_exercises SET supersetId = NULL, transitionSeconds = NULL, roundRestSeconds = NULL,
+            supersetRounds = NULL, supersetDropLast = 0, memberRounds = NULL, memberDropSet = NULL, updatedAt = :now
         WHERE supersetId = :supersetId AND deletedAt IS NULL
         """,
     )
@@ -144,6 +172,17 @@ interface WorkoutDao {
     @Query("UPDATE workout_exercises SET deletedAt = :now, updatedAt = :now WHERE id = :id")
     suspend fun softDeleteWorkoutExercise(id: String, now: Long)
 
+    @Query("UPDATE workout_exercises SET deletedAt = :now, updatedAt = :now WHERE id IN (:ids)")
+    suspend fun softDeleteWorkoutExercises(ids: List<String>, now: Long)
+
+    @Query(
+        """
+        UPDATE workout_sets SET deletedAt = :now, updatedAt = :now
+        WHERE workoutExerciseId IN (:ids) AND deletedAt IS NULL
+        """,
+    )
+    suspend fun softDeleteSetsOfAll(ids: List<String>, now: Long)
+
     @Query(
         """
         SELECT we.id AS workoutExerciseId, e.id AS exerciseId, e.name AS exerciseName,
@@ -151,7 +190,9 @@ interface WorkoutDao {
                s.id AS setId, s.weightKg AS weightKg, s.reps AS reps,
                s.distanceMeters AS distanceMeters, s.durationSeconds AS durationSeconds,
                s.rpe AS rpe, s.comment AS comment, s.isDropSet AS isDropSet, we.supersetId AS supersetId,
-               we.transitionSeconds AS transitionSeconds, we.roundRestSeconds AS roundRestSeconds
+               we.transitionSeconds AS transitionSeconds, we.roundRestSeconds AS roundRestSeconds,
+               we.supersetRounds AS supersetRounds, we.supersetDropLast AS supersetDropLast,
+               we.memberRounds AS memberRounds, we.memberDropSet AS memberDropSet
         FROM workouts w
         JOIN workout_exercises we ON we.workoutId = w.id AND we.deletedAt IS NULL
         JOIN exercises e ON e.id = we.exerciseId

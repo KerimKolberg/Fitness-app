@@ -20,7 +20,7 @@ class LibraryRowsTest {
     private fun exercise(name: String, category: Category, vararg muscles: Muscle, style: TrainingStyle = TrainingStyle.STRENGTH) =
         Exercise(
             id = name, name = name, categoryId = category.id, type = ExerciseType.WEIGHT_REPS, notes = "", isCustom = false,
-            muscles = muscles.toList(), style = style,
+            muscles = muscles.toList(), styles = listOf(style),
         )
 
     private val exercises = listOf(

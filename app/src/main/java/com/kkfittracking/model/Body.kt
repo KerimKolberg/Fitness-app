@@ -70,4 +70,12 @@ data class RoutineExercise(
     val supersetId: String? = null,
     val transitionSeconds: Int? = null,
     val roundRestSeconds: Int? = null,
+    /** Rounds planned for the superset; null keeps going round after round. */
+    val supersetRounds: Int? = null,
+    /** Every exercise of the superset ends its last round with a drop set. */
+    val supersetDropLast: Boolean = false,
+    /** This exercise joins only the last this many rounds of its superset. */
+    val memberRounds: Int? = null,
+    /** This exercise's own choice about a drop set on its last round; null follows the superset. */
+    val memberDropSet: Boolean? = null,
 )

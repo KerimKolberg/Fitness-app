@@ -21,6 +21,24 @@ class ProgressTest {
     )
 
     @Test
+    fun allTimeHighAndLow() {
+        val day = java.time.LocalDate.of(2026, 9, 1)
+        val points = listOf(
+            ProgressPoint(day, 80.0),
+            ProgressPoint(day.plusDays(3), 100.0),
+            ProgressPoint(day.plusDays(7), 70.0),
+            ProgressPoint(day.plusDays(9), 100.0),
+            ProgressPoint(day.plusDays(12), 95.0),
+        )
+        val summary = progressSummary(points)!!
+        // The first time a high was reached counts.
+        assertEquals(day.plusDays(3), summary.high.date)
+        assertEquals(70.0, summary.low.value, 0.0)
+        assertEquals(15.0, summary.change, 1e-9)
+        assertEquals(null, progressSummary(emptyList()))
+    }
+
+    @Test
     fun epley() {
         assertEquals(100.0, estimatedOneRepMax(100.0, 1), 1e-9)
         assertEquals(116.667, estimatedOneRepMax(100.0, 5), 0.001)

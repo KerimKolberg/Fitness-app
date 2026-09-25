@@ -27,6 +27,7 @@ import com.kkfittracking.model.SetEntry
 import com.kkfittracking.model.SetValues
 import com.kkfittracking.model.Settings
 import com.kkfittracking.model.SupersetContext
+import com.kkfittracking.model.SupersetMember
 import com.kkfittracking.model.UnitSystem
 import com.kkfittracking.model.XpRules
 import com.kkfittracking.model.celebrationsBetween
@@ -71,9 +72,26 @@ data class ExerciseLogUiState(
 ) {
     val plan: ExercisePlan get() = exercise?.plan ?: ExercisePlan()
 
+    /** Today's superset and its plan, when this exercise is in one. */
+    val supersetContext: SupersetContext?
+        get() = superset.takeIf { it.size >= 2 }?.let { members ->
+            val first = dayEntry ?: members.first()
+            SupersetContext(
+                memberIds = members.map { it.exerciseId },
+                transitionSeconds = first.transitionSeconds,
+                roundRestSeconds = first.roundRestSeconds,
+                rounds = members.firstNotNullOfOrNull { it.supersetRounds },
+                dropOnLastRound = members.any { it.supersetDropLast },
+                members = members.map { SupersetMember(it.exerciseId, it.memberRounds, it.memberDropSet) },
+            )
+        }
+
+    /** The plan as today's superset shapes it: its sets are the rounds it does. */
+    val activePlan: ExercisePlan get() = supersetContext?.planFor(exercise?.id ?: "", plan) ?: plan
+
     /** The planned drop set that is due now, if any. */
     val dueDrop: NextStep.DropSet?
-        get() = exercise?.let { pendingDrop(plan, it.type, sets, settings.dropSetPercent, units) }
+        get() = exercise?.let { pendingDrop(activePlan, it.type, sets, settings.dropSetPercent, units) }
 }
 
 class ExerciseLogViewModel(
@@ -269,15 +287,12 @@ class ExerciseLogViewModel(
     private fun afterNewSet(state: ExerciseLogUiState, exercise: Exercise, saved: SetValues) {
         val settings = state.settings
         val plan = exercise.plan
-        if (saved.isDropSet && !plan.dropSets) {
+        val superset = state.supersetContext
+        if (saved.isDropSet && !state.activePlan.dropSets) {
             // Drop sets by hand: lighter again for the next one. The rest runs in case this was the last.
             lowerWeightForDrop(state)
             if (settings.autoStartRestTimer) restTimer.start(settings.restTimerSeconds)
             return
-        }
-        val members = state.superset.map { it.exerciseId }
-        val superset = members.takeIf { it.size >= 2 }?.let {
-            SupersetContext(it, state.dayEntry?.transitionSeconds, state.dayEntry?.roundRestSeconds)
         }
         val setsNow = state.sets + SetEntry("new", saved)
         when (val step = nextStep(exerciseId, exercise.type, plan, setsNow, superset, settings)) {
@@ -321,7 +336,7 @@ class ExerciseLogViewModel(
     }
 
     fun canUseDropSets(state: ExerciseLogUiState = uiState.value): Boolean =
-        state.exercise?.type == ExerciseType.WEIGHT_REPS && (state.settings.dropSetsEnabled || state.plan.dropSets)
+        state.exercise?.type == ExerciseType.WEIGHT_REPS && (state.settings.dropSetsEnabled || state.activePlan.dropSets)
 
     /** Turns drop set mode on (lowering the weight right away) or off (back to the weight before). */
     fun toggleDropMode() {

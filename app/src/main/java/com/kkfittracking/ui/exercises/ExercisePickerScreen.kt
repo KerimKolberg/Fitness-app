@@ -46,6 +46,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kkfittracking.model.ExerciseType
 import com.kkfittracking.model.MAX_SUPERSET_SIZE
 import com.kkfittracking.ui.components.ColorDot
+import com.kkfittracking.ui.components.SectionIcon
 
 @Composable
 fun ExercisePickerScreen(
@@ -150,7 +151,7 @@ fun ExercisePickerScreen(
                         selected = state.selectedCategoryId == category.id,
                         onClick = { viewModel.selectCategory(category.id) },
                         label = { Text(category.name) },
-                        leadingIcon = { ColorDot(category.color) },
+                        leadingIcon = { SectionIcon(category.key, category.color, size = 20.dp) },
                     )
                 }
             }
@@ -194,13 +195,19 @@ fun ExercisePickerScreen(
                 }
                 items(state.rows, key = { it.key }) { row ->
                     when (row) {
-                        is LibraryRow.SectionHeader -> Text(
-                            text = row.category.name.uppercase(),
+                        is LibraryRow.SectionHeader -> Row(
                             modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 4.dp),
-                            style = MaterialTheme.typography.labelLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(row.category.color),
-                        )
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            SectionIcon(row.category.key, row.category.color, size = 28.dp)
+                            Text(
+                                text = row.category.name.uppercase(),
+                                modifier = Modifier.padding(start = 8.dp),
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(row.category.color),
+                            )
+                        }
                         is LibraryRow.MuscleHeader -> Text(
                             text = row.muscle.label,
                             modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 2.dp),

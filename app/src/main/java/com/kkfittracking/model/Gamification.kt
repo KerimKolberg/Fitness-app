@@ -12,7 +12,7 @@ data class LoggedSet(
     val categoryId: String,
     val type: ExerciseType,
     /** How the exercise trains, for the variety achievements. */
-    val style: TrainingStyle,
+    val styles: List<TrainingStyle>,
     val values: SetValues,
 )
 
@@ -33,6 +33,8 @@ enum class Achievement(val emoji: String, val title: String, val description: St
     PLYOMETRICS_10("🦘", "Springy", "Do plyometrics on 10 days", 10),
     SPORTS_10("🎾", "Game on", "Play sports on 10 days", 10),
     HIIT_10("⚡", "Interval hero", "Do HIIT or intervals on 10 days", 10),
+    ZEN_10("🪷", "Zen", "Meditate or do yoga on 10 days", 10),
+    DANCE_10("💃", "Dancer", "Dance on 10 days", 10),
 }
 
 data class AchievementStatus(
@@ -105,6 +107,8 @@ fun computeGameStats(sets: List<LoggedSet>, weeklyGoal: Int, today: LocalDate): 
     var plyometricDays = 0
     var sportDays = 0
     var hiitDays = 0
+    var zenDays = 0
+    var danceDays = 0
     var heaviestDay = 0.0
     val workoutsPerWeek = mutableMapOf<LocalDate, Int>()
     val goalWeeks = mutableSetOf<LocalDate>()
@@ -132,6 +136,8 @@ fun computeGameStats(sets: List<LoggedSet>, weeklyGoal: Int, today: LocalDate): 
         Achievement.PLYOMETRICS_10 -> plyometricDays
         Achievement.SPORTS_10 -> sportDays
         Achievement.HIIT_10 -> hiitDays
+        Achievement.ZEN_10 -> zenDays
+        Achievement.DANCE_10 -> danceDays
     }
 
     sets.groupBy { it.date }.toSortedMap().forEach { (date, daySets) ->
@@ -142,13 +148,15 @@ fun computeGameStats(sets: List<LoggedSet>, weeklyGoal: Int, today: LocalDate): 
         xp += XpRules.PER_WORKOUT + XpRules.PER_SET * daySets.size + XpRules.PER_RECORD * dayRecords +
             XpRules.PER_NEW_EXERCISE * newExercises
 
-        val styles = daySets.map { it.style }.toSet()
+        val styles = daySets.flatMap { it.styles }.toSet()
         seenCategories += daySets.map { it.categoryId }
         if (TrainingStyle.MOBILITY in styles || TrainingStyle.STRETCHING in styles) mobilityDays++
         if (TrainingStyle.ISOMETRIC in styles || TrainingStyle.ECCENTRIC in styles) tendonDays++
         if (TrainingStyle.PLYOMETRIC in styles) plyometricDays++
         if (TrainingStyle.SPORT in styles) sportDays++
         if (TrainingStyle.HIIT in styles) hiitDays++
+        if (TrainingStyle.MEDITATION in styles || TrainingStyle.YOGA in styles) zenDays++
+        if (TrainingStyle.DANCE in styles) danceDays++
         heaviestDay = maxOf(heaviestDay, daySets.sumOf { (it.values.weightKg ?: 0.0) * (it.values.reps ?: 0) })
 
         val week = weekOf(date)

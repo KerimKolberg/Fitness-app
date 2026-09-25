@@ -118,7 +118,7 @@ Broaden the library beyond gym lifts. Each group needs the right way to log it:
 ### Gamification
 - [x] XP for sets, workouts, personal records, new exercises and weekly goals; levels
 - [x] Weekly workout goal and week streaks
-- [x] 15 achievements, including variety ones for mobility, isometrics and eccentrics, plyometrics, sports and HIIT
+- [x] 17 achievements, including variety ones for mobility, isometrics and eccentrics, plyometrics, sports, HIIT, yoga or meditation, and dance
 - [x] Celebrations after saving a set (record, achievement, level up, weekly goal)
 - [ ] Ideas for later: challenges (e.g. "30 days of mobility"), yearly summary, share cards
 
@@ -135,6 +135,12 @@ Broaden the library beyond gym lifts. Each group needs the right way to log it:
 - [x] Library in three levels: section → muscle → training style (e.g. Legs → Hamstrings → Eccentric → Nordic curl). Training styles (Mobility, Stretching, Isometrics…) are main sections too, with muscle groups under them. An exercise can train several muscles (main one first) and is listed under each. The old Triceps, Biceps, Mobility, Stretching, Isometrics, Tendons and Plyometrics categories are folded into Arms, Legs, Core, Full body and so on; the picker filters by muscle and style, and search finds them too
 - [x] HIIT under Sports: an "Intervals" exercise type and an interval timer with high and low intensity phases, rounds, a get-ready countdown, and beeps and vibration at each change (HIIT Intervals 30/30, Tabata 20/10, Sprint Intervals 15/45)
 - [x] About tab on every exercise: a description of how to do it first, then YouTube and other video or page links, and a "Find on YouTube" search
+- [x] Superset rounds: a number of rounds for the superset, a drop set on the last round for all, and per exercise the rounds it joins (e.g. only the last) and its own drop set choice
+- [x] The "Drop set" button opens the drop set settings (percent or weight, drops, reps)
+- [x] HIIT moved to Cardio; yoga poses (also counted as stretching, mobility or isometrics), meditation and breathing, dance; about 100 more exercises
+- [x] Several training styles per exercise; body section icons drawn in the app
+- [x] Select several exercises on a day and remove them at once
+- [x] Progress graphs mark the all-time high and low, with a summary under the graph
 - [ ] Later: play videos inside the app (only through YouTube's official player and terms), and your own recorded videos
 - [ ] Later: a foreground service so the timers keep going even if Android closes the app
 

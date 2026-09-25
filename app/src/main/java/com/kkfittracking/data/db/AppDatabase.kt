@@ -20,7 +20,7 @@ import androidx.room.migration.AutoMigrationSpec
         RoutineExerciseEntity::class,
         BodyMeasurementEntity::class,
     ],
-    version = 5,
+    version = 6,
     exportSchema = true,
     autoMigrations = [
         // v2 adds routines and body measurements (new tables only).
@@ -31,6 +31,8 @@ import androidx.room.migration.AutoMigrationSpec
         AutoMigration(from = 3, to = 4),
         // v5 adds the library levels (muscle, style), exercise plans and links, and plan supersets.
         AutoMigration(from = 4, to = 5, spec = Version5Migration::class),
+        // v6 adds superset rounds and each exercise's part in them.
+        AutoMigration(from = 5, to = 6),
     ],
 )
 @TypeConverters(Converters::class)

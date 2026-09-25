@@ -119,6 +119,54 @@ class ExercisePlanTest {
         )
     }
 
+    /** Bench, row and curl, 3 rounds; curl only in the last round; bench drops on its last round. */
+    private val rounds = SupersetContext(
+        memberIds = listOf("bench", "row", "curl"),
+        transitionSeconds = 20,
+        roundRestSeconds = 120,
+        rounds = 3,
+        members = listOf(SupersetMember("bench", dropSet = true), SupersetMember("curl", rounds = 1)),
+    )
+
+    @Test
+    fun supersetRoundsSkipExercisesNotInThatRound() {
+        val plan = ExercisePlan()
+        // Round 1: bench → row → rest, back to bench (curl only joins round 3).
+        assertEquals(NextStep.Transition("row", 20), nextStep("bench", ExerciseType.WEIGHT_REPS, plan, sets(false), rounds, settings))
+        assertEquals(NextStep.Rest(120, "bench"), nextStep("row", ExerciseType.WEIGHT_REPS, plan, sets(false), rounds, settings))
+        // Round 3: row → curl, and after curl the superset is done.
+        assertEquals(NextStep.Transition("curl", 20), nextStep("row", ExerciseType.WEIGHT_REPS, plan, sets(false, false, false), rounds, settings))
+        assertEquals(NextStep.Rest(120, null), nextStep("curl", ExerciseType.WEIGHT_REPS, plan, sets(false), rounds, settings))
+    }
+
+    @Test
+    fun aDropSetOnlyOnTheLastRoundOfOneExercise() {
+        val plan = ExercisePlan(drops = 1)
+        // Bench's first two rounds go straight on to the row.
+        assertEquals(NextStep.Transition("row", 20), nextStep("bench", ExerciseType.WEIGHT_REPS, plan, sets(false, false), rounds, settings))
+        // Its third round ends with a drop, then the row.
+        assertTrue(nextStep("bench", ExerciseType.WEIGHT_REPS, plan, sets(false, false, false), rounds, settings) is NextStep.DropSet)
+        assertEquals(
+            NextStep.Transition("row", 20),
+            nextStep("bench", ExerciseType.WEIGHT_REPS, plan, sets(false, false, false, true), rounds, settings),
+        )
+        // The row has no drop set: none planned for it, none for the superset.
+        assertEquals(NextStep.Transition("curl", 20), nextStep("row", ExerciseType.WEIGHT_REPS, plan, sets(false, false, false), rounds, settings))
+        // A drop on the last round for everyone reaches the row too.
+        val all = rounds.copy(dropOnLastRound = true)
+        assertTrue(nextStep("row", ExerciseType.WEIGHT_REPS, plan, sets(false, false, false), all, settings) is NextStep.DropSet)
+    }
+
+    @Test
+    fun supersetRoundProgress() {
+        val plan = ExercisePlan()
+        assertEquals("Round 2 of 3 · drop set on its last round", supersetProgress(rounds, "bench", plan, sets(false)))
+        assertEquals("Round 3 of 3 · this exercise joins the last round", supersetProgress(rounds, "curl", plan, emptyList()))
+        assertEquals("All 3 rounds done ✓", supersetProgress(rounds, "row", plan, sets(false, false, false)))
+        assertNull(supersetProgress(rounds.copy(rounds = null), "row", plan, emptyList()))
+        assertEquals(1, rounds.planFor("curl", plan).sets)
+    }
+
     @Test
     fun progressThroughThePlan() {
         val plan = ExercisePlan(sets = 3, dropSets = true, drops = 2)

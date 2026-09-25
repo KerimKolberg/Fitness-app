@@ -124,6 +124,11 @@ class WorkoutRepository(
                     roundRestSeconds = members.firstNotNullOfOrNull { it.roundRestSeconds },
                     now = time,
                 )
+                val rounds = members.firstNotNullOfOrNull { it.supersetRounds }
+                members.forEach { member ->
+                    val id = entries[member.exerciseId]?.id ?: return@forEach
+                    dao.setSupersetPlan(id, rounds, members.any { it.supersetDropLast }, member.memberRounds, member.memberDropSet, time)
+                }
             }
         }
     }
@@ -184,6 +189,10 @@ class WorkoutRepository(
                     supersetId = it.supersetId,
                     transitionSeconds = it.transitionSeconds,
                     roundRestSeconds = it.roundRestSeconds,
+                    supersetRounds = it.supersetRounds,
+                    supersetDropLast = it.supersetDropLast,
+                    memberRounds = it.memberRounds,
+                    memberDropSet = it.memberDropSet,
                     now = time,
                 )
             }
@@ -193,6 +202,16 @@ class WorkoutRepository(
     /** Turns a superset back into separate exercises. */
     suspend fun ungroupSuperset(supersetId: String) {
         dao.clearSuperset(supersetId, now())
+    }
+
+    /** Removes several exercises and all their sets from a day at once. */
+    suspend fun deleteWorkoutExercises(workoutExerciseIds: List<String>) {
+        if (workoutExerciseIds.isEmpty()) return
+        database.withTransaction {
+            val time = now()
+            dao.softDeleteSetsOfAll(workoutExerciseIds, time)
+            dao.softDeleteWorkoutExercises(workoutExerciseIds, time)
+        }
     }
 
     /** Removes an exercise and all its sets from a day. */
@@ -217,6 +236,10 @@ private fun groupDayRows(rows: List<DayRow>): List<DayExercise> =
             supersetId = first.supersetId,
             transitionSeconds = first.transitionSeconds,
             roundRestSeconds = first.roundRestSeconds,
+            supersetRounds = first.supersetRounds,
+            supersetDropLast = first.supersetDropLast,
+            memberRounds = first.memberRounds,
+            memberDropSet = first.memberDropSet,
             sets = exerciseRows.mapNotNull { row ->
                 row.setId?.let { id ->
                     SetEntry(

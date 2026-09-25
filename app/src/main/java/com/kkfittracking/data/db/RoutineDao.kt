@@ -16,6 +16,10 @@ data class RoutineExerciseRow(
     val supersetId: String?,
     val transitionSeconds: Int?,
     val roundRestSeconds: Int?,
+    val supersetRounds: Int?,
+    val supersetDropLast: Boolean,
+    val memberRounds: Int?,
+    val memberDropSet: Boolean?,
 )
 
 @Dao
@@ -27,7 +31,9 @@ interface RoutineDao {
         """
         SELECT re.id AS id, re.routineId AS routineId, re.exerciseId AS exerciseId,
                e.name AS exerciseName, c.color AS categoryColor, re.supersetId AS supersetId,
-               re.transitionSeconds AS transitionSeconds, re.roundRestSeconds AS roundRestSeconds
+               re.transitionSeconds AS transitionSeconds, re.roundRestSeconds AS roundRestSeconds,
+               re.supersetRounds AS supersetRounds, re.supersetDropLast AS supersetDropLast,
+               re.memberRounds AS memberRounds, re.memberDropSet AS memberDropSet
         FROM routine_exercises re
         JOIN exercises e ON e.id = re.exerciseId
         JOIN categories c ON c.id = e.categoryId
@@ -68,7 +74,9 @@ interface RoutineDao {
         """
         UPDATE routine_exercises
         SET sortOrder = :sortOrder, supersetId = :supersetId, transitionSeconds = :transitionSeconds,
-            roundRestSeconds = :roundRestSeconds, updatedAt = :now
+            roundRestSeconds = :roundRestSeconds, supersetRounds = :supersetRounds,
+            supersetDropLast = :supersetDropLast, memberRounds = :memberRounds, memberDropSet = :memberDropSet,
+            updatedAt = :now
         WHERE id = :id
         """,
     )
@@ -78,6 +86,10 @@ interface RoutineDao {
         supersetId: String?,
         transitionSeconds: Int?,
         roundRestSeconds: Int?,
+        supersetRounds: Int?,
+        supersetDropLast: Boolean,
+        memberRounds: Int?,
+        memberDropSet: Boolean?,
         now: Long,
     )
 

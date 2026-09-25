@@ -36,14 +36,17 @@ import com.kkfittracking.model.Muscle.WHOLE_LEGS
 import com.kkfittracking.model.Regions
 import com.kkfittracking.model.TrainingStyle
 import com.kkfittracking.model.TrainingStyle.CARDIO
+import com.kkfittracking.model.TrainingStyle.DANCE
 import com.kkfittracking.model.TrainingStyle.ECCENTRIC
 import com.kkfittracking.model.TrainingStyle.HIIT
 import com.kkfittracking.model.TrainingStyle.ISOMETRIC
+import com.kkfittracking.model.TrainingStyle.MEDITATION
 import com.kkfittracking.model.TrainingStyle.MOBILITY
 import com.kkfittracking.model.TrainingStyle.PLYOMETRIC
 import com.kkfittracking.model.TrainingStyle.SPORT
 import com.kkfittracking.model.TrainingStyle.STRENGTH
 import com.kkfittracking.model.TrainingStyle.STRETCHING
+import com.kkfittracking.model.TrainingStyle.YOGA
 import java.util.UUID
 
 /**
@@ -65,15 +68,19 @@ object BuiltInExercises {
         val name: String,
         /** Every muscle it trains, the main one first. */
         val muscles: List<Muscle>,
-        val style: TrainingStyle,
+        /** Every way it trains, the main one first. */
+        val styles: List<TrainingStyle>,
         val type: ExerciseType = WEIGHT_REPS,
         val tempo: String = "",
         val perSide: Boolean = false,
         /** The plan a new install starts with, e.g. the interval timings of Tabata. */
         val plan: ExercisePlan = ExercisePlan(),
+        /** The section key it was in before a later version moved it, if it moved. */
+        val movedFrom: String? = null,
     ) {
         val id: String get() = stableId("exercise", key)
         val muscle: Muscle get() = muscles.first()
+        val style: TrainingStyle get() = styles.first()
 
         /** The body section it is filed in: that of its main muscle. */
         val regionKey: String get() = muscle.regionKey
@@ -103,6 +110,7 @@ object BuiltInExercises {
         Region(Regions.FULL_BODY, "Full body", 0xFF1E88E5.toInt()),
         Region(Regions.CARDIO, "Cardio", 0xFF6D4C41.toInt()),
         Region(Regions.SPORTS, "Sports", 0xFF546E7A.toInt()),
+        Region(Regions.MIND, "Mind & recovery", 0xFF26A69A.toInt()),
     )
 
     val retiredCategories: List<RetiredCategory> = listOf(
@@ -122,6 +130,8 @@ object BuiltInExercises {
         val perSide: Boolean,
         val plan: ExercisePlan,
         val also: List<Muscle>,
+        val alsoStyles: List<TrainingStyle>,
+        val movedFrom: String?,
     )
 
     /** [also] lists the other muscles it trains, besides the main one of its group. */
@@ -132,7 +142,9 @@ object BuiltInExercises {
         perSide: Boolean = false,
         plan: ExercisePlan = ExercisePlan(),
         also: List<Muscle> = emptyList(),
-    ) = Entry(name, type, tempo, perSide, plan, also)
+        alsoStyles: List<TrainingStyle> = emptyList(),
+        movedFrom: String? = null,
+    ) = Entry(name, type, tempo, perSide, plan, also, alsoStyles, movedFrom)
 
     private fun intervals(high: Int, low: Int, rounds: Int) =
         ExercisePlan(highSeconds = high, lowSeconds = low, rounds = rounds)
@@ -141,7 +153,8 @@ object BuiltInExercises {
     private fun MutableList<BuiltInExercise>.group(muscle: Muscle, style: TrainingStyle, vararg entries: Entry) {
         entries.forEach {
             val muscles = (listOf(muscle) + it.also).distinct()
-            add(BuiltInExercise(keyOf(it.name), it.name, muscles, style, it.type, it.tempo, it.perSide, it.plan))
+            val styles = (listOf(style) + it.alsoStyles).distinct()
+            add(BuiltInExercise(keyOf(it.name), it.name, muscles, styles, it.type, it.tempo, it.perSide, it.plan, it.movedFrom))
         }
     }
 
@@ -184,8 +197,8 @@ object BuiltInExercises {
             e("Back Extension", REPS, also = listOf(GLUTES, HAMSTRINGS)),
         )
         group(LOWER_BACK, ISOMETRIC, e("Superman Hold", TIME, also = listOf(GLUTES)))
-        group(LOWER_BACK, MOBILITY, e("Cat-Cow", REPS, also = listOf(UPPER_BACK)))
-        group(LOWER_BACK, STRETCHING, e("Child's Pose", TIME, also = listOf(LATS)))
+        group(LOWER_BACK, MOBILITY, e("Cat-Cow", REPS, also = listOf(UPPER_BACK), alsoStyles = listOf(YOGA)))
+        group(LOWER_BACK, STRETCHING, e("Child's Pose", TIME, also = listOf(LATS), alsoStyles = listOf(YOGA)))
 
         // Shoulders
         group(
@@ -258,7 +271,10 @@ object BuiltInExercises {
         group(HAMSTRINGS, STRETCHING, e("Hamstring Stretch", TIME, perSide = true))
         group(GLUTES, STRENGTH, e("Barbell Hip Thrust", also = listOf(HAMSTRINGS)))
         group(GLUTES, ISOMETRIC, e("Glute Bridge Hold", TIME_WEIGHT, also = listOf(HAMSTRINGS)))
-        group(GLUTES, STRETCHING, e("Pigeon Stretch", TIME, perSide = true, also = listOf(HIPS)))
+        group(
+            GLUTES, STRETCHING,
+            e("Pigeon Stretch", TIME, perSide = true, also = listOf(HIPS), alsoStyles = listOf(YOGA)),
+        )
         group(
             HIPS, MOBILITY,
             e("Hip CARs", REPS, perSide = true), e("90/90 Hip Switches", REPS, also = listOf(GLUTES)),
@@ -288,7 +304,7 @@ object BuiltInExercises {
             e("Ab Wheel Rollout", REPS, also = listOf(LATS)), e("Dead Bug", REPS),
         )
         group(ABS, ISOMETRIC, e("Plank", TIME), e("Hollow Body Hold", TIME))
-        group(ABS, STRETCHING, e("Cobra Stretch", TIME, also = listOf(LOWER_BACK)))
+        group(ABS, STRETCHING, e("Cobra Stretch", TIME, also = listOf(LOWER_BACK), alsoStyles = listOf(YOGA)))
         group(
             OBLIQUES, ISOMETRIC,
             e("Side Plank", TIME), e("Pallof Press Hold", TIME, perSide = true, also = listOf(ABS)),
@@ -322,12 +338,175 @@ object BuiltInExercises {
             e("Badminton", SESSION), e("Squash", SESSION), e("Football", SESSION), e("Basketball", SESSION),
             e("Climbing", SESSION), e("Martial Arts", SESSION),
         )
+
+        // Cardio intervals (HIIT moved here from Sports in version 0.3)
         group(
-            Muscle.SPORT, HIIT,
-            e("HIIT Intervals", INTERVALS, plan = intervals(high = 30, low = 30, rounds = 10)),
-            e("Tabata", INTERVALS, plan = intervals(high = 20, low = 10, rounds = 8)),
-            e("Sprint Intervals", INTERVALS, plan = intervals(high = 15, low = 45, rounds = 10)),
+            Muscle.CARDIO, HIIT,
+            e("HIIT Intervals", INTERVALS, plan = intervals(high = 30, low = 30, rounds = 10), movedFrom = Regions.SPORTS),
+            e("Tabata", INTERVALS, plan = intervals(high = 20, low = 10, rounds = 8), movedFrom = Regions.SPORTS),
+            e("Sprint Intervals", INTERVALS, plan = intervals(high = 15, low = 45, rounds = 10), movedFrom = Regions.SPORTS),
+            e("Bike Intervals", INTERVALS, plan = intervals(high = 40, low = 20, rounds = 8)),
+            e("Rowing Intervals", INTERVALS, plan = intervals(high = 60, low = 60, rounds = 6)),
+            e("Jump Rope Intervals", INTERVALS, plan = intervals(high = 30, low = 30, rounds = 10)),
         )
+        group(
+            Muscle.CARDIO, DANCE,
+            e("Dance Session", SESSION, alsoStyles = listOf(CARDIO)), e("Zumba", SESSION, alsoStyles = listOf(CARDIO)),
+            e("Salsa", SESSION, alsoStyles = listOf(CARDIO)), e("Bachata", SESSION, alsoStyles = listOf(CARDIO)),
+            e("Hip-Hop Dance", SESSION, alsoStyles = listOf(CARDIO)),
+            e("Ballet", SESSION, alsoStyles = listOf(CARDIO, STRETCHING)),
+        )
+
+        // Mind & recovery
+        group(
+            Muscle.MIND, MEDITATION,
+            e("Meditation", SESSION), e("Box Breathing", TIME), e("Body Scan", SESSION),
+            e("Walking Meditation", SESSION), e("Yoga Nidra", SESSION, alsoStyles = listOf(YOGA)),
+        )
+
+        // Yoga: each pose also counts as stretching, mobility or an isometric hold.
+        group(
+            FULL_BODY, YOGA,
+            e("Sun Salutation", REPS, alsoStyles = listOf(MOBILITY)),
+            e("Yoga Flow", SESSION, alsoStyles = listOf(MOBILITY, STRETCHING)),
+        )
+        group(HAMSTRINGS, YOGA, e("Downward Dog", TIME, also = listOf(CALVES, LATS), alsoStyles = listOf(STRETCHING)))
+        group(
+            HAMSTRINGS, YOGA,
+            e("Triangle Pose", TIME, perSide = true, also = listOf(OBLIQUES, ADDUCTORS), alsoStyles = listOf(STRETCHING)),
+        )
+        group(
+            HAMSTRINGS, YOGA,
+            e("Seated Forward Fold", TIME, also = listOf(LOWER_BACK), alsoStyles = listOf(STRETCHING)),
+        )
+        group(
+            HAMSTRINGS, YOGA,
+            e("Warrior III", TIME, perSide = true, also = listOf(GLUTES, LOWER_BACK), alsoStyles = listOf(ISOMETRIC)),
+        )
+        group(ABS, YOGA, e("Upward Dog", TIME, also = listOf(LOWER_BACK, CHEST), alsoStyles = listOf(STRETCHING)))
+        group(ABS, YOGA, e("Boat Pose", TIME, also = listOf(HIPS), alsoStyles = listOf(ISOMETRIC)))
+        group(ABS, YOGA, e("Crow Pose", TIME, also = listOf(TRICEPS, FOREARMS), alsoStyles = listOf(ISOMETRIC)))
+        group(
+            QUADS, YOGA,
+            e("Warrior I", TIME, perSide = true, also = listOf(HIPS, GLUTES), alsoStyles = listOf(ISOMETRIC)),
+        )
+        group(
+            QUADS, YOGA,
+            e("Warrior II", TIME, perSide = true, also = listOf(ADDUCTORS, SIDE_DELTS), alsoStyles = listOf(ISOMETRIC)),
+        )
+        group(QUADS, YOGA, e("Chair Pose", TIME, also = listOf(GLUTES), alsoStyles = listOf(ISOMETRIC)))
+        group(QUADS, YOGA, e("Camel Pose", TIME, also = listOf(HIPS, ABS), alsoStyles = listOf(STRETCHING)))
+        group(
+            CALVES, YOGA,
+            e("Tree Pose", TIME, perSide = true, also = listOf(GLUTES, HIPS), alsoStyles = listOf(ISOMETRIC)),
+        )
+        group(
+            GLUTES, YOGA,
+            e("Bridge Pose", TIME, also = listOf(HAMSTRINGS, LOWER_BACK), alsoStyles = listOf(ISOMETRIC)),
+        )
+        group(
+            HIPS, YOGA,
+            e("Lizard Pose", TIME, perSide = true, also = listOf(HAMSTRINGS), alsoStyles = listOf(STRETCHING)),
+        )
+        group(HIPS, YOGA, e("Low Lunge", TIME, perSide = true, also = listOf(QUADS), alsoStyles = listOf(STRETCHING)))
+        group(HIPS, YOGA, e("Happy Baby", TIME, also = listOf(ADDUCTORS), alsoStyles = listOf(STRETCHING)))
+        group(ADDUCTORS, YOGA, e("Butterfly Pose", TIME, also = listOf(HIPS), alsoStyles = listOf(STRETCHING)))
+        group(ADDUCTORS, YOGA, e("Frog Pose", TIME, also = listOf(HIPS), alsoStyles = listOf(STRETCHING)))
+        group(
+            LOWER_BACK, YOGA,
+            e("Supine Spinal Twist", TIME, perSide = true, also = listOf(OBLIQUES, GLUTES), alsoStyles = listOf(STRETCHING)),
+        )
+        group(
+            UPPER_BACK, YOGA,
+            e("Thread the Needle", TIME, perSide = true, also = listOf(REAR_DELTS), alsoStyles = listOf(MOBILITY)),
+        )
+        group(LATS, YOGA, e("Puppy Pose", TIME, also = listOf(UPPER_BACK, CHEST), alsoStyles = listOf(STRETCHING)))
+
+        // More strength
+        group(CHEST, STRENGTH, e("Pec Deck"), e("Incline Cable Fly"), e("Dumbbell Pullover", also = listOf(LATS)))
+        group(LATS, STRENGTH, e("Straight-Arm Pulldown"))
+        group(
+            UPPER_BACK, STRENGTH,
+            e("Chest-Supported Row", also = listOf(LATS, REAR_DELTS)), e("Barbell Shrug", also = listOf(FOREARMS)),
+            e("Inverted Row", REPS, also = listOf(LATS, BICEPS)),
+        )
+        group(LOWER_BACK, STRENGTH, e("Good Morning", also = listOf(HAMSTRINGS, GLUTES)))
+        group(SIDE_DELTS, STRENGTH, e("Cable Lateral Raise", perSide = true))
+        group(REAR_DELTS, STRENGTH, e("Reverse Pec Deck", also = listOf(UPPER_BACK)))
+        group(FRONT_DELTS, STRENGTH, e("Landmine Press", perSide = true, also = listOf(CHEST, TRICEPS)))
+        group(BICEPS, STRENGTH, e("Spider Curl"), e("Reverse Curl", also = listOf(FOREARMS)))
+        group(FOREARMS, STRENGTH, e("Wrist Curl"), e("Reverse Wrist Curl"))
+        group(
+            TRICEPS, STRENGTH,
+            e("Cable Overhead Triceps Extension"), e("Diamond Push Up", REPS, also = listOf(CHEST, FRONT_DELTS)),
+        )
+        group(
+            QUADS, STRENGTH,
+            e("Hack Squat", also = listOf(GLUTES)), e("Goblet Squat", also = listOf(GLUTES)),
+            e("Step Up", perSide = true, also = listOf(GLUTES)), e("Sissy Squat", REPS),
+        )
+        group(HAMSTRINGS, STRENGTH, e("Single-Leg Romanian Deadlift", perSide = true, also = listOf(GLUTES)))
+        group(
+            GLUTES, STRENGTH,
+            e("Sumo Deadlift", also = listOf(HAMSTRINGS, ADDUCTORS, LOWER_BACK)), e("Hip Abduction Machine"),
+            e("Cable Glute Kickback", perSide = true, also = listOf(HAMSTRINGS)),
+        )
+        group(CALVES, STRENGTH, e("Donkey Calf Raise"))
+        group(
+            ABS, STRENGTH,
+            e("Leg Raise", REPS, also = listOf(HIPS)), e("Bicycle Crunch", REPS, also = listOf(OBLIQUES)),
+            e("Mountain Climber", REPS, also = listOf(HIPS)),
+        )
+        group(
+            OBLIQUES, STRENGTH,
+            e("Russian Twist", REPS, also = listOf(ABS)), e("Cable Woodchopper", perSide = true, also = listOf(ABS)),
+        )
+        group(
+            FULL_BODY, STRENGTH,
+            e("Clean and Press", also = listOf(FRONT_DELTS, WHOLE_LEGS)),
+            e("Thruster", also = listOf(QUADS, FRONT_DELTS)),
+            e("Turkish Get-Up", perSide = true, also = listOf(ABS, ROTATOR_CUFF)),
+        )
+        group(FULL_BODY, HIIT, e("Burpee", REPS, alsoStyles = listOf(PLYOMETRIC)))
+
+        // More isometrics
+        group(ABS, ISOMETRIC, e("L-Sit", TIME, also = listOf(HIPS, TRICEPS)))
+        group(QUADS, ISOMETRIC, e("Horse Stance", TIME, also = listOf(ADDUCTORS, GLUTES)))
+        group(FRONT_DELTS, ISOMETRIC, e("Overhead Barbell Hold", TIME_WEIGHT, also = listOf(TRICEPS, ABS)))
+        group(FOREARMS, ISOMETRIC, e("Plate Pinch Hold", TIME_WEIGHT), e("Towel Hang", TIME, also = listOf(LATS)))
+        group(UPPER_BACK, ISOMETRIC, e("Inverted Row Hold", TIME, also = listOf(LATS, BICEPS)))
+        group(LOWER_BACK, ISOMETRIC, e("Bird Dog Hold", TIME, perSide = true, also = listOf(GLUTES, ABS)))
+        group(ADDUCTORS, ISOMETRIC, e("Adductor Squeeze", TIME))
+        group(GLUTES, ISOMETRIC, e("Reverse Plank", TIME, also = listOf(HAMSTRINGS, REAR_DELTS)))
+        group(HAMSTRINGS, ISOMETRIC, e("Isometric Nordic Hold", TIME))
+
+        // More eccentrics and tendon work
+        group(
+            QUADS, ECCENTRIC,
+            e("Eccentric Step-Down", tempo = "4-0-1-0", perSide = true, also = listOf(GLUTES)),
+            e("Pistol Squat Negative", REPS, tempo = "5-0-1-0", perSide = true, also = listOf(GLUTES)),
+            e("Heavy Slow Squat", tempo = "3-0-3-0", also = listOf(GLUTES)),
+        )
+        group(HAMSTRINGS, ECCENTRIC, e("Slider Hamstring Curl", REPS, tempo = "4-0-1-0", also = listOf(GLUTES)))
+        group(TRICEPS, ECCENTRIC, e("Eccentric Dip", REPS, tempo = "5-0-1-0", also = listOf(CHEST)))
+        group(FOREARMS, ECCENTRIC, e("Eccentric Wrist Flexion", tempo = "3-0-1-0", perSide = true))
+        group(ROTATOR_CUFF, ECCENTRIC, e("Eccentric External Rotation", tempo = "4-0-1-0", perSide = true))
+
+        // More mobility and stretching
+        group(ROTATOR_CUFF, MOBILITY, e("Shoulder Dislocates", REPS, also = listOf(FRONT_DELTS)))
+        group(FOREARMS, MOBILITY, e("Wrist Mobility", REPS))
+        group(
+            HIPS, MOBILITY,
+            e("Hip Airplane", REPS, perSide = true, also = listOf(GLUTES)), e("Spiderman Lunge", REPS, perSide = true),
+        )
+        group(HAMSTRINGS, MOBILITY, e("Jefferson Curl", tempo = "5-0-5-0", also = listOf(LOWER_BACK)))
+        group(FULL_BODY, MOBILITY, e("Foam Rolling", TIME))
+        group(QUADS, STRETCHING, e("Standing Quad Stretch", TIME, perSide = true))
+        group(LATS, STRETCHING, e("Lat Stretch", TIME, perSide = true))
+        group(TRICEPS, STRETCHING, e("Triceps Stretch", TIME, perSide = true))
+        group(GLUTES, STRETCHING, e("Figure-Four Stretch", TIME, perSide = true))
+        group(FOREARMS, STRETCHING, e("Wrist Flexor Stretch", TIME))
+        group(CALVES, PLYOMETRIC, e("Single-Leg Hop", REPS_HEIGHT, perSide = true, also = listOf(WHOLE_LEGS)))
     }
 
     private val regionKeysById: Map<String, String> = regions.associate { it.id to it.key }

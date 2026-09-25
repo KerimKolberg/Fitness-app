@@ -15,6 +15,10 @@ sealed interface ArrangeRow {
         val transitionSeconds: Int,
         /** Seconds of rest after each round. */
         val roundRestSeconds: Int,
+        /** Rounds planned; null keeps going round after round. */
+        val rounds: Int? = null,
+        /** Every exercise ends its last round with a drop set. */
+        val dropOnLastRound: Boolean = false,
     ) : ArrangeRow {
         override val key: String get() = "start-$supersetId"
     }
@@ -32,6 +36,10 @@ sealed interface ArrangeRow {
         val detail: String? = null,
         /** The exercise's own rest between sets, which a superset's timing replaces. */
         val ownRestSeconds: Int? = null,
+        /** In a superset: it joins only the last this many rounds. */
+        val memberRounds: Int? = null,
+        /** In a superset: its own choice about a drop set on its last round; null follows the superset. */
+        val memberDropSet: Boolean? = null,
     ) : ArrangeRow {
         override val key: String get() = id
     }
@@ -47,6 +55,10 @@ data class ArrangeEntry(
     val roundRestSeconds: Int?,
     val detail: String? = null,
     val ownRestSeconds: Int? = null,
+    val supersetRounds: Int? = null,
+    val supersetDropLast: Boolean = false,
+    val memberRounds: Int? = null,
+    val memberDropSet: Boolean? = null,
 )
 
 /** The timing a superset gets when it has none of its own. */
@@ -59,12 +71,19 @@ data class ArrangedExercise(
     val supersetId: String?,
     val transitionSeconds: Int?,
     val roundRestSeconds: Int?,
+    val supersetRounds: Int? = null,
+    val supersetDropLast: Boolean = false,
+    val memberRounds: Int? = null,
+    val memberDropSet: Boolean? = null,
 )
 
 /** Builds the arrange list, keeping the current order. */
 fun arrangementOf(entries: List<ArrangeEntry>, defaults: SupersetTiming): List<ArrangeRow> {
     fun item(entry: ArrangeEntry) =
-        ArrangeRow.Item(entry.id, entry.exerciseName, entry.categoryColor, entry.detail, entry.ownRestSeconds)
+        ArrangeRow.Item(
+            entry.id, entry.exerciseName, entry.categoryColor, entry.detail, entry.ownRestSeconds,
+            entry.memberRounds, entry.memberDropSet,
+        )
     return groupSupersets(entries) { it.supersetId }.flatMap { block ->
         when (block) {
             is Block.Single -> listOf(item(block.item))
@@ -73,6 +92,8 @@ fun arrangementOf(entries: List<ArrangeEntry>, defaults: SupersetTiming): List<A
                     supersetId = block.id,
                     transitionSeconds = block.items.firstNotNullOfOrNull { it.transitionSeconds } ?: defaults.transitionSeconds,
                     roundRestSeconds = block.items.firstNotNullOfOrNull { it.roundRestSeconds } ?: defaults.roundRestSeconds,
+                    rounds = block.items.firstNotNullOfOrNull { it.supersetRounds },
+                    dropOnLastRound = block.items.any { it.supersetDropLast },
                 )
                 listOf(start) + block.items.map(::item) + ArrangeRow.End(block.id)
             }
@@ -146,6 +167,10 @@ fun removeSuperset(rows: List<ArrangeRow>, supersetId: String): List<ArrangeRow>
         (it is ArrangeRow.Start && it.supersetId == supersetId) || (it is ArrangeRow.End && it.supersetId == supersetId)
     }
 
+/** Changes one exercise's row, found by key. */
+fun updateItem(rows: List<ArrangeRow>, itemKey: String, change: (ArrangeRow.Item) -> ArrangeRow.Item): List<ArrangeRow> =
+    rows.map { if (it is ArrangeRow.Item && it.key == itemKey) change(it) else it }
+
 /** Changes a superset's timing. */
 fun updateSuperset(rows: List<ArrangeRow>, supersetId: String, change: (ArrangeRow.Start) -> ArrangeRow.Start): List<ArrangeRow> =
     rows.map { if (it is ArrangeRow.Start && it.supersetId == supersetId) change(it) else it }
@@ -182,6 +207,10 @@ fun arrangedExercises(rows: List<ArrangeRow>): List<ArrangedExercise> {
                     supersetId = superset?.supersetId,
                     transitionSeconds = superset?.transitionSeconds,
                     roundRestSeconds = superset?.roundRestSeconds,
+                    supersetRounds = superset?.rounds,
+                    supersetDropLast = superset?.dropOnLastRound == true,
+                    memberRounds = row.memberRounds.takeIf { superset?.rounds != null },
+                    memberDropSet = row.memberDropSet.takeIf { superset != null },
                 )
             }
         }

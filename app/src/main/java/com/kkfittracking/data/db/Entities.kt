@@ -87,6 +87,14 @@ data class WorkoutExerciseEntity(
     val transitionSeconds: Int? = null,
     /** Seconds of rest after each round of the superset (added in v5). */
     val roundRestSeconds: Int? = null,
+    /** Rounds planned for the superset (added in v6). */
+    val supersetRounds: Int? = null,
+    /** Every exercise of the superset ends its last round with a drop set (added in v6). */
+    @ColumnInfo(defaultValue = "0") val supersetDropLast: Boolean = false,
+    /** It joins only the last this many rounds of its superset (added in v6). */
+    val memberRounds: Int? = null,
+    /** Its own choice about a drop set on its last round; null follows the superset (added in v6). */
+    val memberDropSet: Boolean? = null,
 )
 
 @Entity(
@@ -150,6 +158,14 @@ data class RoutineExerciseEntity(
     val transitionSeconds: Int? = null,
     /** Seconds of rest after each round of the superset (added in v5). */
     val roundRestSeconds: Int? = null,
+    /** Rounds planned for the superset (added in v6). */
+    val supersetRounds: Int? = null,
+    /** Every exercise of the superset ends its last round with a drop set (added in v6). */
+    @ColumnInfo(defaultValue = "0") val supersetDropLast: Boolean = false,
+    /** It joins only the last this many rounds of its superset (added in v6). */
+    val memberRounds: Int? = null,
+    /** Its own choice about a drop set on its last round; null follows the superset (added in v6). */
+    val memberDropSet: Boolean? = null,
 )
 
 /** One body measurement. The value is stored in base units: kg, percent, or cm (see [BodyMetric]). */

@@ -161,12 +161,21 @@ private fun ChartCanvas(
             colors.primary,
             style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round),
         )
+        // The all-time high and low stand out.
+        val highIndex = points.indices.maxBy { points[it].value }
+        val lowIndex = points.indices.minBy { points[it].value }
         points.forEachIndexed { index, p ->
             val center = Offset(x(index), y(p.value))
-            val radius = if (index == selectedIndex) 6.dp.toPx() else 4.dp.toPx()
+            val extreme = index == highIndex || index == lowIndex
+            val radius = if (index == selectedIndex || extreme) 6.dp.toPx() else 4.dp.toPx()
+            val color = when (index) {
+                highIndex -> colors.tertiary
+                lowIndex -> colors.error
+                else -> colors.primary
+            }
             // A ring in the surface color keeps overlapping dots apart.
             drawCircle(colors.surface, radius + 2.dp.toPx(), center)
-            drawCircle(colors.primary, radius, center)
+            drawCircle(color, radius, center)
         }
     }
 }

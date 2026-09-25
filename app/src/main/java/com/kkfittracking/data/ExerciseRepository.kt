@@ -79,7 +79,7 @@ class ExerciseRepository(
                     tempo = exercise.tempo,
                     perSide = exercise.perSide,
                     muscles = Muscle.format(exercise.muscles),
-                    style = exercise.style.name,
+                    style = TrainingStyle.format(exercise.styles),
                     plan = exercise.plan.toJson(),
                 )
             },
@@ -98,6 +98,7 @@ class ExerciseRepository(
         val retired = BuiltInExercises.retired(row.categoryId)
         val builtIn = BuiltInExercises.exercise(row.id)
         val section = BuiltInExercises.regionKeyOf(row.categoryId)
+        val movedFrom = builtIn?.movedFrom?.let { BuiltInExercises.stableId("category", it) }
         val result = when {
             // Never filed: in the catalog's place, unless the user moved it to another section.
             builtIn != null && row.muscles.isEmpty() -> row.copy(
@@ -107,8 +108,17 @@ class ExerciseRepository(
                     row.categoryId
                 },
                 muscles = Muscle.format(builtIn.muscles),
-                style = row.style.ifEmpty { builtIn.style.name },
+                style = row.style.ifEmpty { TrainingStyle.format(builtIn.styles) },
             )
+            // Moved by a later version (HIIT went from Sports to Cardio): follow, unless the user moved it.
+            builtIn != null && movedFrom != null && row.categoryId == movedFrom ->
+                row.copy(
+                    categoryId = BuiltInExercises.stableId("category", builtIn.regionKey),
+                    muscles = Muscle.format(builtIn.muscles),
+                )
+            // A later version gave it more training styles (Child's Pose is yoga too); the user never changed it.
+            builtIn != null && builtIn.styles.size > 1 && row.style == builtIn.style.name ->
+                row.copy(style = TrainingStyle.format(builtIn.styles))
             // The user's own exercises in an old category go to its fallback.
             retired != null -> row.copy(
                 categoryId = BuiltInExercises.stableId("category", retired.muscle.regionKey),
@@ -131,7 +141,8 @@ class ExerciseRepository(
         perSide: Boolean = false,
         /** Every muscle it trains, the main one first. */
         muscles: List<Muscle>? = null,
-        style: TrainingStyle? = null,
+        /** Every way it trains, the main one first. */
+        styles: List<TrainingStyle>? = null,
         links: List<ExerciseLink>? = null,
     ): String {
         val time = now()
@@ -144,7 +155,7 @@ class ExerciseRepository(
             tempo = tempo.trim(),
             perSide = perSide,
             muscles = muscles?.let(Muscle::format) ?: existing.muscles,
-            style = style?.name ?: existing.style,
+            style = styles?.let(TrainingStyle::format) ?: existing.style,
             links = links?.let { ExerciseLinks.format(it) } ?: existing.links,
             updatedAt = time,
         ) ?: ExerciseEntity(
@@ -159,7 +170,7 @@ class ExerciseRepository(
             tempo = tempo.trim(),
             perSide = perSide,
             muscles = muscles?.let(Muscle::format).orEmpty(),
-            style = style?.name.orEmpty(),
+            style = styles?.let(TrainingStyle::format).orEmpty(),
             links = links?.let { ExerciseLinks.format(it) }.orEmpty(),
         )
         dao.upsertExercise(entity)
@@ -195,7 +206,7 @@ private fun ExerciseEntity.toModel(): Exercise {
         tempo = tempo,
         perSide = perSide,
         muscles = Muscle.resolveAll(muscles, section),
-        style = TrainingStyle.resolve(style, section, type),
+        styles = TrainingStyle.resolveAll(style, section, type),
         plan = ExercisePlan.fromJson(plan),
         links = ExerciseLinks.parse(links),
     )

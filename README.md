@@ -7,7 +7,7 @@ See [ROADMAP.md](ROADMAP.md) for the plan and progress.
 ## What it does today
 
 - **Workout log**: one screen per day, with previous/next day arrows and a calendar
-- **Exercise library**: about 140 built-in exercises. Browse by body section (Legs → Hamstrings → Eccentrics → Nordic curl) or by training style (Stretching, Mobility, Isometrics… → muscle group). Exercises that train several muscles, like the deadlift, are listed under each of them. Search, filters and your own custom exercises
+- **Exercise library**: about 240 built-in exercises, including yoga poses, meditation and breathing, and dance sessions. Browse by body section (Legs → Hamstrings → Eccentrics → Nordic curl) or by training style (Stretching, Mobility, Isometrics… → muscle group). Exercises that train several muscles, like the deadlift, are listed under each of them. Search, filters and your own custom exercises
 - **Logging sets**: weight × reps, reps only, distance and time, or time only. Tap a set to edit or delete it
 - **Set plans**: sets, reps, weight and rest per exercise, with "Set 2 of 3" while you train
 - **Last time** hint and a full **history** per exercise
@@ -17,11 +17,12 @@ See [ROADMAP.md](ROADMAP.md) for the plan and progress.
 - **Progress graphs** per exercise (estimated 1RM, heaviest weight, volume, reps, time, distance)
 - **Plans**: group exercises (Push, Upper body, Tendon health…); one exercise can be in many plans. Add a plan to a workout day, filter the exercise list by plan, or start from the starter plans. Copy an earlier day's exercises to today
 - **Beyond the gym**: mobility, stretching, isometric holds, slow eccentrics for tendons (with tempo), plyometrics (with jump height) and sports sessions (with intensity and notes)
-- **HIIT**: an interval timer for high and low intensity with rounds, a get-ready countdown, beeps and vibration
+- **HIIT** (under Cardio): an interval timer for high and low intensity with rounds, a get-ready countdown, beeps and vibration
 - **Drop sets**: planned per exercise, on the last set or as the whole exercise, with the number of drops, reps per drop and a percentage or fixed weight; or tap "Drop set" any time
-- **Supersets**: group 2 to 6 exercises and log them round by round. "+Super-sets" arranges a day or a plan by dragging, with the time to walk to the next exercise and the rest after each round; plans can bring their supersets along
+- **Supersets**: group 2 to 6 exercises and log them round by round. "+Super-sets" arranges a day or a plan by dragging, with the time to walk to the next exercise and the rest after each round; plans can bring their supersets along. Set the rounds of a superset, a drop set on the last round for all, and per exercise how many rounds it joins or its own drop set choice
 - **How to do it**: a description and video links (YouTube or any page) on every exercise
-- **Gamification**: XP and levels, a weekly goal with streaks, 15 achievements, and celebrations when you hit a record
+- **Progress**: graphs per exercise with the all-time high and low marked, and records
+- **Gamification**: XP and levels, a weekly goal with streaks, 17 achievements, and celebrations when you hit a record
 - **Body tracker**: bodyweight, body fat and body measurements with graphs
 - **Your data**: back up to a file (e.g. on Google Drive) and restore it on any phone; export workouts and body measurements as CSV
 

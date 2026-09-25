@@ -1,4 +1,4 @@
-@file:OptIn(ExperimentalMaterial3Api::class)
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 
 package com.kkfittracking.ui.exercises
 
@@ -6,6 +6,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -25,6 +27,7 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -53,6 +56,7 @@ import com.kkfittracking.model.TrainingStyle
 import com.kkfittracking.ui.components.AddLinkDialog
 import com.kkfittracking.ui.components.ColorDot
 import com.kkfittracking.ui.components.LinkRow
+import com.kkfittracking.ui.components.SectionIcon
 
 @Composable
 fun EditExerciseScreen(
@@ -121,8 +125,8 @@ fun EditExerciseScreen(
                 options = categories,
                 optionLabel = { it.name },
                 onSelect = { viewModel.updateCategory(it.id) },
-                leadingIcon = selectedCategory?.let { category -> { ColorDot(category.color) } },
-                optionIcon = { ColorDot(it.color) },
+                leadingIcon = selectedCategory?.let { category -> { SectionIcon(category.key, category.color) } },
+                optionIcon = { SectionIcon(it.key, it.color) },
             )
             DropdownField(
                 label = "Main muscle",
@@ -148,12 +152,31 @@ fun EditExerciseScreen(
                 )
             }
             DropdownField(
-                label = "Training style",
+                label = "Main training style",
                 value = viewModel.style.label,
-                options = TrainingStyle.entries,
+                options = TrainingStyle.sectionOrder,
                 optionLabel = { it.label },
                 onSelect = viewModel::updateStyle,
+                leadingIcon = { ColorDot(viewModel.style.color) },
+                optionIcon = { ColorDot(it.color) },
             )
+            Column {
+                Text("Also counts as", style = MaterialTheme.typography.titleSmall)
+                Text(
+                    text = "It is listed in these training style sections too",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TrainingStyle.sectionOrder.filter { it != viewModel.style }.forEach { option ->
+                        FilterChip(
+                            selected = option in viewModel.otherStyles,
+                            onClick = { viewModel.toggleOtherStyle(option) },
+                            label = { Text(option.label) },
+                        )
+                    }
+                }
+            }
 
             Column {
                 Text("Type", style = MaterialTheme.typography.titleSmall)

@@ -25,7 +25,7 @@ class GamificationTest {
         exerciseId = exercise,
         categoryId = categoryId,
         type = type,
-        style = style,
+        styles = listOf(style),
         values = SetValues(weightKg = kg, reps = reps),
     )
 

@@ -149,6 +149,23 @@ class MigrationTest {
     }
 
     @Test
+    fun fromVersion5() = runTest {
+        createOldDatabase(5) {
+            seedVersion1Rows()
+            execSQL("UPDATE workout_exercises SET supersetId = 'ss', roundRestSeconds = 90 WHERE id = 'we'")
+            execSQL("UPDATE exercises SET muscles = 'CHEST,TRICEPS', style = 'STRENGTH' WHERE id = 'e'")
+        }
+        val db = openCurrent()
+
+        val logged = WorkoutRepository(db).observeDay(day).first().single()
+        assertEquals(90, logged.roundRestSeconds)
+        assertNull(logged.supersetRounds)
+        assertFalse(logged.supersetDropLast)
+        assertNull(logged.memberDropSet)
+        assertEquals(2, ExerciseRepository(db.exerciseDao()).getExercise("e")!!.muscles.size)
+    }
+
+    @Test
     fun fromVersion4() = runTest {
         createOldDatabase(4) {
             seedVersion1Rows()

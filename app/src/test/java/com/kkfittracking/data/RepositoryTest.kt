@@ -407,7 +407,7 @@ class RepositoryTest {
         assertEquals(listOf(link), saved.links)
 
         // Editing the exercise keeps its plan; the muscle and style can be changed.
-        exercises.saveExercise(bench, "Bench", saved.categoryId, ExerciseType.WEIGHT_REPS, saved.notes, muscles = listOf(Muscle.OTHER, Muscle.TRICEPS), style = TrainingStyle.ECCENTRIC)
+        exercises.saveExercise(bench, "Bench", saved.categoryId, ExerciseType.WEIGHT_REPS, saved.notes, muscles = listOf(Muscle.OTHER, Muscle.TRICEPS), styles = listOf(TrainingStyle.ECCENTRIC))
         val edited = exercises.getExercise(bench)!!
         assertEquals(plan, edited.plan)
         assertEquals(listOf(link), edited.links)
@@ -485,5 +485,51 @@ class RepositoryTest {
         assertEquals(listOf(bench, squat), logged.map { it.exerciseId })
         assertEquals(logged[0].supersetId, logged[1].supersetId)
         assertEquals(60, logged[0].roundRestSeconds)
+    }
+
+    /** An install of version 0.2: HIIT in Sports, Child's Pose only a stretch. */
+    @Test
+    fun laterCatalogChangesReachEarlierInstalls() = runTest {
+        exercises.syncBuiltIns()
+        val tabata = StarterPlans.exerciseId("Tabata")
+        val childsPose = StarterPlans.exerciseId("Child's Pose")
+        val sports = BuiltInExercises.stableId("category", "sports")
+        val dao = database.exerciseDao()
+        dao.updateExercises(
+            listOf(
+                dao.getExercise(tabata)!!.copy(categoryId = sports, muscles = "SPORT"),
+                dao.getExercise(childsPose)!!.copy(style = "STRETCHING"),
+            ),
+        )
+
+        exercises.syncBuiltIns()
+
+        val moved = exercises.getExercise(tabata)!!
+        assertEquals(BuiltInExercises.stableId("category", "cardio"), moved.categoryId)
+        assertEquals(Muscle.CARDIO, moved.muscle)
+        assertEquals(listOf(TrainingStyle.STRETCHING, TrainingStyle.YOGA), exercises.getExercise(childsPose)!!.styles)
+    }
+
+    @Test
+    fun supersetRoundsAreSavedAndComeAlongFromPlans() = runTest {
+        exercises.syncBuiltIns()
+        val row = StarterPlans.exerciseId("Barbell Row")
+        val plan = routines.createRoutine("Upper")
+        listOf(bench, row).forEach { routines.addExercise(plan, it) }
+        val entries = routines.observeRoutine(plan).first()!!.exercises
+        routines.arrangePlan(
+            listOf(
+                ArrangedExercise(entries[0].id, 0, "s", 20, 120, supersetRounds = 3, supersetDropLast = false, memberDropSet = true),
+                ArrangedExercise(entries[1].id, 1, "s", 20, 120, supersetRounds = 3, memberRounds = 1),
+            ),
+        )
+        workouts.addPlannedExercises(day, routines.plannedExercises(plan), withSupersets = true)
+        val logged = workouts.observeDay(day).first()
+        assertEquals(listOf(3, 3), logged.map { it.supersetRounds })
+        assertEquals(true, logged[0].memberDropSet)
+        assertEquals(1, logged[1].memberRounds)
+
+        workouts.deleteWorkoutExercises(logged.map { it.workoutExerciseId })
+        assertTrue(workouts.observeDay(day).first().isEmpty())
     }
 }

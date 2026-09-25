@@ -39,6 +39,10 @@ class RoutineRepository(
                             supersetId = it.supersetId,
                             transitionSeconds = it.transitionSeconds,
                             roundRestSeconds = it.roundRestSeconds,
+                            supersetRounds = it.supersetRounds,
+                            supersetDropLast = it.supersetDropLast,
+                            memberRounds = it.memberRounds,
+                            memberDropSet = it.memberDropSet,
                         )
                     },
                 )
@@ -160,6 +164,10 @@ class RoutineRepository(
                     supersetId = it.supersetId,
                     transitionSeconds = it.transitionSeconds,
                     roundRestSeconds = it.roundRestSeconds,
+                    supersetRounds = it.supersetRounds,
+                    supersetDropLast = it.supersetDropLast,
+                    memberRounds = it.memberRounds,
+                    memberDropSet = it.memberDropSet,
                     now = time,
                 )
             }
@@ -173,6 +181,9 @@ class RoutineRepository(
     /** A routine's exercises with their supersets, in order, for adding to a day. */
     suspend fun plannedExercises(routineId: String): List<PlannedExercise> =
         dao.getRoutineExercises(routineId).map {
-            PlannedExercise(it.exerciseId, it.supersetId, it.transitionSeconds, it.roundRestSeconds)
+            PlannedExercise(
+                it.exerciseId, it.supersetId, it.transitionSeconds, it.roundRestSeconds,
+                it.supersetRounds, it.supersetDropLast, it.memberRounds, it.memberDropSet,
+            )
         }
 }

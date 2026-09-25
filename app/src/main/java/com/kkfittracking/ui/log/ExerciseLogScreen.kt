@@ -75,6 +75,7 @@ import com.kkfittracking.model.formatSet
 import com.kkfittracking.model.parseDecimal
 import com.kkfittracking.model.planProgress
 import com.kkfittracking.model.setLabels
+import com.kkfittracking.model.supersetProgress
 import com.kkfittracking.timer.IntervalTimerState
 import com.kkfittracking.timer.RestTimerState
 import com.kkfittracking.ui.components.formatShortDate
@@ -97,6 +98,7 @@ fun ExerciseLogScreen(
     val categories by viewModel.categories.collectAsStateWithLifecycle()
     val intervals by viewModel.intervalState.collectAsStateWithLifecycle()
     var editingPlan by remember { mutableStateOf(false) }
+    var editingDrops by remember { mutableStateOf(false) }
     val requestNotificationPermission = rememberNotificationPermissionRequester()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -190,6 +192,7 @@ fun ExerciseLogScreen(
                     type = exercise.type,
                     intervals = intervals,
                     onEditPlan = { editingPlan = true },
+                    onEditDrops = { editingDrops = true },
                     onStartIntervals = {
                         requestNotificationPermission()
                         viewModel.startIntervals()
@@ -227,7 +230,7 @@ fun ExerciseLogScreen(
     }
 
     val exercise = state.exercise
-    if (editingPlan && exercise != null) {
+    if ((editingPlan || editingDrops) && exercise != null) {
         SetPlanDialog(
             plan = state.plan,
             type = exercise.type,
@@ -240,13 +243,18 @@ fun ExerciseLogScreen(
             inSuperset = state.superset.isNotEmpty(),
             onSave = {
                 editingPlan = false
+                editingDrops = false
                 viewModel.savePlan(it)
             },
             onClear = {
                 editingPlan = false
                 viewModel.clearPlan()
             },
-            onDismiss = { editingPlan = false },
+            onDismiss = {
+                editingPlan = false
+                editingDrops = false
+            },
+            dropOnly = editingDrops,
         )
     }
 
@@ -287,6 +295,7 @@ private fun TrackTab(
     type: ExerciseType,
     intervals: IntervalTimerState,
     onEditPlan: () -> Unit,
+    onEditDrops: () -> Unit,
     onStartIntervals: () -> Unit,
     onSave: () -> Unit,
 ) {
@@ -329,7 +338,8 @@ private fun TrackTab(
                         SetPlanCard(
                             plan = state.plan,
                             type = type,
-                            progress = planProgress(state.plan, state.sets, state.dueDrop?.takeIf { viewModel.dropMode }),
+                            progress = state.supersetContext?.let { supersetProgress(it, exercise.id, state.plan, state.sets) }
+                                ?: planProgress(state.plan, state.sets, state.dueDrop?.takeIf { viewModel.dropMode }),
                             inSuperset = state.superset.isNotEmpty(),
                             defaultPercent = state.settings.dropSetPercent,
                             units = units,
@@ -422,13 +432,18 @@ private fun TrackTab(
                 }
                 if (!isEditing && viewModel.canUseDropSets(state)) {
                     val step = state.plan.dropStepLabel(state.settings.dropSetPercent, units)
-                    FilterChip(
-                        selected = viewModel.dropMode,
-                        onClick = viewModel::toggleDropMode,
-                        label = {
-                            Text(if (viewModel.dropMode) "Drop sets on: $step each" else "Drop set ($step)")
-                        },
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        FilterChip(
+                            selected = viewModel.dropMode,
+                            onClick = viewModel::toggleDropMode,
+                            label = {
+                                Text(if (viewModel.dropMode) "Drop sets on: $step each" else "Drop set ($step)")
+                            },
+                        )
+                        IconButton(onClick = onEditDrops) {
+                            Icon(Icons.Default.Edit, contentDescription = "Drop set settings")
+                        }
+                    }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Button(onClick = onSave, modifier = Modifier.weight(1f)) {

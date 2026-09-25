@@ -95,6 +95,10 @@ data class WorkoutExerciseDto(
     val supersetId: String? = null,
     val transitionSeconds: Int? = null,
     val roundRestSeconds: Int? = null,
+    val supersetRounds: Int? = null,
+    val supersetDropLast: Boolean = false,
+    val memberRounds: Int? = null,
+    val memberDropSet: Boolean? = null,
 )
 
 @Serializable
@@ -136,6 +140,10 @@ data class PlanExerciseDto(
     val supersetId: String? = null,
     val transitionSeconds: Int? = null,
     val roundRestSeconds: Int? = null,
+    val supersetRounds: Int? = null,
+    val supersetDropLast: Boolean = false,
+    val memberRounds: Int? = null,
+    val memberDropSet: Boolean? = null,
 )
 
 @Serializable

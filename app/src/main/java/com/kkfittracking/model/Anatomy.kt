@@ -14,24 +14,39 @@ enum class TrainingStyle(val label: String, val color: Int) {
     STRETCHING("Stretching", 0xFF7CB342.toInt()),
     CARDIO("Cardio", 0xFF6D4C41.toInt()),
     HIIT("HIIT & intervals", 0xFFFFB300.toInt()),
-    SPORT("Sports", 0xFF546E7A.toInt());
+    SPORT("Sports", 0xFF546E7A.toInt()),
+    YOGA("Yoga", 0xFF8E24AA.toInt()),
+    MEDITATION("Meditation & breathing", 0xFF26A69A.toInt()),
+    DANCE("Dance", 0xFFEC407A.toInt());
 
     companion object {
         /** The order of the training style sections: the ones beyond the usual gym work first. */
         val sectionOrder: List<TrainingStyle> =
-            listOf(MOBILITY, STRETCHING, ISOMETRIC, ECCENTRIC, PLYOMETRIC, HIIT, STRENGTH, CARDIO, SPORT)
+            listOf(MOBILITY, STRETCHING, YOGA, ISOMETRIC, ECCENTRIC, PLYOMETRIC, HIIT, STRENGTH, CARDIO, DANCE, SPORT, MEDITATION)
 
         /** The style an exercise has when none was chosen, from its section and type. */
         fun defaultFor(regionKey: String?, type: ExerciseType): TrainingStyle = when {
             type == ExerciseType.INTERVALS -> HIIT
             regionKey == Regions.CARDIO -> CARDIO
             regionKey == Regions.SPORTS -> SPORT
+            regionKey == Regions.MIND -> MEDITATION
             else -> STRENGTH
         }
 
-        /** The stored style, or the default when it is empty (never chosen) or unknown. */
+        /**
+         * The stored styles (comma separated, the main one first), or the default when there are
+         * none (never chosen) or none is known. A yoga pose can be yoga and stretching at once.
+         */
+        fun resolveAll(stored: String, regionKey: String?, type: ExerciseType): List<TrainingStyle> =
+            stored.split(',').mapNotNull { name -> entries.firstOrNull { it.name == name.trim() } }.distinct()
+                .ifEmpty { listOf(defaultFor(regionKey, type)) }
+
+        /** How [styles] are stored. */
+        fun format(styles: List<TrainingStyle>): String = styles.distinct().joinToString(",") { it.name }
+
+        /** The main stored style, or the default when it is empty (never chosen) or unknown. */
         fun resolve(stored: String, regionKey: String?, type: ExerciseType): TrainingStyle =
-            entries.firstOrNull { it.name == stored } ?: defaultFor(regionKey, type)
+            resolveAll(stored, regionKey, type).first()
     }
 }
 
@@ -64,6 +79,7 @@ enum class Muscle(val label: String, val regionKey: String) {
     OBLIQUES("Obliques", Regions.CORE),
     FULL_BODY("Full body", Regions.FULL_BODY),
     CARDIO("Cardio", Regions.CARDIO),
+    MIND("Mind & breath", Regions.MIND),
     SPORT("Sports", Regions.SPORTS),
 
     /** Not assigned to a muscle; fits any section. */
@@ -102,4 +118,5 @@ object Regions {
     const val FULL_BODY = "full-body"
     const val CARDIO = "cardio"
     const val SPORTS = "sports"
+    const val MIND = "mind"
 }

@@ -116,10 +116,12 @@ private fun WorkoutDto.toEntity() = WorkoutEntity(id, dateOf(date), comment, cre
 private fun WorkoutExerciseEntity.toDto() = WorkoutExerciseDto(
     id, workoutId, exerciseId, sortOrder, createdAt, updatedAt, deletedAt,
     supersetId, transitionSeconds, roundRestSeconds,
+    supersetRounds, supersetDropLast, memberRounds, memberDropSet,
 )
 private fun WorkoutExerciseDto.toEntity() = WorkoutExerciseEntity(
     id, workoutId, exerciseId, sortOrder, createdAt, updatedAt, deletedAt,
     supersetId, transitionSeconds, roundRestSeconds,
+    supersetRounds, supersetDropLast, memberRounds, memberDropSet,
 )
 
 private fun WorkoutSetEntity.toDto() = SetDto(
@@ -139,10 +141,12 @@ private fun PlanDto.toEntity() = RoutineEntity(id, name, notes, createdAt, updat
 private fun RoutineExerciseEntity.toDto() = PlanExerciseDto(
     id, routineId, exerciseId, sortOrder, createdAt, updatedAt, deletedAt,
     supersetId, transitionSeconds, roundRestSeconds,
+    supersetRounds, supersetDropLast, memberRounds, memberDropSet,
 )
 private fun PlanExerciseDto.toEntity() = RoutineExerciseEntity(
     id, planId, exerciseId, sortOrder, createdAt, updatedAt, deletedAt,
     supersetId, transitionSeconds, roundRestSeconds,
+    supersetRounds, supersetDropLast, memberRounds, memberDropSet,
 )
 
 private fun BodyMeasurementEntity.toDto() =

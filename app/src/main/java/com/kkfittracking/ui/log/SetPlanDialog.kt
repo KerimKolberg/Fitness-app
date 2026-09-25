@@ -96,6 +96,8 @@ fun SetPlanDialog(
     onSave: (ExercisePlan) -> Unit,
     onClear: () -> Unit,
     onDismiss: () -> Unit,
+    /** Only the drop set settings, opened from the "Drop set" button. */
+    dropOnly: Boolean = false,
 ) {
     var form by remember { mutableStateOf(SetPlanForm.from(plan, units, defaultPercent)) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -106,42 +108,47 @@ fun SetPlanDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Set plan") },
+        title = { Text(if (dropOnly) "Drop sets" else "Set plan") },
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Stepper("Sets", "${form.sets}", onMinus = { update(form.changeSets(-1)) }, onPlus = { update(form.changeSets(1)) })
-                if (type.usesReps) {
-                    NumberField(form.reps, "Reps per set (optional)", KeyboardType.Number) { update(form.copy(reps = it)) }
-                }
-                if (type.usesWeight) {
-                    NumberField(form.weight, "Weight (${units.weightUnit}, optional)", KeyboardType.Decimal) { update(form.copy(weight = it)) }
-                }
-                Stepper(
-                    label = "Rest between sets",
-                    value = formatDuration(form.restSeconds ?: defaultRestSeconds) + if (form.restSeconds == null) " (default)" else "",
-                    onMinus = { update(form.changeRest(-REST_STEP, defaultRestSeconds)) },
-                    onPlus = { update(form.changeRest(REST_STEP, defaultRestSeconds)) },
-                )
-                if (form.restSeconds != null) {
-                    TextButton(onClick = { update(form.copy(restSeconds = null)) }) { Text("Use the default rest") }
-                }
-                if (inSuperset) {
-                    Text(
-                        text = "This exercise is in a superset today, so the superset's timing is used instead of this rest.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.tertiary,
+                if (dropOnly) {
+                    DropSetFields(form, units, form.weightKg(units) ?: enteredWeightKg, ::update, alwaysShowSettings = true)
+                    error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium) }
+                } else {
+                    Stepper("Sets", "${form.sets}", onMinus = { update(form.changeSets(-1)) }, onPlus = { update(form.changeSets(1)) })
+                    if (type.usesReps) {
+                        NumberField(form.reps, "Reps per set (optional)", KeyboardType.Number) { update(form.copy(reps = it)) }
+                    }
+                    if (type.usesWeight) {
+                        NumberField(form.weight, "Weight (${units.weightUnit}, optional)", KeyboardType.Decimal) { update(form.copy(weight = it)) }
+                    }
+                    Stepper(
+                        label = "Rest between sets",
+                        value = formatDuration(form.restSeconds ?: defaultRestSeconds) + if (form.restSeconds == null) " (default)" else "",
+                        onMinus = { update(form.changeRest(-REST_STEP, defaultRestSeconds)) },
+                        onPlus = { update(form.changeRest(REST_STEP, defaultRestSeconds)) },
                     )
-                }
-                if (type == ExerciseType.WEIGHT_REPS) {
-                    HorizontalDivider()
-                    DropSetFields(form, units, form.weightKg(units) ?: enteredWeightKg, ::update)
-                }
-                error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium) }
-                if (plan.withoutSetPlan() != plan) {
-                    TextButton(onClick = onClear) { Text("Clear the set plan") }
+                    if (form.restSeconds != null) {
+                        TextButton(onClick = { update(form.copy(restSeconds = null)) }) { Text("Use the default rest") }
+                    }
+                    if (inSuperset) {
+                        Text(
+                            text = "This exercise is in a superset today, so the superset's timing is used instead of this rest.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.tertiary,
+                        )
+                    }
+                    if (type == ExerciseType.WEIGHT_REPS) {
+                        HorizontalDivider()
+                        DropSetFields(form, units, form.weightKg(units) ?: enteredWeightKg, ::update)
+                    }
+                    error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium) }
+                    if (plan.withoutSetPlan() != plan) {
+                        TextButton(onClick = onClear) { Text("Clear the set plan") }
+                    }
                 }
             }
         },
@@ -149,7 +156,19 @@ fun SetPlanDialog(
             TextButton(
                 onClick = {
                     when (val result = form.toPlan(plan, units)) {
-                        is SetPlanForm.Result.Valid -> onSave(result.plan)
+                        is SetPlanForm.Result.Valid -> onSave(
+                            // The drop set settings alone leave the rest of the set plan as it was.
+                            if (dropOnly) {
+                                result.plan.copy(
+                                    sets = if (result.plan.dropSets) result.plan.sets else plan.sets,
+                                    reps = plan.reps,
+                                    weightKg = plan.weightKg,
+                                    restSeconds = plan.restSeconds,
+                                )
+                            } else {
+                                result.plan
+                            },
+                        )
                         is SetPlanForm.Result.Invalid -> error = result.message
                     }
                 },
@@ -160,19 +179,36 @@ fun SetPlanDialog(
 }
 
 @Composable
-private fun DropSetFields(form: SetPlanForm, units: UnitSystem, startKg: Double?, update: (SetPlanForm) -> Unit) {
+private fun DropSetFields(
+    form: SetPlanForm,
+    units: UnitSystem,
+    startKg: Double?,
+    update: (SetPlanForm) -> Unit,
+    /** Show how much each drop takes off even when drop sets are not planned (for the "Drop set" button). */
+    alwaysShowSettings: Boolean = false,
+) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
-            Text("Drop sets", style = MaterialTheme.typography.titleSmall)
+            Text(if (alwaysShowSettings) "Planned drop sets" else "Drop sets", style = MaterialTheme.typography.titleSmall)
             Text(
-                text = "Lower the weight and keep going, without resting",
+                text = if (alwaysShowSettings) {
+                    "Start them by themselves after the planned sets"
+                } else {
+                    "Lower the weight and keep going, without resting"
+                },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         Switch(checked = form.dropSets, onCheckedChange = { update(form.copy(dropSets = it)) })
     }
-    if (!form.dropSets) return
+    if (!form.dropSets && !alwaysShowSettings) return
+    if (form.dropSets) DropSetWhere(form, update)
+    DropSetAmounts(form, units, startKg, update)
+}
+
+@Composable
+private fun DropSetWhere(form: SetPlanForm, update: (SetPlanForm) -> Unit) {
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         FilterChip(
             selected = !form.isWholeExercise,
@@ -194,6 +230,10 @@ private fun DropSetFields(form: SetPlanForm, units: UnitSystem, startKg: Double?
         },
         style = MaterialTheme.typography.bodySmall,
     )
+}
+
+@Composable
+private fun DropSetAmounts(form: SetPlanForm, units: UnitSystem, startKg: Double?, update: (SetPlanForm) -> Unit) {
     Stepper("Drops", "${form.drops}", onMinus = { update(form.changeDrops(-1)) }, onPlus = { update(form.changeDrops(1)) })
     NumberField(form.dropReps, "Reps per drop (empty: as many as the set before)", KeyboardType.Number) {
         update(form.copy(dropReps = it))

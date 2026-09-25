@@ -72,6 +72,11 @@ class WorkoutViewModel(
         viewModelScope.launch { workoutRepository.ungroupSuperset(supersetId) }
     }
 
+    /** Removes several exercises (and their sets) from the day at once. */
+    fun deleteExercises(workoutExerciseIds: Collection<String>) {
+        viewModelScope.launch { workoutRepository.deleteWorkoutExercises(workoutExerciseIds.toList()) }
+    }
+
     fun deleteExercise(workoutExerciseId: String) {
         viewModelScope.launch { workoutRepository.deleteWorkoutExercise(workoutExerciseId) }
     }
@@ -87,7 +92,10 @@ class WorkoutViewModel(
     /** Copies the shown day's exercises and supersets (not their sets) to today, then shows today. */
     fun copyExercisesToToday() {
         val exercises = uiState.value.exercises.map {
-            PlannedExercise(it.exerciseId, it.supersetId, it.transitionSeconds, it.roundRestSeconds)
+            PlannedExercise(
+                it.exerciseId, it.supersetId, it.transitionSeconds, it.roundRestSeconds,
+                it.supersetRounds, it.supersetDropLast, it.memberRounds, it.memberDropSet,
+            )
         }
         viewModelScope.launch {
             workoutRepository.addPlannedExercises(LocalDate.now(), exercises, withSupersets = true)

@@ -77,7 +77,7 @@ class BackupRestoreTest {
         val supersetId = old.workouts.createSuperset(day, listOf(bench, squat), transitionSeconds = 20)
         old.settings.setUnitSystem(UnitSystem.IMPERIAL)
         old.exercises.saveExercise(null, "My Custom Lift", old.exercises.categories.first().first().id,
-            ExerciseType.WEIGHT_REPS, "", tempo = "4-0-1-0", perSide = true, style = TrainingStyle.ECCENTRIC)
+            ExerciseType.WEIGHT_REPS, "", tempo = "4-0-1-0", perSide = true, styles = listOf(TrainingStyle.ECCENTRIC))
         old.exercises.savePlan(bench, ExercisePlan(sets = 1, dropSets = true, drops = 3))
         old.exercises.saveLinks(bench, listOf(ExerciseLink("https://youtu.be/abc")))
         val push = old.plans.routines.first().single { it.name == "Push" }

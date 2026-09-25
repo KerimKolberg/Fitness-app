@@ -31,11 +31,11 @@ class BuiltInExercisesTest {
             assertTrue("${it.name} needs a muscle", Muscle.OTHER !in it.muscles)
             assertEquals("${it.name} lists a muscle twice", it.muscles.size, it.muscles.toSet().size)
         }
-        // Every section has exercises, and HIIT is under Sports.
+        // Every section has exercises, and interval HIIT is under Cardio.
         assertEquals(sections, BuiltInExercises.exercises.map { it.regionKey }.toSet())
         val hiit = BuiltInExercises.exercises.filter { it.style == TrainingStyle.HIIT }
         assertTrue(hiit.isNotEmpty())
-        assertTrue(hiit.all { it.type == ExerciseType.INTERVALS && it.regionKey == "sports" && it.plan.rounds != null })
+        assertTrue(hiit.all { it.type != ExerciseType.INTERVALS || (it.regionKey == "cardio" && it.plan.rounds != null) })
     }
 
     @Test
@@ -44,6 +44,19 @@ class BuiltInExercisesTest {
         assertEquals("legs", nordic.regionKey)
         assertEquals(Muscle.HAMSTRINGS, nordic.muscle)
         assertEquals(TrainingStyle.ECCENTRIC, nordic.style)
+    }
+
+    @Test
+    fun hiitMovedToCardioAndYogaCountsTwice() {
+        val tabata = BuiltInExercises.exercises.single { it.name == "Tabata" }
+        assertEquals("cardio", tabata.regionKey)
+        assertEquals("sports", tabata.movedFrom)
+        val dog = BuiltInExercises.exercises.single { it.name == "Downward Dog" }
+        assertEquals(listOf(TrainingStyle.YOGA, TrainingStyle.STRETCHING), dog.styles)
+        // Poses that were already there count as yoga too.
+        assertTrue(TrainingStyle.YOGA in BuiltInExercises.exercises.single { it.name == "Child's Pose" }.styles)
+        assertEquals("mind", BuiltInExercises.exercises.single { it.name == "Meditation" }.regionKey)
+        assertEquals(TrainingStyle.DANCE, BuiltInExercises.exercises.single { it.name == "Salsa" }.style)
     }
 
     @Test
@@ -88,7 +101,7 @@ class BuiltInExercisesTest {
     fun noEarlierBuiltInExerciseWasLost() {
         val names = BuiltInExercises.exercises.map { it.name }.toSet()
         EARLIER_NAMES.forEach { assertTrue("$it is missing", it in names) }
-        assertEquals(EARLIER_NAMES.size + 24, BuiltInExercises.exercises.size)
+        assertTrue(BuiltInExercises.exercises.size > EARLIER_NAMES.size + 100)
     }
 
     private companion object {

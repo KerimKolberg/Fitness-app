@@ -199,3 +199,25 @@ fun progressPoints(history: List<HistorySession>, metric: ProgressMetric): List<
         }
         if (value > 0) ProgressPoint(session.date, value) else null
     }
+
+/** The all-time high and low of a graph, and how far it moved from the first session to the latest. */
+data class ProgressSummary(
+    val high: ProgressPoint,
+    val low: ProgressPoint,
+    val first: ProgressPoint,
+    val latest: ProgressPoint,
+) {
+    val change: Double get() = latest.value - first.value
+}
+
+/** Null without points. The earliest date wins a tie, as that is when the value was first reached. */
+fun progressSummary(points: List<ProgressPoint>): ProgressSummary? {
+    if (points.isEmpty()) return null
+    val byDate = points.sortedBy { it.date }
+    return ProgressSummary(
+        high = byDate.maxWith(compareBy<ProgressPoint> { it.value }.thenByDescending { it.date }),
+        low = byDate.minWith(compareBy<ProgressPoint> { it.value }.thenBy { it.date }),
+        first = byDate.first(),
+        latest = byDate.last(),
+    )
+}

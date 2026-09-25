@@ -27,12 +27,14 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -155,6 +157,8 @@ fun SupersetsScreen(
                                 memberCount = membersOf(rows, row.supersetId).size,
                                 onChangeTransition = { viewModel.changeTransition(row.supersetId, it) },
                                 onChangeRoundRest = { viewModel.changeRoundRest(row.supersetId, it) },
+                                onChangeRounds = { viewModel.changeRounds(row.supersetId, it) },
+                                onDropOnLastRound = { viewModel.setDropOnLastRound(row.supersetId, it) },
                                 onRemove = { viewModel.ungroup(row.supersetId) },
                             )
                             is ArrangeRow.End -> SupersetEnd(number = numbers[row.supersetId] ?: 0)
@@ -217,6 +221,8 @@ fun SupersetsScreen(
             rows = viewModel.rows,
             onMoveTo = { viewModel.moveTo(editing.key, it) },
             onNewSuperset = { viewModel.startSupersetWith(editing.key) },
+            onChangeRounds = { delta, rounds -> viewModel.changeMemberRounds(editing.key, delta, rounds) },
+            onDropSet = { viewModel.setMemberDropSet(editing.key, it) },
             onDismiss = { editingKey = null },
         )
     }
@@ -229,6 +235,8 @@ private fun SupersetHeader(
     memberCount: Int,
     onChangeTransition: (Int) -> Unit,
     onChangeRoundRest: (Int) -> Unit,
+    onChangeRounds: (Int) -> Unit,
+    onDropOnLastRound: (Boolean) -> Unit,
     onRemove: () -> Unit,
 ) {
     Card(
@@ -262,6 +270,23 @@ private fun SupersetHeader(
                 onMinus = { onChangeRoundRest(-15) },
                 onPlus = { onChangeRoundRest(15) },
             )
+            TimeStepper(
+                label = "Rounds (sets of each)",
+                text = start.rounds?.toString() ?: "Open",
+                onMinus = { onChangeRounds(-1) },
+                onPlus = { onChangeRounds(1) },
+            )
+            if (start.rounds != null) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Drop set on the last round, for all", modifier = Modifier.weight(1f))
+                    Switch(checked = start.dropOnLastRound, onCheckedChange = onDropOnLastRound)
+                }
+                Text(
+                    text = "Tap an exercise to change its part: fewer rounds, or its own drop set choice.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             when {
                 memberCount > MAX_SUPERSET_SIZE -> Text(
                     text = "A superset has at most $MAX_SUPERSET_SIZE exercises. Move some out to save.",
@@ -331,8 +356,21 @@ private fun ItemRow(item: ArrangeRow.Item, inSuperset: Boolean, onEdit: () -> Un
                     .padding(horizontal = 12.dp, vertical = 10.dp),
             ) {
                 Text(item.exerciseName, style = MaterialTheme.typography.bodyLarge)
-                item.detail?.let {
-                    Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                val part = listOfNotNull(
+                    item.detail,
+                    item.memberRounds?.takeIf { inSuperset }?.let { if (it == 1) "last round only" else "last $it rounds" },
+                    when (item.memberDropSet.takeIf { inSuperset }) {
+                        true -> "drop set on its last round"
+                        false -> "no drop set"
+                        null -> null
+                    },
+                )
+                if (part.isNotEmpty()) {
+                    Text(
+                        part.joinToString(" · "),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
                 val ownRest = item.ownRestSeconds
                 if (inSuperset && ownRest != null) {
@@ -356,10 +394,13 @@ private fun ItemDialog(
     rows: List<ArrangeRow>,
     onMoveTo: (supersetId: String?) -> Unit,
     onNewSuperset: () -> Unit,
+    onChangeRounds: (delta: Int, supersetRounds: Int) -> Unit,
+    onDropSet: (Boolean?) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val supersets = rows.filterIsInstance<ArrangeRow.Start>().map { it.supersetId }
     val current = supersetMembership(rows)[item.key]
+    val start = rows.filterIsInstance<ArrangeRow.Start>().firstOrNull { it.supersetId == current }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(item.exerciseName) },
@@ -371,6 +412,27 @@ private fun ItemDialog(
                     RadioLine("Superset ${index + 1}", selected = current == id) { onMoveTo(id) }
                 }
                 TextButton(onClick = onNewSuperset) { Text("+ New superset") }
+                if (start != null) {
+                    HorizontalDivider(Modifier.padding(vertical = 8.dp))
+                    Text("In this superset", style = MaterialTheme.typography.titleSmall)
+                    val planned = start.rounds
+                    if (planned != null) {
+                        val mine = item.memberRounds ?: planned
+                        TimeStepper(
+                            label = "Rounds it does",
+                            text = if (mine == planned) "All $planned" else "Last $mine",
+                            onMinus = { onChangeRounds(-1, planned) },
+                            onPlus = { onChangeRounds(1, planned) },
+                        )
+                    }
+                    Text("Drop set on its last round", modifier = Modifier.padding(top = 8.dp))
+                    RadioLine(
+                        label = if (start.dropOnLastRound) "As the superset: yes" else "As the superset or its own set plan",
+                        selected = item.memberDropSet == null,
+                    ) { onDropSet(null) }
+                    RadioLine("Yes", selected = item.memberDropSet == true) { onDropSet(true) }
+                    RadioLine("No", selected = item.memberDropSet == false) { onDropSet(false) }
+                }
                 val ownRest = item.ownRestSeconds
                 if (ownRest != null) {
                     Text(

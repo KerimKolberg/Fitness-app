@@ -23,7 +23,7 @@ class GameRepository(workoutDao: WorkoutDao, settingsRepository: SettingsReposit
                     exerciseId = row.exerciseId,
                     categoryId = row.categoryId,
                     type = row.exerciseType,
-                    style = TrainingStyle.resolve(row.exerciseStyle, BuiltInExercises.regionKeyOf(row.categoryId), row.exerciseType),
+                    styles = TrainingStyle.resolveAll(row.exerciseStyle, BuiltInExercises.regionKeyOf(row.categoryId), row.exerciseType),
                     values = SetValues(
                         weightKg = row.set.weightKg,
                         reps = row.set.reps,

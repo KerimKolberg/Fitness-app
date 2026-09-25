@@ -131,12 +131,50 @@ fun ExercisePlan.summary(type: ExerciseType, defaultPercent: Int, units: UnitSys
     return parts.joinToString(" · ").ifEmpty { null }
 }
 
-/** The exercises of a superset and its timing, when the exercise being logged is in one. */
+/** What one exercise does in a superset, when it differs from the superset's plan. */
+data class SupersetMember(
+    val exerciseId: String,
+    /** It joins only the last this many rounds; null joins every round. */
+    val rounds: Int? = null,
+    /** A drop set on its last round (true), none (false), or as the superset says (null). */
+    val dropSet: Boolean? = null,
+)
+
+/** The exercises of a superset and its plan, when the exercise being logged is in one. */
 data class SupersetContext(
     val memberIds: List<String>,
     val transitionSeconds: Int?,
     val roundRestSeconds: Int?,
-)
+    /** Rounds planned; null keeps going round after round. */
+    val rounds: Int? = null,
+    /** Every exercise ends its last round with a drop set (unless it says otherwise). */
+    val dropOnLastRound: Boolean = false,
+    val members: List<SupersetMember> = emptyList(),
+) {
+    fun member(exerciseId: String): SupersetMember = members.firstOrNull { it.exerciseId == exerciseId } ?: SupersetMember(exerciseId)
+
+    /** How many rounds an exercise does (the last ones), when rounds are planned. */
+    fun roundsOf(exerciseId: String): Int? = rounds?.let { planned -> (member(exerciseId).rounds ?: planned).coerceIn(1, planned) }
+
+    /** Whether an exercise takes part in [round] (counted from 1). */
+    fun joins(exerciseId: String, round: Int): Boolean {
+        val planned = rounds ?: return true
+        return round > planned - (roundsOf(exerciseId) ?: planned)
+    }
+
+    /** Whether an exercise ends its last round with a drop set. */
+    fun dropsOnLastRound(exerciseId: String, plan: ExercisePlan): Boolean =
+        member(exerciseId).dropSet ?: (dropOnLastRound || plan.dropSets)
+
+    /**
+     * The exercise's plan as the superset shapes it: its sets are its rounds, and its drop sets
+     * follow the superset. Without planned rounds, its own plan.
+     */
+    fun planFor(exerciseId: String, plan: ExercisePlan): ExercisePlan {
+        val sets = roundsOf(exerciseId) ?: return plan
+        return plan.copy(sets = sets, dropSets = dropsOnLastRound(exerciseId, plan))
+    }
+}
 
 /** What comes after saving a set. */
 sealed interface NextStep {
@@ -195,6 +233,10 @@ fun nextStep(
     settings: Settings,
 ): NextStep {
     if (type.isSession) return NextStep.Done
+    val planned = superset?.rounds
+    if (superset != null && planned != null && superset.memberIds.size >= 2 && exerciseId in superset.memberIds) {
+        return nextInPlannedRounds(exerciseId, type, plan, setsToday, superset, planned, settings)
+    }
     pendingDrop(plan, type, setsToday, settings.dropSetPercent, settings.unitSystem)?.let { return it }
     val members = superset?.memberIds.orEmpty()
     val next = nextInSuperset(members, exerciseId)
@@ -206,6 +248,49 @@ fun nextStep(
         }
     }
     return NextStep.Rest(plan.restSeconds ?: settings.restTimerSeconds, nextExerciseId = null)
+}
+
+/**
+ * A superset with a set number of rounds: its drop sets on an exercise's last round, then the next
+ * exercise taking part in this round, else the rest before the next round, and after the last round
+ * the rest with nothing to go to.
+ */
+private fun nextInPlannedRounds(
+    exerciseId: String,
+    type: ExerciseType,
+    plan: ExercisePlan,
+    setsToday: List<SetEntry>,
+    superset: SupersetContext,
+    planned: Int,
+    settings: Settings,
+): NextStep {
+    val roundPlan = superset.planFor(exerciseId, plan)
+    pendingDrop(roundPlan, type, setsToday, settings.dropSetPercent, settings.unitSystem)?.let { return it }
+    val mine = roundPlan.sets ?: planned
+    val round = (planned - mine + setsToday.count { !it.values.isDropSet }).coerceIn(1, planned)
+    val order = superset.memberIds
+    val rest = superset.roundRestSeconds ?: settings.restTimerSeconds
+    order.drop(order.indexOf(exerciseId) + 1).firstOrNull { superset.joins(it, round) }?.let {
+        return NextStep.Transition(it, superset.transitionSeconds ?: settings.supersetTransitionSeconds)
+    }
+    if (round >= planned) return NextStep.Rest(rest, nextExerciseId = null)
+    return NextStep.Rest(rest, nextExerciseId = order.firstOrNull { superset.joins(it, round + 1) })
+}
+
+/**
+ * "Round 2 of 3 · this exercise joins the last 2 · drop set on its last round", or "Superset done ✓";
+ * null when the superset has no planned rounds.
+ */
+fun supersetProgress(superset: SupersetContext, exerciseId: String, plan: ExercisePlan, setsToday: List<SetEntry>): String? {
+    val planned = superset.rounds ?: return null
+    val mine = superset.roundsOf(exerciseId) ?: planned
+    val round = planned - mine + setsToday.count { !it.values.isDropSet } + 1
+    if (round > planned) return "All $planned rounds done ✓"
+    return listOfNotNull(
+        "Round $round of $planned",
+        "this exercise joins the last ${if (mine == 1) "round" else "$mine rounds"}".takeIf { mine < planned },
+        "drop set on its last round".takeIf { superset.dropsOnLastRound(exerciseId, plan) },
+    ).joinToString(" · ")
 }
 
 /** "Set 2 of 3", "Drop 1 of 2" or "3 of 3 sets done ✓"; null when no number of sets is planned. */
