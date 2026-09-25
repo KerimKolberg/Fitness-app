@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Update
 import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
 
@@ -30,4 +31,27 @@ interface ExerciseDao {
 
     @Upsert
     suspend fun upsertExercise(exercise: ExerciseEntity)
+
+    /** Every category, deleted ones included, for keeping the built-in catalog up to date. */
+    @Query("SELECT * FROM categories")
+    suspend fun getAllCategories(): List<CategoryEntity>
+
+    /** Every exercise, deleted ones included, for keeping the built-in catalog up to date. */
+    @Query("SELECT * FROM exercises")
+    suspend fun getAllExercises(): List<ExerciseEntity>
+
+    @Update
+    suspend fun updateCategories(categories: List<CategoryEntity>)
+
+    @Update
+    suspend fun updateExercises(exercises: List<ExerciseEntity>)
+
+    @Query("UPDATE exercises SET plan = :plan, updatedAt = :now WHERE id = :id")
+    suspend fun updatePlan(id: String, plan: String, now: Long)
+
+    @Query("UPDATE exercises SET notes = :notes, updatedAt = :now WHERE id = :id")
+    suspend fun updateNotes(id: String, notes: String, now: Long)
+
+    @Query("UPDATE exercises SET links = :links, updatedAt = :now WHERE id = :id")
+    suspend fun updateLinks(id: String, links: String, now: Long)
 }

@@ -26,8 +26,8 @@ fun recordScore(values: SetValues, type: ExerciseType): Double? {
         // A longer hold is the record; the weight used is shown alongside it.
         ExerciseType.TIME_WEIGHT -> (values.durationSeconds ?: 0).toDouble()
         ExerciseType.REPS_HEIGHT -> values.distanceMeters?.takeIf { it > 0 } ?: (values.reps ?: 0).toDouble()
-        // Sports sessions are not a contest with yourself.
-        ExerciseType.SESSION -> 0.0
+        // Sports sessions and HIIT are not a contest with yourself.
+        ExerciseType.SESSION, ExerciseType.INTERVALS -> 0.0
     }
     return score.takeIf { it > 0.0 }
 }
@@ -105,6 +105,10 @@ fun personalRecords(history: List<HistorySession>, type: ExerciseType, units: Un
             bestSession(history) { session -> session.sets.sumOf { it.values.durationSeconds ?: 0 }.toDouble() }
                 ?.let { (date, seconds) -> RecordEntry("Most time in a day", formatDuration(seconds.toInt()), date) },
         )
+        ExerciseType.INTERVALS -> listOfNotNull(
+            best("Most rounds", { it.reps?.toDouble() }) { _, rounds -> "${rounds.toInt()} rounds" },
+            best("Longest workout", { it.durationSeconds?.toDouble() }) { _, seconds -> formatDuration(seconds.toInt()) },
+        )
     }
     return entries
 }
@@ -141,6 +145,7 @@ enum class ProgressMetric(val label: String, val kind: MetricKind) {
     VOLUME("Volume (weight × reps)", MetricKind.WEIGHT),
     MAX_REPS("Most reps in a set", MetricKind.COUNT),
     TOTAL_REPS("Total reps", MetricKind.COUNT),
+    ROUNDS("Rounds", MetricKind.COUNT),
     DISTANCE("Distance", MetricKind.DISTANCE),
     MAX_HEIGHT("Best jump", MetricKind.HEIGHT),
     AVERAGE_RPE("Average intensity (RPE)", MetricKind.COUNT),
@@ -168,6 +173,7 @@ enum class ProgressMetric(val label: String, val kind: MetricKind) {
             ExerciseType.TIME_WEIGHT -> listOf(LONGEST_TIME, MAX_WEIGHT)
             ExerciseType.REPS_HEIGHT -> listOf(MAX_HEIGHT, TOTAL_REPS)
             ExerciseType.SESSION -> listOf(DURATION, AVERAGE_RPE)
+            ExerciseType.INTERVALS -> listOf(ROUNDS, DURATION, AVERAGE_RPE)
         }
     }
 }
@@ -184,7 +190,7 @@ fun progressPoints(history: List<HistorySession>, metric: ProgressMetric): List<
             ProgressMetric.MAX_WEIGHT -> values.maxOfOrNull { it.weightKg ?: 0.0 } ?: 0.0
             ProgressMetric.VOLUME -> values.sumOf { (it.weightKg ?: 0.0) * (it.reps ?: 0) }
             ProgressMetric.MAX_REPS -> (values.maxOfOrNull { it.reps ?: 0 } ?: 0).toDouble()
-            ProgressMetric.TOTAL_REPS -> values.sumOf { it.reps ?: 0 }.toDouble()
+            ProgressMetric.TOTAL_REPS, ProgressMetric.ROUNDS -> values.sumOf { it.reps ?: 0 }.toDouble()
             ProgressMetric.DISTANCE -> values.sumOf { it.distanceMeters ?: 0.0 }
             ProgressMetric.MAX_HEIGHT -> values.maxOfOrNull { it.distanceMeters ?: 0.0 } ?: 0.0
             ProgressMetric.AVERAGE_RPE -> values.mapNotNull { it.rpe }.average().takeIf { !it.isNaN() } ?: 0.0

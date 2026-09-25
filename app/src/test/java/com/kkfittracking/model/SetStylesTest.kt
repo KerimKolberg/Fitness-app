@@ -15,11 +15,22 @@ class SetStylesTest {
         val day = listOf(exercise("a"), exercise("b", "s"), exercise("c"), exercise("d", "s"), exercise("e", "lonely"))
         val blocks = groupDay(day)
         assertEquals(4, blocks.size)
-        assertEquals("a", (blocks[0] as DayBlock.Single).exercise.exerciseId)
-        assertEquals(listOf("b", "d"), (blocks[1] as DayBlock.Superset).exercises.map { it.exerciseId })
-        assertEquals("c", (blocks[2] as DayBlock.Single).exercise.exerciseId)
+        assertEquals("a", (blocks[0] as Block.Single).item.exerciseId)
+        assertEquals(listOf("b", "d"), (blocks[1] as Block.Superset).items.map { it.exerciseId })
+        assertEquals("c", (blocks[2] as Block.Single).item.exerciseId)
         // A superset left with one exercise is shown as a normal exercise.
-        assertEquals("e", (blocks[3] as DayBlock.Single).exercise.exerciseId)
+        assertEquals("e", (blocks[3] as Block.Single).item.exerciseId)
+    }
+
+    @Test
+    fun blocksMoveAsAWhole() {
+        val day = listOf(exercise("a"), exercise("b", "s"), exercise("c", "s"), exercise("d"))
+        val blocks = groupDay(day)
+        assertEquals(listOf("b", "c", "a", "d"), moveBlock(blocks, 0, 1).map { it.exerciseId })
+        assertEquals(listOf("a", "d", "b", "c"), moveBlock(blocks, 1, 1).map { it.exerciseId })
+        // Nothing moves past either end.
+        assertEquals(listOf("a", "b", "c", "d"), moveBlock(blocks, 0, -1).map { it.exerciseId })
+        assertEquals(listOf("a", "b", "c", "d"), moveBlock(blocks, 2, 1).map { it.exerciseId })
     }
 
     @Test

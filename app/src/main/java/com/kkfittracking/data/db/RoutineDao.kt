@@ -13,6 +13,9 @@ data class RoutineExerciseRow(
     val exerciseId: String,
     val exerciseName: String,
     val categoryColor: Int,
+    val supersetId: String?,
+    val transitionSeconds: Int?,
+    val roundRestSeconds: Int?,
 )
 
 @Dao
@@ -23,7 +26,8 @@ interface RoutineDao {
     @Query(
         """
         SELECT re.id AS id, re.routineId AS routineId, re.exerciseId AS exerciseId,
-               e.name AS exerciseName, c.color AS categoryColor
+               e.name AS exerciseName, c.color AS categoryColor, re.supersetId AS supersetId,
+               re.transitionSeconds AS transitionSeconds, re.roundRestSeconds AS roundRestSeconds
         FROM routine_exercises re
         JOIN exercises e ON e.id = re.exerciseId
         JOIN categories c ON c.id = e.categoryId
@@ -56,6 +60,36 @@ interface RoutineDao {
 
     @Query("UPDATE routine_exercises SET deletedAt = :now, updatedAt = :now WHERE id = :id")
     suspend fun softDeleteRoutineExercise(id: String, now: Long)
+
+    @Query("SELECT * FROM routine_exercises WHERE id = :id")
+    suspend fun getRoutineExercise(id: String): RoutineExerciseEntity?
+
+    @Query(
+        """
+        UPDATE routine_exercises
+        SET sortOrder = :sortOrder, supersetId = :supersetId, transitionSeconds = :transitionSeconds,
+            roundRestSeconds = :roundRestSeconds, updatedAt = :now
+        WHERE id = :id
+        """,
+    )
+    suspend fun arrange(
+        id: String,
+        sortOrder: Int,
+        supersetId: String?,
+        transitionSeconds: Int?,
+        roundRestSeconds: Int?,
+        now: Long,
+    )
+
+    @Query(
+        """
+        UPDATE routine_exercises
+        SET supersetId = :supersetId, transitionSeconds = :transitionSeconds, roundRestSeconds = :roundRestSeconds,
+            updatedAt = :now
+        WHERE id IN (:ids)
+        """,
+    )
+    suspend fun setSuperset(ids: List<String>, supersetId: String?, transitionSeconds: Int?, roundRestSeconds: Int?, now: Long)
 
     @Query(
         """

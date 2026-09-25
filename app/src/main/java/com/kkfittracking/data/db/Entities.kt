@@ -45,6 +45,14 @@ data class ExerciseEntity(
     @ColumnInfo(defaultValue = "") val tempo: String = "",
     /** Added in v3. */
     @ColumnInfo(defaultValue = "0") val perSide: Boolean = false,
+    /** A [com.kkfittracking.model.Muscle] name, or empty when never chosen (added in v5). */
+    @ColumnInfo(defaultValue = "") val muscle: String = "",
+    /** A [com.kkfittracking.model.TrainingStyle] name, or empty when never chosen (added in v5). */
+    @ColumnInfo(defaultValue = "") val style: String = "",
+    /** A [com.kkfittracking.model.ExercisePlan] as JSON, or empty (added in v5). */
+    @ColumnInfo(defaultValue = "") val plan: String = "",
+    /** Video and page links, one per line (see [com.kkfittracking.model.ExerciseLinks], added in v5). */
+    @ColumnInfo(defaultValue = "") val links: String = "",
 )
 
 @Entity(tableName = "workouts", indices = [Index("date")])
@@ -77,10 +85,8 @@ data class WorkoutExerciseEntity(
     val supersetId: String? = null,
     /** Seconds to walk to the next superset exercise (added in v4). */
     val transitionSeconds: Int? = null,
-    /** A [com.kkfittracking.model.DropSetMode] code (added in v4). */
-    @ColumnInfo(defaultValue = "0") val dropSetMode: Int = 0,
-    /** Normal sets planned, for "drop set on the last set" (added in v4). */
-    val plannedSets: Int? = null,
+    /** Seconds of rest after each round of the superset (added in v5). */
+    val roundRestSeconds: Int? = null,
 )
 
 @Entity(
@@ -138,6 +144,12 @@ data class RoutineExerciseEntity(
     val createdAt: Long,
     val updatedAt: Long,
     val deletedAt: Long? = null,
+    /** Exercises of the plan sharing this id are done as a superset (added in v5). */
+    val supersetId: String? = null,
+    /** Seconds to walk to the next superset exercise (added in v5). */
+    val transitionSeconds: Int? = null,
+    /** Seconds of rest after each round of the superset (added in v5). */
+    val roundRestSeconds: Int? = null,
 )
 
 /** One body measurement. The value is stored in base units: kg, percent, or cm (see [BodyMetric]). */

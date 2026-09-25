@@ -5,15 +5,21 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.kkfittracking.data.BodyRepository
+import com.kkfittracking.data.BuiltInExercises
 import com.kkfittracking.data.ExerciseRepository
 import com.kkfittracking.data.RoutineRepository
 import com.kkfittracking.data.SettingsRepository
 import com.kkfittracking.data.StarterPlans
 import com.kkfittracking.data.WorkoutRepository
 import com.kkfittracking.data.db.AppDatabase
+import com.kkfittracking.model.ArrangedExercise
 import com.kkfittracking.model.BodyMetric
+import com.kkfittracking.model.ExerciseLink
+import com.kkfittracking.model.ExercisePlan
 import com.kkfittracking.model.ExerciseType
+import com.kkfittracking.model.Muscle
 import com.kkfittracking.model.SetValues
+import com.kkfittracking.model.TrainingStyle
 import com.kkfittracking.model.UnitSystem
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -61,7 +67,7 @@ class BackupRestoreTest {
     @Test
     fun backupAndRestoreOnAnotherPhone() = runTest {
         val old = Phone()
-        old.exercises.addMissingBuiltIns()
+        old.exercises.syncBuiltIns()
         old.workouts.addSet(day, bench, SetValues(weightKg = 100.0, reps = 5))
         val deleted = old.workouts.addSet(day, bench, SetValues(weightKg = 100.0, reps = 3))
         old.workouts.deleteSet(deleted)
@@ -71,12 +77,20 @@ class BackupRestoreTest {
         val supersetId = old.workouts.createSuperset(day, listOf(bench, squat), transitionSeconds = 20)
         old.settings.setUnitSystem(UnitSystem.IMPERIAL)
         old.exercises.saveExercise(null, "My Custom Lift", old.exercises.categories.first().first().id,
-            ExerciseType.WEIGHT_REPS, "", tempo = "4-0-1-0", perSide = true)
+            ExerciseType.WEIGHT_REPS, "", tempo = "4-0-1-0", perSide = true, style = TrainingStyle.ECCENTRIC)
+        old.exercises.savePlan(bench, ExercisePlan(sets = 1, dropSets = true, drops = 3))
+        old.exercises.saveLinks(bench, listOf(ExerciseLink("https://youtu.be/abc")))
+        val push = old.plans.routines.first().single { it.name == "Push" }
+        old.plans.arrangePlan(
+            push.exercises.mapIndexed { index, exercise ->
+                ArrangedExercise(exercise.id, index, "push-superset".takeIf { index < 2 }, 25, 150)
+            },
+        )
 
         val text = BackupJson.encode(old.backups.createBackup())
 
         val new = Phone()
-        new.exercises.addMissingBuiltIns()
+        new.exercises.syncBuiltIns()
         new.workouts.addSet(day, squat, SetValues(weightKg = 140.0, reps = 3))
         new.backups.restore(BackupJson.decode(text))
 
@@ -92,14 +106,49 @@ class BackupRestoreTest {
         val custom = new.exercises.exercises.first().single { it.name == "My Custom Lift" }
         assertEquals("4-0-1-0", custom.tempo)
         assertTrue(custom.perSide)
+        assertEquals(TrainingStyle.ECCENTRIC, custom.style)
+        val restoredBench = new.exercises.getExercise(bench)!!
+        assertEquals(ExercisePlan(sets = 1, dropSets = true, drops = 3), restoredBench.plan)
+        assertEquals(listOf(ExerciseLink("https://youtu.be/abc")), restoredBench.links)
+        val restoredPush = new.plans.routines.first().single { it.name == "Push" }
+        assertEquals(1, restoredPush.supersetCount)
+        assertEquals(150, restoredPush.exercises.first().roundRestSeconds)
         // Deleted rows travel too, so a future sync still knows about the deletion.
         assertEquals(3, new.database.backupDao().sets().size)
+    }
+
+    /** A backup made before the library had sections, muscles and styles. */
+    @Test
+    fun anOlderBackupIsFiledUnderTheNewSections() = runTest {
+        val phone = Phone()
+        phone.exercises.syncBuiltIns()
+        val nordic = StarterPlans.exerciseId("Nordic Hamstring Curl")
+        phone.workouts.addSet(day, nordic, SetValues(reps = 5))
+        val backup = phone.backups.createBackup()
+        val tendons = CategoryDto(BuiltInExercises.stableId("category", "tendons"), "Tendons & eccentrics", 0, 11, 1, 1)
+        val older = backup.copy(
+            categories = backup.categories + tendons,
+            exercises = backup.exercises.map {
+                if (it.id == nordic) it.copy(categoryId = tendons.id, muscle = "", style = "") else it
+            },
+        )
+
+        val newPhone = Phone()
+        newPhone.backups.restore(older)
+        // What restoring from the settings screen does after the restore.
+        newPhone.exercises.syncBuiltIns()
+
+        val filed = newPhone.exercises.getExercise(nordic)!!
+        assertEquals(BuiltInExercises.stableId("category", "legs"), filed.categoryId)
+        assertEquals(Muscle.HAMSTRINGS, filed.muscle)
+        assertTrue(newPhone.exercises.categories.first().none { it.id == tendons.id })
+        assertEquals(listOf(5), newPhone.workouts.observeDay(day).first().single().sets.map { it.values.reps })
     }
 
     @Test
     fun aDamagedBackupChangesNothing() = runTest {
         val phone = Phone()
-        phone.exercises.addMissingBuiltIns()
+        phone.exercises.syncBuiltIns()
         phone.workouts.addSet(day, squat, SetValues(weightKg = 140.0, reps = 3))
         val backup = phone.backups.createBackup()
 

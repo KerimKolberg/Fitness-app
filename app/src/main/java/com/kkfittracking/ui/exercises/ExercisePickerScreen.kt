@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -153,11 +154,33 @@ fun ExercisePickerScreen(
                     )
                 }
             }
+            if (state.muscles.size > 1) {
+                FilterRow {
+                    items(state.muscles, key = { "muscle-${it.name}" }) { muscle ->
+                        FilterChip(
+                            selected = state.selectedMuscle == muscle,
+                            onClick = { viewModel.selectMuscle(muscle) },
+                            label = { Text(muscle.label) },
+                        )
+                    }
+                }
+            }
+            if (state.styles.size > 1 || state.selectedStyle != null) {
+                FilterRow {
+                    items(state.styles, key = { "style-${it.name}" }) { style ->
+                        FilterChip(
+                            selected = state.selectedStyle == style,
+                            onClick = { viewModel.selectStyle(style) },
+                            label = { Text(style.label) },
+                        )
+                    }
+                }
+            }
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(bottom = 16.dp),
             ) {
-                if (state.groups.isEmpty() && state.categories.isNotEmpty()) {
+                if (state.rows.isEmpty() && state.categories.isNotEmpty()) {
                     item {
                         Text(
                             text = "No exercises found. Tap + to create one.",
@@ -166,52 +189,80 @@ fun ExercisePickerScreen(
                         )
                     }
                 }
-                state.groups.forEach { group ->
-                    item(key = "header-${group.category.id}") {
-                        Row(
-                            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(
-                                text = group.category.name.uppercase(),
-                                style = MaterialTheme.typography.labelLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(group.category.color),
-                            )
-                        }
-                    }
-                    items(group.exercises, key = { it.id }) { exercise ->
-                        ListItem(
-                            modifier = Modifier.clickable { viewModel.pick(exercise.id, onLogExercise, onBack) },
-                            headlineContent = { Text(exercise.name) },
-                            supportingContent = if (exercise.type != ExerciseType.WEIGHT_REPS) {
-                                { Text(exercise.type.label) }
-                            } else {
-                                null
-                            },
-                            leadingContent = { ColorDot(group.category.color) },
-                            trailingContent = {
-                                if (viewModel.supersetMode) {
-                                    val position = viewModel.supersetPicks.indexOf(exercise.id)
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        if (position >= 0) {
-                                            Text("${position + 1}", color = MaterialTheme.colorScheme.primary)
-                                        }
-                                        Checkbox(
-                                            checked = position >= 0,
-                                            onCheckedChange = { viewModel.pick(exercise.id, onLogExercise, onBack) },
-                                        )
-                                    }
-                                } else {
-                                    IconButton(onClick = { onEditExercise(exercise.id) }) {
-                                        Icon(Icons.Default.Edit, contentDescription = "Edit ${exercise.name}")
-                                    }
-                                }
-                            },
+                items(state.rows, key = { it.key }) { row ->
+                    when (row) {
+                        is LibraryRow.SectionHeader -> Text(
+                            text = row.category.name.uppercase(),
+                            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 4.dp),
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(row.category.color),
                         )
+                        is LibraryRow.MuscleHeader -> Text(
+                            text = row.muscle.label,
+                            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 2.dp),
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        is LibraryRow.StyleHeader -> Text(
+                            text = row.style.label,
+                            modifier = Modifier.padding(start = 28.dp, end = 16.dp, top = 6.dp, bottom = 2.dp),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.secondary,
+                        )
+                        is LibraryRow.Item -> ExerciseRow(row, viewModel, onLogExercise, onBack, onEditExercise)
                     }
                 }
             }
         }
     }
+}
+
+/** A horizontal row of filter chips. */
+@Composable
+private fun FilterRow(content: LazyListScope.() -> Unit) {
+    LazyRow(
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        content = content,
+    )
+}
+
+@Composable
+private fun ExerciseRow(
+    row: LibraryRow.Item,
+    viewModel: ExercisePickerViewModel,
+    onLogExercise: (String) -> Unit,
+    onBack: () -> Unit,
+    onEditExercise: (String) -> Unit,
+) {
+    val exercise = row.exercise
+    ListItem(
+        modifier = Modifier.clickable { viewModel.pick(exercise.id, onLogExercise, onBack) },
+        headlineContent = { Text(exercise.name) },
+        supportingContent = if (exercise.type != ExerciseType.WEIGHT_REPS) {
+            { Text(exercise.type.label) }
+        } else {
+            null
+        },
+        leadingContent = { ColorDot(row.category.color) },
+        trailingContent = {
+            if (viewModel.supersetMode) {
+                val position = viewModel.supersetPicks.indexOf(exercise.id)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (position >= 0) {
+                        Text("${position + 1}", color = MaterialTheme.colorScheme.primary)
+                    }
+                    Checkbox(
+                        checked = position >= 0,
+                        onCheckedChange = { viewModel.pick(exercise.id, onLogExercise, onBack) },
+                    )
+                }
+            } else {
+                IconButton(onClick = { onEditExercise(exercise.id) }) {
+                    Icon(Icons.Default.Edit, contentDescription = "Edit ${exercise.name}")
+                }
+            }
+        },
+    )
 }

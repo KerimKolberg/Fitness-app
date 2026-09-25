@@ -4,6 +4,7 @@ import com.kkfittracking.data.db.WorkoutDao
 import com.kkfittracking.model.GameStats
 import com.kkfittracking.model.LoggedSet
 import com.kkfittracking.model.SetValues
+import com.kkfittracking.model.TrainingStyle
 import com.kkfittracking.model.computeGameStats
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -13,9 +14,6 @@ import java.time.LocalDate
 
 /** XP, levels, streaks and achievements, worked out from the workout log whenever it changes. */
 class GameRepository(workoutDao: WorkoutDao, settingsRepository: SettingsRepository) {
-    private val categoryKeys: Map<String, String> =
-        BuiltInExercises.categories.associate { it.id to it.key }
-
     val stats: Flow<GameStats> =
         combine(workoutDao.observeAllSets(), settingsRepository.settings) { rows, settings ->
             val sets = rows.map { row ->
@@ -23,9 +21,9 @@ class GameRepository(workoutDao: WorkoutDao, settingsRepository: SettingsReposit
                     id = row.set.id,
                     date = row.date,
                     exerciseId = row.exerciseId,
-                    categoryKey = categoryKeys[row.categoryId],
                     categoryId = row.categoryId,
                     type = row.exerciseType,
+                    style = TrainingStyle.resolve(row.exerciseStyle, BuiltInExercises.regionKeyOf(row.categoryId), row.exerciseType),
                     values = SetValues(
                         weightKg = row.set.weightKg,
                         reps = row.set.reps,

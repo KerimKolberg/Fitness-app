@@ -10,22 +10,33 @@ enum class ExerciseType(val label: String) {
     TIME("Time only"),
     TIME_WEIGHT("Time and weight (loaded holds)"),
     REPS_HEIGHT("Reps and height or distance (jumps)"),
-    SESSION("Session time and intensity (sports)");
+    SESSION("Session time and intensity (sports)"),
+    INTERVALS("Intervals (HIIT): rounds, time and intensity");
 
     val usesWeight: Boolean get() = this == WEIGHT_REPS || this == TIME_WEIGHT
-    val usesReps: Boolean get() = this == WEIGHT_REPS || this == REPS || this == REPS_HEIGHT
+    /** Reps, or rounds for [INTERVALS], stored in [SetValues.reps]. */
+    val usesReps: Boolean get() = this == WEIGHT_REPS || this == REPS || this == REPS_HEIGHT || this == INTERVALS
     val usesDistance: Boolean get() = this == DISTANCE_TIME
     /** Jump height or distance, stored in [SetValues.distanceMeters] and shown in cm or inches. */
     val usesHeight: Boolean get() = this == REPS_HEIGHT
-    val usesTime: Boolean get() = this == DISTANCE_TIME || this == TIME || this == TIME_WEIGHT || this == SESSION
+    val usesTime: Boolean get() =
+        this == DISTANCE_TIME || this == TIME || this == TIME_WEIGHT || this == SESSION || this == INTERVALS
     /** Intensity (RPE 1-10) and a note per entry. */
-    val usesIntensity: Boolean get() = this == SESSION
+    val usesIntensity: Boolean get() = this == SESSION || this == INTERVALS
+
+    /** A whole session is logged at once, so there is no rest between sets and no set plan. */
+    val isSession: Boolean get() = this == SESSION || this == INTERVALS
+
+    /** What the reps field counts. */
+    val repsLabel: String get() = if (this == INTERVALS) "Rounds" else "Reps"
 }
 
 data class Category(
     val id: String,
     val name: String,
     val color: Int,
+    /** The body section key (see [Regions]) for built-in categories, null for others. */
+    val key: String? = null,
 )
 
 data class Exercise(
@@ -33,12 +44,19 @@ data class Exercise(
     val name: String,
     val categoryId: String,
     val type: ExerciseType,
+    /** How to do it, shown before the video links. */
     val notes: String,
     val isCustom: Boolean,
     /** Optional lifting tempo such as "5-0-1-0": seconds down, pause, up, pause. */
     val tempo: String = "",
     /** Each side is trained separately, so a set is logged per side. */
     val perSide: Boolean = false,
+    val muscle: Muscle = Muscle.OTHER,
+    val style: TrainingStyle = TrainingStyle.STRENGTH,
+    /** Planned sets, reps, rest, drop sets and interval timings. */
+    val plan: ExercisePlan = ExercisePlan(),
+    /** Videos and pages showing how the exercise is done. */
+    val links: List<ExerciseLink> = emptyList(),
 )
 
 /**
@@ -73,21 +91,17 @@ data class DayExercise(
     val supersetId: String? = null,
     /** Seconds to get to the next exercise of the superset. */
     val transitionSeconds: Int? = null,
-    val dropSetMode: DropSetMode = DropSetMode.NONE,
-    /** The number of normal sets planned, used to know when the "last set" drop set comes. */
-    val plannedSets: Int? = null,
+    /** Seconds of rest after each round of the superset. */
+    val roundRestSeconds: Int? = null,
 )
 
-/** How drop sets are planned for an exercise on a day. [code] is stored in the database. */
-enum class DropSetMode(val code: Int, val label: String) {
-    NONE(0, "No drop sets"),
-    LAST_SET(1, "Drop set on the last set"),
-    EVERY_SET(2, "Every set after the first is a drop set");
-
-    companion object {
-        fun of(code: Int?): DropSetMode = entries.firstOrNull { it.code == code } ?: NONE
-    }
-}
+/** An exercise to put on a day, from a plan or an earlier day, with its superset if it is in one. */
+data class PlannedExercise(
+    val exerciseId: String,
+    val supersetId: String? = null,
+    val transitionSeconds: Int? = null,
+    val roundRestSeconds: Int? = null,
+)
 
 /** Supersets can hold at most this many exercises. */
 const val MAX_SUPERSET_SIZE = 6

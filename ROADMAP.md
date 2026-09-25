@@ -48,7 +48,7 @@ v1 is fully offline, but the data layer follows these rules so sync/accounts can
 
 ### Nice-to-have / custom (Phase 5)
 - [ ] Features found missing after real use, to be added here
-- [ ] Supersets / circuits
+- [x] Supersets / circuits (Phase 2c)
 - [ ] RPE / RIR per set
 - [ ] Progression suggestions
 - [ ] Home-screen widget
@@ -58,16 +58,16 @@ v1 is fully offline, but the data layer follows these rules so sync/accounts can
 
 ## Data model
 
-Category, Exercise, Workout, WorkoutExercise and Set exist since Phase 1; Routine, RoutineExercise and BodyMeasurement since Phase 2 (database version 2); exercise tempo/perSide and set RPE since Phase 2b (version 3); drop sets and supersets since Phase 2c (version 4) (`app/src/main/java/.../data/db/Entities.kt`); the rest are planned. All tables use `id: UUID`, `createdAt`, `updatedAt`, `deletedAt?`.
+Category, Exercise, Workout, WorkoutExercise and Set exist since Phase 1; Routine, RoutineExercise and BodyMeasurement since Phase 2 (database version 2); exercise tempo/perSide and set RPE since Phase 2b (version 3); drop sets and supersets since Phase 2c (version 4); muscle, training style, set plans, links and plan supersets since Phase 2d (version 5) (`app/src/main/java/.../data/db/Entities.kt`). All tables use `id: UUID`, `createdAt`, `updatedAt`, `deletedAt?`.
 
-- **Category**: name, color, sortOrder
-- **Exercise**: name, categoryId, type (WEIGHT_REPS / REPS / DISTANCE_TIME / TIME), notes, isCustom
+- **Category** (a body section): name, color, sortOrder
+- **Exercise**: name, categoryId, muscle, style, type (WEIGHT_REPS / REPS / DISTANCE_TIME / TIME / TIME_WEIGHT / REPS_HEIGHT / SESSION / INTERVALS), notes (how to do it), links, tempo, perSide, plan (sets, reps, weight, rest, drop sets, interval timings as JSON), isCustom
 - **Workout**: date, comment
-- **WorkoutExercise**: workoutId, exerciseId, sortOrder
-- **Set**: workoutExerciseId, sortOrder, weightKg?, reps?, distanceMeters?, durationSeconds?, comment (isWarmup to come later)
-- **Routine**: name, notes
-- **RoutineExercise**: routineId, exerciseId, sortOrder, targetSets?, targetReps?
-- **BodyMeasurement**: date, type (WEIGHT / BODY_FAT / custom), value, unit
+- **WorkoutExercise**: workoutId, exerciseId, sortOrder, supersetId?, transitionSeconds?, roundRestSeconds?
+- **Set**: workoutExerciseId, sortOrder, weightKg?, reps?, distanceMeters?, durationSeconds?, rpe?, comment, isDropSet (isWarmup to come later)
+- **Routine** (a plan): name, notes
+- **RoutineExercise**: routineId, exerciseId, sortOrder, supersetId?, transitionSeconds?, roundRestSeconds?
+- **BodyMeasurement**: date, metric, value (kg, % or cm)
 
 ## Phases
 
@@ -118,22 +118,31 @@ Broaden the library beyond gym lifts. Each group needs the right way to log it:
 ### Gamification
 - [x] XP for sets, workouts, personal records, new exercises and weekly goals; levels
 - [x] Weekly workout goal and week streaks
-- [x] 14 achievements, including variety ones for mobility, tendons, plyometrics and sports
+- [x] 15 achievements, including variety ones for mobility, isometrics and eccentrics, plyometrics, sports and HIIT
 - [x] Celebrations after saving a set (record, achievement, level up, weekly goal)
 - [ ] Ideas for later: challenges (e.g. "30 days of mobility"), yearly summary, share cards
 
 ### Phase 2c: Training techniques
 - [x] Drop sets: a "Drop set" option when logging, each drop lighter by a set percentage (Settings, default 20%, rounded to 0.5 kg / 1 lb); shown as ↘ under the set they continue
 - [x] Supersets and circuits of 2 to 6 exercises on a workout day: pick them in order, log round by round (the app opens the next exercise after each set), rest timer only after the last exercise of a round, ungroup any time
-- [x] "Arrange" a day (e.g. after adding a plan): drag exercises by their ≡ handle under superset headers, set the time to walk to the next exercise per superset (default in Settings), and plan drop sets per exercise: off, on the last set (after N normal sets), or every set after the first
-- [x] While logging: a "Go to <next exercise>" countdown between superset exercises; drop mode switches on by itself when the plan says a drop set is next
-- [ ] Supersets and drop set plans saved inside plans, so adding the plan brings them along
+- [x] "+Super-sets" for a day: drag exercises by their ≡ handle between a superset's header and its end line, set the time to walk to the next exercise and the rest after each round
+- [x] While logging: a "Go to <next exercise>" countdown between superset exercises
+- [x] Supersets saved inside plans: when adding the plan to a day, choose "With supersets" or "One by one"
+
+### Phase 2d: Smarter exercises
+- [x] Set plan per exercise: sets, reps, weight and rest between sets; "Set 2 of 3" while logging. A superset's timing replaces the exercise's own rest, with a note saying so
+- [x] Drop sets planned in the set plan: with several sets they follow the last set, with one set the whole exercise is a drop set. Choose the number of drops, reps per drop (more or fewer than the sets), and a percentage or a fixed weight, with a preview such as "100 → 80 → 64 kg" from the weight entered
+- [x] Library in three levels: section → muscle → training style (e.g. Legs → Hamstrings → Eccentric → Nordic curl). The old Triceps, Biceps, Mobility, Stretching, Isometrics, Tendons and Plyometrics categories are folded into Arms, Legs, Core, Full body and so on; the picker filters by muscle and style, and search finds them too
+- [x] HIIT under Sports: an "Intervals" exercise type and an interval timer with high and low intensity phases, rounds, a get-ready countdown, and beeps and vibration at each change (HIIT Intervals 30/30, Tabata 20/10, Sprint Intervals 15/45)
+- [x] About tab on every exercise: a description of how to do it first, then YouTube and other video or page links, and a "Find on YouTube" search
+- [ ] Later: play videos inside the app (only through YouTube's official player and terms), and your own recorded videos
+- [ ] Later: a foreground service so the timers keep going even if Android closes the app
 
 ### Phase 3: Data safety
 - [x] Backup to a JSON file anywhere the file picker reaches (Drive, Downloads…), with "last backup" shown in Settings
 - [x] Restore with a summary and confirmation; all-or-nothing, so a damaged file changes nothing
 - [x] CSV export of workouts and body measurements, in the user's units
-- [x] Database migration tests: real v1 and v2 databases upgraded to the current version with no data lost
+- [x] Database migration tests: real databases of every earlier version upgraded to the current one with no data lost
 - **Goal:** safe for other users' data
 
 ### Phase 4: Google Play release

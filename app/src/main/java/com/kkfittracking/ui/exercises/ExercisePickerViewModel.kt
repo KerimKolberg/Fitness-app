@@ -14,7 +14,9 @@ import com.kkfittracking.data.RoutineRepository
 import com.kkfittracking.data.WorkoutRepository
 import com.kkfittracking.model.Category
 import com.kkfittracking.model.MAX_SUPERSET_SIZE
+import com.kkfittracking.model.Muscle
 import com.kkfittracking.model.Routine
+import com.kkfittracking.model.TrainingStyle
 import com.kkfittracking.ui.ExercisePickerRoute
 import com.kkfittracking.ui.appViewModelFactory
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,10 +29,23 @@ import java.time.LocalDate
 
 data class ExercisePickerUiState(
     val categories: List<Category> = emptyList(),
-    val groups: List<ExerciseGroup> = emptyList(),
+    /** The library as section, muscle and style headers with exercises under them. */
+    val rows: List<LibraryRow> = emptyList(),
     val selectedCategoryId: String? = null,
+    /** Muscles to filter by, offered once a section is chosen. */
+    val muscles: List<Muscle> = emptyList(),
+    val selectedMuscle: Muscle? = null,
+    val styles: List<TrainingStyle> = emptyList(),
+    val selectedStyle: TrainingStyle? = null,
     val plans: List<Routine> = emptyList(),
     val selectedPlanId: String? = null,
+)
+
+/** The section, muscle and style filters, chosen together. */
+private data class LibrarySelection(
+    val categoryId: String? = null,
+    val muscle: Muscle? = null,
+    val style: TrainingStyle? = null,
 )
 
 class ExercisePickerViewModel(
@@ -55,7 +70,7 @@ class ExercisePickerViewModel(
     var query by mutableStateOf("")
         private set
 
-    private val selectedCategoryId = MutableStateFlow<String?>(null)
+    private val selection = MutableStateFlow(LibrarySelection())
     private val selectedPlanId = MutableStateFlow<String?>(null)
     private val planFilter = combine(routineRepository.routines, selectedPlanId) { plans, planId -> plans to planId }
 
@@ -63,20 +78,25 @@ class ExercisePickerViewModel(
         repository.categories,
         repository.exercises,
         snapshotFlow { query },
-        selectedCategoryId,
+        selection,
         planFilter,
-    ) { categories, exercises, query, selectedCategoryId, (plans, planId) ->
+    ) { categories, exercises, query, selection, (plans, planId) ->
         val plan = plans.firstOrNull { it.id == planId }
+        val filter = LibraryFilter(
+            query = query,
+            categoryId = selection.categoryId,
+            muscle = selection.muscle,
+            style = selection.style,
+            allowedIds = plan?.exercises?.map { it.exerciseId }?.toSet(),
+        )
         ExercisePickerUiState(
             categories = categories,
-            groups = groupExercises(
-                categories,
-                exercises,
-                query,
-                selectedCategoryId,
-                allowedIds = plan?.exercises?.map { it.exerciseId }?.toSet(),
-            ),
-            selectedCategoryId = selectedCategoryId,
+            rows = libraryRows(categories, exercises, filter),
+            selectedCategoryId = selection.categoryId,
+            muscles = if (selection.categoryId != null) muscleChoices(categories, exercises, filter) else emptyList(),
+            selectedMuscle = selection.muscle,
+            styles = styleChoices(categories, exercises, filter),
+            selectedStyle = selection.style,
             plans = plans,
             selectedPlanId = plan?.id,
         )
@@ -119,16 +139,26 @@ class ExercisePickerViewModel(
         }
     }
 
-    /** Selects a category filter, or shows all categories when [categoryId] is null. */
+    /** Selects a section filter, or shows everything when [categoryId] is null. */
     fun selectCategory(categoryId: String?) {
-        selectedCategoryId.value = categoryId
+        selection.value = LibrarySelection(categoryId = categoryId, style = selection.value.style.takeIf { categoryId != null })
         selectedPlanId.value = null
+    }
+
+    /** Shows one muscle of the chosen section (tap again to show all of them). */
+    fun selectMuscle(muscle: Muscle) {
+        selection.value = selection.value.let { it.copy(muscle = if (it.muscle == muscle) null else muscle) }
+    }
+
+    /** Shows one way of training, such as isometrics (tap again to show all). */
+    fun selectStyle(style: TrainingStyle) {
+        selection.value = selection.value.let { it.copy(style = if (it.style == style) null else style) }
     }
 
     /** Shows only the exercises of a plan (tap again to show all). */
     fun selectPlan(planId: String) {
         selectedPlanId.value = if (selectedPlanId.value == planId) null else planId
-        selectedCategoryId.value = null
+        selection.value = LibrarySelection()
     }
 
     companion object {

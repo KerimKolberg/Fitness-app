@@ -57,7 +57,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.kkfittracking.model.DayBlock
+import com.kkfittracking.model.Block
 import com.kkfittracking.model.DayExercise
 import com.kkfittracking.model.GameStats
 import com.kkfittracking.model.Routine
@@ -79,7 +79,7 @@ fun WorkoutScreen(
     onOpenBody: () -> Unit,
     onOpenAchievements: () -> Unit,
     onNewSuperset: (LocalDate) -> Unit,
-    onArrangeDay: (LocalDate) -> Unit,
+    onSupersets: (LocalDate) -> Unit,
     viewModel: WorkoutViewModel = viewModel(factory = WorkoutViewModel.Factory),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -88,6 +88,7 @@ fun WorkoutScreen(
     var exerciseToDelete by remember { mutableStateOf<DayExercise?>(null) }
     var menuOpen by remember { mutableStateOf(false) }
     var choosingRoutine by remember { mutableStateOf(false) }
+    var routineWithSupersets by remember { mutableStateOf<Routine?>(null) }
 
     Scaffold(
         topBar = {
@@ -106,7 +107,7 @@ fun WorkoutScreen(
                             MenuItem("Add a plan to this day", close) { choosingRoutine = true }
                             MenuItem("New superset (2–6 exercises)", close) { onNewSuperset(state.date) }
                             if (state.exercises.size >= 2) {
-                                MenuItem("Arrange supersets & drop sets", close) { onArrangeDay(state.date) }
+                                MenuItem("+Super-sets", close) { onSupersets(state.date) }
                             }
                             if (state.exercises.isNotEmpty() && state.date != LocalDate.now()) {
                                 MenuItem("Copy exercises to today", close, viewModel::copyExercisesToToday)
@@ -155,27 +156,27 @@ fun WorkoutScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     if (state.exercises.size >= 2) {
-                        item(key = "arrange") {
-                            OutlinedButton(onClick = { onArrangeDay(state.date) }, modifier = Modifier.fillMaxWidth()) {
-                                Text("Arrange supersets & drop sets")
+                        item(key = "supersets") {
+                            OutlinedButton(onClick = { onSupersets(state.date) }, modifier = Modifier.fillMaxWidth()) {
+                                Text("+Super-sets")
                             }
                         }
                     }
                     val blocks = groupDay(state.exercises)
                     items(blocks, key = { block ->
                         when (block) {
-                            is DayBlock.Single -> block.exercise.workoutExerciseId
-                            is DayBlock.Superset -> "superset-${block.id}"
+                            is Block.Single -> block.item.workoutExerciseId
+                            is Block.Superset -> "superset-${block.id}"
                         }
                     }) { block ->
                         when (block) {
-                            is DayBlock.Single -> DayExerciseCard(
-                                exercise = block.exercise,
+                            is Block.Single -> DayExerciseCard(
+                                exercise = block.item,
                                 units = state.units,
-                                onClick = { onOpenExercise(state.date, block.exercise.exerciseId) },
-                                onDelete = { exerciseToDelete = block.exercise },
+                                onClick = { onOpenExercise(state.date, block.item.exerciseId) },
+                                onDelete = { exerciseToDelete = block.item },
                             )
-                            is DayBlock.Superset -> SupersetCard(
+                            is Block.Superset -> SupersetCard(
                                 superset = block,
                                 units = state.units,
                                 onOpen = { onOpenExercise(state.date, it.exerciseId) },
@@ -194,13 +195,50 @@ fun WorkoutScreen(
             routines = routines,
             onChoose = { routine ->
                 choosingRoutine = false
-                viewModel.applyRoutine(routine.id)
+                if (routine.supersetCount > 0) {
+                    routineWithSupersets = routine
+                } else {
+                    viewModel.applyRoutine(routine.id, withSupersets = false)
+                }
             },
             onManageRoutines = {
                 choosingRoutine = false
                 onOpenRoutines()
             },
             onDismiss = { choosingRoutine = false },
+        )
+    }
+
+    routineWithSupersets?.let { routine ->
+        val count = routine.supersetCount
+        AlertDialog(
+            onDismissRequest = { routineWithSupersets = null },
+            title = { Text("Add ${routine.name}") },
+            text = {
+                Text(
+                    if (count == 1) {
+                        "This plan has a superset. Do it as a superset today, or its exercises one by one?"
+                    } else {
+                        "This plan has $count supersets. Do them as supersets today, or the exercises one by one?"
+                    },
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        routineWithSupersets = null
+                        viewModel.applyRoutine(routine.id, withSupersets = true)
+                    },
+                ) { Text("With supersets") }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        routineWithSupersets = null
+                        viewModel.applyRoutine(routine.id, withSupersets = false)
+                    },
+                ) { Text("One by one") }
+            },
         )
     }
 
@@ -309,7 +347,7 @@ private fun DayExerciseCard(
 /** Several exercises done back to back, shown together in one card. */
 @Composable
 private fun SupersetCard(
-    superset: DayBlock.Superset,
+    superset: Block.Superset<DayExercise>,
     units: UnitSystem,
     onOpen: (DayExercise) -> Unit,
     onDelete: (DayExercise) -> Unit,
@@ -325,7 +363,7 @@ private fun SupersetCard(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = "Superset · ${superset.exercises.size} exercises",
+                text = "Superset · ${superset.items.size} exercises",
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.weight(1f),
@@ -345,7 +383,7 @@ private fun SupersetCard(
                 }
             }
         }
-        superset.exercises.forEachIndexed { index, exercise ->
+        superset.items.forEachIndexed { index, exercise ->
             if (index > 0) HorizontalDivider(Modifier.padding(start = 22.dp))
             Box(Modifier.clickable { onOpen(exercise) }) {
                 ExerciseBody(exercise, units, onDelete = { onDelete(exercise) }, position = index + 1)
@@ -437,7 +475,16 @@ private fun RoutineChooserDialog(
                         ListItem(
                             modifier = Modifier.clickable { onChoose(routine) },
                             headlineContent = { Text(routine.name) },
-                            supportingContent = { Text("${routine.exercises.size} exercises") },
+                            supportingContent = {
+                                val supersets = routine.supersetCount
+                                Text(
+                                    "${routine.exercises.size} exercises" + when (supersets) {
+                                        0 -> ""
+                                        1 -> " · 1 superset"
+                                        else -> " · $supersets supersets"
+                                    },
+                                )
+                            },
                         )
                     }
                 }

@@ -8,9 +8,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.toRoute
+import com.kkfittracking.data.BuiltInExercises
 import com.kkfittracking.data.ExerciseRepository
 import com.kkfittracking.model.Category
+import com.kkfittracking.model.ExerciseLink
 import com.kkfittracking.model.ExerciseType
+import com.kkfittracking.model.Muscle
+import com.kkfittracking.model.TrainingStyle
 import com.kkfittracking.ui.EditExerciseRoute
 import com.kkfittracking.ui.appViewModelFactory
 import kotlinx.coroutines.flow.SharingStarted
@@ -44,6 +48,12 @@ class EditExerciseViewModel(
         private set
     var perSide by mutableStateOf(false)
         private set
+    var muscle by mutableStateOf(Muscle.OTHER)
+        private set
+    var style by mutableStateOf(TrainingStyle.STRENGTH)
+        private set
+    var links by mutableStateOf<List<ExerciseLink>>(emptyList())
+        private set
     var nameError by mutableStateOf<String?>(null)
         private set
 
@@ -61,8 +71,11 @@ class EditExerciseViewModel(
                 notes = exercise.notes
                 tempo = exercise.tempo
                 perSide = exercise.perSide
+                muscle = exercise.muscle
+                style = exercise.style
+                links = exercise.links
             } else if (categoryId == null) {
-                categoryId = repository.categories.first().firstOrNull()?.id
+                repository.categories.first().firstOrNull()?.let { updateCategory(it.id) }
             }
         }
     }
@@ -72,12 +85,36 @@ class EditExerciseViewModel(
         nameError = null
     }
 
+    /** The body section key of the chosen category. */
+    val regionKey: String? get() = categoryId?.let(BuiltInExercises::regionKeyOf)
+
+    /** Moving to another section picks a muscle of that section. */
     fun updateCategory(value: String) {
         categoryId = value
+        val key = BuiltInExercises.regionKeyOf(value)
+        if (muscle !in Muscle.forRegion(key)) muscle = Muscle.defaultFor(key)
+        if (isNew && style == TrainingStyle.STRENGTH) style = TrainingStyle.defaultFor(key, type)
+    }
+
+    fun updateMuscle(value: Muscle) {
+        muscle = value
+    }
+
+    fun updateStyle(value: TrainingStyle) {
+        style = value
     }
 
     fun updateType(value: ExerciseType) {
         type = value
+        if (value == ExerciseType.INTERVALS) style = TrainingStyle.HIIT
+    }
+
+    fun addLink(link: ExerciseLink) {
+        if (links.none { it.url == link.url }) links = links + link
+    }
+
+    fun removeLink(link: ExerciseLink) {
+        links = links - link
     }
 
     fun updateNotes(value: String) {
@@ -100,7 +137,7 @@ class EditExerciseViewModel(
         }
         if (category == null) return
         viewModelScope.launch {
-            repository.saveExercise(exerciseId, name, category, type, notes, tempo, perSide)
+            repository.saveExercise(exerciseId, name, category, type, notes, tempo, perSide, muscle, style, links)
             result = EditExerciseResult.SAVED
         }
     }

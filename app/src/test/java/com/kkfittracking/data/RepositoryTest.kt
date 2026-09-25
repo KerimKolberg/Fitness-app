@@ -5,16 +5,24 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.kkfittracking.data.db.AppDatabase
+import com.kkfittracking.data.db.CategoryEntity
+import com.kkfittracking.data.db.ExerciseEntity
 import com.kkfittracking.model.ArrangedExercise
 import com.kkfittracking.model.BodyMetric
-import com.kkfittracking.model.DropSetMode
+import com.kkfittracking.model.ExerciseLink
+import com.kkfittracking.model.ExercisePlan
 import com.kkfittracking.model.ExerciseType
+import com.kkfittracking.model.Muscle
+import com.kkfittracking.model.PlannedExercise
 import com.kkfittracking.model.SetValues
+import com.kkfittracking.model.TrainingStyle
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -58,14 +66,19 @@ class RepositoryTest {
 
     @Test
     fun builtInsAreAddedOnceAndKeepUserChanges() = runTest {
-        exercises.addMissingBuiltIns()
-        val total = BuiltInExercises.categories.sumOf { it.exercises.size }
+        exercises.syncBuiltIns()
+        val total = BuiltInExercises.exercises.size
         assertEquals(total, exercises.exercises.first().size)
-        assertEquals(BuiltInExercises.categories.size, exercises.categories.first().size)
+        assertEquals(BuiltInExercises.regions.map { it.name }, exercises.categories.first().map { it.name })
+        // Built-ins arrive filed under their muscle and style, HIIT with its timings.
+        val nordic = exercises.getExercise(StarterPlans.exerciseId("Nordic Hamstring Curl"))!!
+        assertEquals(Muscle.HAMSTRINGS, nordic.muscle)
+        assertEquals(TrainingStyle.ECCENTRIC, nordic.style)
+        assertEquals(8, exercises.getExercise(StarterPlans.exerciseId("Tabata"))!!.plan.rounds)
 
         exercises.saveExercise(bench, "Bench Press", exercises.getExercise(bench)!!.categoryId, ExerciseType.WEIGHT_REPS, "")
         exercises.deleteExercise(squat)
-        exercises.addMissingBuiltIns()
+        exercises.syncBuiltIns()
 
         val list = exercises.exercises.first()
         assertEquals(total - 1, list.size)
@@ -74,7 +87,7 @@ class RepositoryTest {
 
     @Test
     fun customExercisesCanBeCreated() = runTest {
-        exercises.addMissingBuiltIns()
+        exercises.syncBuiltIns()
         val categoryId = exercises.categories.first().first().id
         val id = exercises.saveExercise(null, "  Landmine Press ", categoryId, ExerciseType.WEIGHT_REPS, "")
         val saved = exercises.getExercise(id)
@@ -85,7 +98,7 @@ class RepositoryTest {
 
     @Test
     fun setsOfOneExerciseShareOneDayEntry() = runTest {
-        exercises.addMissingBuiltIns()
+        exercises.syncBuiltIns()
         workouts.addSet(day, bench, SetValues(weightKg = 100.0, reps = 5))
         workouts.addSet(day, squat, SetValues(weightKg = 140.0, reps = 3))
         workouts.addSet(day, bench, SetValues(weightKg = 100.0, reps = 4))
@@ -98,7 +111,7 @@ class RepositoryTest {
 
     @Test
     fun updatingASet() = runTest {
-        exercises.addMissingBuiltIns()
+        exercises.syncBuiltIns()
         val setId = workouts.addSet(day, bench, SetValues(weightKg = 100.0, reps = 5))
         workouts.updateSet(setId, SetValues(weightKg = 102.5, reps = 5))
         assertEquals(102.5, workouts.observeDay(day).first()[0].sets[0].values.weightKg!!, 0.0)
@@ -106,7 +119,7 @@ class RepositoryTest {
 
     @Test
     fun deletingTheLastSetRemovesTheExerciseFromTheDay() = runTest {
-        exercises.addMissingBuiltIns()
+        exercises.syncBuiltIns()
         val first = workouts.addSet(day, bench, SetValues(weightKg = 100.0, reps = 5))
         val second = workouts.addSet(day, bench, SetValues(weightKg = 100.0, reps = 5))
 
@@ -124,7 +137,7 @@ class RepositoryTest {
 
     @Test
     fun removingAnExerciseFromTheDay() = runTest {
-        exercises.addMissingBuiltIns()
+        exercises.syncBuiltIns()
         workouts.addSet(day, bench, SetValues(weightKg = 100.0, reps = 5))
         workouts.addSet(day, squat, SetValues(weightKg = 140.0, reps = 3))
         val benchEntry = workouts.observeDay(day).first().first { it.exerciseId == bench }
@@ -137,7 +150,7 @@ class RepositoryTest {
 
     @Test
     fun historyIsGroupedByDateNewestFirst() = runTest {
-        exercises.addMissingBuiltIns()
+        exercises.syncBuiltIns()
         val earlier = day.minusDays(3)
         workouts.addSet(earlier, bench, SetValues(weightKg = 95.0, reps = 5))
         workouts.addSet(day, bench, SetValues(weightKg = 100.0, reps = 5))
@@ -153,7 +166,7 @@ class RepositoryTest {
 
     @Test
     fun deletedExercisesStillShowInPastWorkouts() = runTest {
-        exercises.addMissingBuiltIns()
+        exercises.syncBuiltIns()
         workouts.addSet(day, bench, SetValues(weightKg = 100.0, reps = 5))
         exercises.deleteExercise(bench)
 
@@ -163,7 +176,7 @@ class RepositoryTest {
 
     @Test
     fun routinesKeepTheirOrder() = runTest {
-        exercises.addMissingBuiltIns()
+        exercises.syncBuiltIns()
         val row = BuiltInExercises.stableId("exercise", "barbell-row")
         val id = routines.createRoutine("Full body")
         routines.addExercise(id, squat)
@@ -173,7 +186,7 @@ class RepositoryTest {
         val routine = routines.observeRoutine(id).first()!!
         assertEquals(listOf(squat, bench, row), routine.exercises.map { it.exerciseId })
 
-        routines.moveExercise(id, routine.exercises[2].id, -1)
+        routines.moveInPlan(id, 2, -1)
         assertEquals(listOf(squat, row, bench), routines.exerciseIds(id))
 
         routines.removeExercise(routine.exercises[0].id)
@@ -185,7 +198,7 @@ class RepositoryTest {
 
     @Test
     fun plannedExercisesAppearWithoutSetsAndAreReusedWhenLogging() = runTest {
-        exercises.addMissingBuiltIns()
+        exercises.syncBuiltIns()
         workouts.addSet(day, bench, SetValues(weightKg = 100.0, reps = 5))
         workouts.addExercisesToDay(day, listOf(bench, squat, squat))
 
@@ -222,7 +235,7 @@ class RepositoryTest {
 
     @Test
     fun starterPlansAreAddedOnceAndShareExercises() = runTest {
-        exercises.addMissingBuiltIns()
+        exercises.syncBuiltIns()
         assertEquals(StarterPlans.plans.size, routines.addStarterPlans())
         assertEquals(0, routines.addStarterPlans())
 
@@ -242,7 +255,7 @@ class RepositoryTest {
 
     @Test
     fun gameStatsFollowTheLog() = runTest {
-        exercises.addMissingBuiltIns()
+        exercises.syncBuiltIns()
         val settingsFile = Files.createTempDirectory("settings").resolve("test.preferences_pb").toFile()
         val settings = SettingsRepository(PreferenceDataStoreFactory.create(produceFile = { settingsFile }))
         val game = GameRepository(database.workoutDao(), settings)
@@ -256,7 +269,7 @@ class RepositoryTest {
 
     @Test
     fun supersetsGroupExercisesOnADay() = runTest {
-        exercises.addMissingBuiltIns()
+        exercises.syncBuiltIns()
         val row = BuiltInExercises.stableId("exercise", "barbell-row")
         // Bench is already on the day with a set; squat and row are added by the superset.
         workouts.addSet(day, bench, SetValues(weightKg = 100.0, reps = 5))
@@ -273,7 +286,7 @@ class RepositoryTest {
 
     @Test
     fun dropSetsAreStored() = runTest {
-        exercises.addMissingBuiltIns()
+        exercises.syncBuiltIns()
         workouts.addSet(day, bench, SetValues(weightKg = 100.0, reps = 8))
         val drop = workouts.addSet(day, bench, SetValues(weightKg = 80.0, reps = 6, isDropSet = true))
         val sets = workouts.observeDay(day).first().single().sets
@@ -284,26 +297,190 @@ class RepositoryTest {
     }
 
     @Test
-    fun arrangingADayFromAPlan() = runTest {
-        exercises.addMissingBuiltIns()
+    fun arrangingADay() = runTest {
+        exercises.syncBuiltIns()
         val row = BuiltInExercises.stableId("exercise", "barbell-row")
         workouts.addExercisesToDay(day, listOf(bench, squat, row))
         val entries = workouts.observeDay(day).first()
 
         workouts.arrangeDay(
             listOf(
-                ArrangedExercise(entries[2].workoutExerciseId, 0, null, null, DropSetMode.LAST_SET, 4),
-                ArrangedExercise(entries[0].workoutExerciseId, 1, "s", 15, DropSetMode.NONE, null),
-                ArrangedExercise(entries[1].workoutExerciseId, 2, "s", 15, DropSetMode.EVERY_SET, null),
+                ArrangedExercise(entries[2].workoutExerciseId, 0, null, null, null),
+                ArrangedExercise(entries[0].workoutExerciseId, 1, "s", 15, 120),
+                ArrangedExercise(entries[1].workoutExerciseId, 2, "s", 15, 120),
             ),
         )
 
         val arranged = workouts.observeDay(day).first()
         assertEquals(listOf(row, bench, squat), arranged.map { it.exerciseId })
-        assertEquals(DropSetMode.LAST_SET, arranged[0].dropSetMode)
-        assertEquals(4, arranged[0].plannedSets)
         assertEquals(listOf(null, "s", "s"), arranged.map { it.supersetId })
         assertEquals(15, arranged[1].transitionSeconds)
-        assertEquals(DropSetMode.EVERY_SET, arranged[2].dropSetMode)
+        assertEquals(120, arranged[2].roundRestSeconds)
+
+        workouts.ungroupSuperset("s")
+        assertTrue(workouts.observeDay(day).first().all { it.supersetId == null && it.roundRestSeconds == null })
+    }
+
+    /** A plan arranged with "+Super-sets", then added to a day on a day with extra energy, and on a normal day. */
+    @Test
+    fun planSupersetsComeAlongToTheDayWhenChosen() = runTest {
+        exercises.syncBuiltIns()
+        val row = StarterPlans.exerciseId("Barbell Row")
+        val curl = StarterPlans.exerciseId("Barbell Curl")
+        val plan = routines.createRoutine("Upper")
+        listOf(bench, row, curl, squat).forEach { routines.addExercise(plan, it) }
+        val entries = routines.observeRoutine(plan).first()!!.exercises
+        routines.arrangePlan(
+            listOf(
+                ArrangedExercise(entries[0].id, 0, null, null, null),
+                ArrangedExercise(entries[1].id, 1, "plan-superset", 20, 120),
+                ArrangedExercise(entries[2].id, 2, "plan-superset", 20, 120),
+                ArrangedExercise(entries[3].id, 3, null, null, null),
+            ),
+        )
+        assertEquals(1, routines.observeRoutine(plan).first()!!.supersetCount)
+
+        workouts.addPlannedExercises(day, routines.plannedExercises(plan), withSupersets = true)
+        val withSupersets = workouts.observeDay(day).first()
+        assertEquals(listOf(bench, row, curl, squat), withSupersets.map { it.exerciseId })
+        val daySuperset = withSupersets[1].supersetId
+        assertNotNull(daySuperset)
+        // The day gets its own superset id, so ungrouping it there leaves the plan alone.
+        assertNotEquals("plan-superset", daySuperset)
+        assertEquals(daySuperset, withSupersets[2].supersetId)
+        assertEquals(20, withSupersets[2].transitionSeconds)
+        assertEquals(120, withSupersets[1].roundRestSeconds)
+        assertNull(withSupersets[0].supersetId)
+
+        val normalDay = day.plusDays(1)
+        workouts.addPlannedExercises(normalDay, routines.plannedExercises(plan), withSupersets = false)
+        assertTrue(workouts.observeDay(normalDay).first().all { it.supersetId == null })
+    }
+
+    @Test
+    fun plansMoveSupersetsAsAWholeAndDropLonelySupersets() = runTest {
+        exercises.syncBuiltIns()
+        val row = StarterPlans.exerciseId("Barbell Row")
+        val curl = StarterPlans.exerciseId("Barbell Curl")
+        val plan = routines.createRoutine("Upper")
+        listOf(bench, row, curl, squat).forEach { routines.addExercise(plan, it) }
+        val entries = routines.observeRoutine(plan).first()!!.exercises
+        routines.arrangePlan(
+            entries.mapIndexed { index, entry ->
+                val inSuperset = index == 1 || index == 2
+                ArrangedExercise(entry.id, index, "s".takeIf { inSuperset }, null, null)
+            },
+        )
+
+        // The blocks are bench, the superset, squat: moving bench down puts it after the superset.
+        routines.moveInPlan(plan, 0, 1)
+        assertEquals(listOf(row, curl, bench, squat), routines.exerciseIds(plan))
+
+        // Removing one exercise of a superset of two leaves an exercise on its own.
+        routines.removeExercise(entries[1].id)
+        assertTrue(routines.observeRoutine(plan).first()!!.exercises.all { it.supersetId == null })
+    }
+
+    @Test
+    fun starterPlansCanHaveSupersets() = runTest {
+        exercises.syncBuiltIns()
+        routines.addStarterPlans()
+        val arms = routines.routines.first().single { it.name == "Arms supersets" }
+        assertEquals(2, arms.supersetCount)
+        // Two supersets of two, then the last exercise on its own.
+        assertEquals(4, arms.exercises.count { it.supersetId != null })
+        assertNull(arms.exercises.last().supersetId)
+    }
+
+    @Test
+    fun setPlansDescriptionsAndLinksAreSaved() = runTest {
+        exercises.syncBuiltIns()
+        val plan = ExercisePlan(sets = 3, reps = 8, restSeconds = 150, dropSets = true, drops = 2, dropPercent = 25)
+        exercises.savePlan(bench, plan)
+        exercises.saveNotes(bench, "  Feet flat, shoulder blades back. ")
+        val link = ExerciseLink("https://www.youtube.com/watch?v=abc", "Bench setup")
+        exercises.saveLinks(bench, listOf(link))
+
+        val saved = exercises.getExercise(bench)!!
+        assertEquals(plan, saved.plan)
+        assertEquals("Feet flat, shoulder blades back.", saved.notes)
+        assertEquals(listOf(link), saved.links)
+
+        // Editing the exercise keeps its plan; the muscle and style can be changed.
+        exercises.saveExercise(bench, "Bench", saved.categoryId, ExerciseType.WEIGHT_REPS, saved.notes, muscle = Muscle.OTHER, style = TrainingStyle.ECCENTRIC)
+        val edited = exercises.getExercise(bench)!!
+        assertEquals(plan, edited.plan)
+        assertEquals(listOf(link), edited.links)
+        assertEquals(TrainingStyle.ECCENTRIC, edited.style)
+        assertEquals(Muscle.OTHER, edited.muscle)
+    }
+
+    /** An install from before the library had sections, muscles and styles. */
+    @Test
+    fun oldCategoriesAreFiledUnderTheNewSections() = runTest {
+        val dao = database.exerciseDao()
+        fun category(key: String, name: String, order: Int) =
+            CategoryEntity(BuiltInExercises.stableId("category", key), name, 0, order, 1, 1)
+        fun exercise(id: String, name: String, categoryKey: String, custom: Boolean = false) = ExerciseEntity(
+            id = id, name = name, categoryId = BuiltInExercises.stableId("category", categoryKey),
+            type = ExerciseType.REPS, notes = "", isCustom = custom, createdAt = 1, updatedAt = 1,
+        )
+        val nordic = StarterPlans.exerciseId("Nordic Hamstring Curl")
+        val plank = StarterPlans.exerciseId("Plank")
+        val hipCars = StarterPlans.exerciseId("Hip CARs")
+        dao.insertCategoriesIfMissing(
+            listOf(category("abs", "Abs", 6), category("tendons", "Tendons & eccentrics", 11), category("mobility", "Mobility", 8)),
+        )
+        dao.insertExercisesIfMissing(
+            listOf(
+                exercise(nordic, "Nordic Hamstring Curl", "tendons"),
+                exercise(plank, "Plank", "abs"),
+                exercise(hipCars, "Hip CARs", "mobility").copy(deletedAt = 5),
+                exercise("custom-1", "Cossack Squat", "mobility", custom = true),
+            ),
+        )
+        workouts.addSet(day, nordic, SetValues(reps = 5))
+
+        exercises.syncBuiltIns()
+
+        val movedNordic = exercises.getExercise(nordic)!!
+        assertEquals(BuiltInExercises.stableId("category", "legs"), movedNordic.categoryId)
+        assertEquals(Muscle.HAMSTRINGS, movedNordic.muscle)
+        assertEquals(TrainingStyle.ECCENTRIC, movedNordic.style)
+        val filedPlank = exercises.getExercise(plank)!!
+        assertEquals(BuiltInExercises.stableId("category", "abs"), filedPlank.categoryId)
+        assertEquals(TrainingStyle.ISOMETRIC, filedPlank.style)
+        val cossack = exercises.getExercise("custom-1")!!
+        assertEquals(BuiltInExercises.stableId("category", "full-body"), cossack.categoryId)
+        assertEquals(TrainingStyle.MOBILITY, cossack.style)
+        // A built-in the user deleted is filed too, but stays deleted.
+        assertEquals(BuiltInExercises.stableId("category", "legs"), exercises.getExercise(hipCars)!!.categoryId)
+        assertTrue(exercises.exercises.first().none { it.id == hipCars })
+
+        // "Abs" is now "Core"; the old categories are gone from the library.
+        assertEquals(BuiltInExercises.regions.map { it.name }, exercises.categories.first().map { it.name })
+        // Every built-in but the deleted one, plus the user's own exercise.
+        assertEquals(BuiltInExercises.exercises.size - 1 + 1, exercises.exercises.first().size)
+        // Logged workouts are untouched.
+        assertEquals(listOf(5), workouts.observeDay(day).first().single().sets.map { it.values.reps })
+
+        // Running it again changes nothing.
+        val before = database.backupDao().exercises().associate { it.id to it.updatedAt }
+        exercises.syncBuiltIns()
+        assertEquals(before, database.backupDao().exercises().associate { it.id to it.updatedAt })
+    }
+
+    @Test
+    fun aDaysExercisesCanBeAddedWithTheirSupersets() = runTest {
+        exercises.syncBuiltIns()
+        workouts.addPlannedExercises(
+            day,
+            listOf(PlannedExercise(bench, "a", 10, 60), PlannedExercise(squat, "a", 10, 60), PlannedExercise(bench, "a")),
+            withSupersets = true,
+        )
+        val logged = workouts.observeDay(day).first()
+        assertEquals(listOf(bench, squat), logged.map { it.exerciseId })
+        assertEquals(logged[0].supersetId, logged[1].supersetId)
+        assertEquals(60, logged[0].roundRestSeconds)
     }
 }

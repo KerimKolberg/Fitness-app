@@ -26,8 +26,7 @@ data class DayRow(
     val isDropSet: Boolean?,
     val supersetId: String?,
     val transitionSeconds: Int?,
-    val dropSetMode: Int,
-    val plannedSets: Int?,
+    val roundRestSeconds: Int?,
 )
 
 /** Every logged set with its date and exercise details, for the game stats. */
@@ -36,6 +35,8 @@ data class LoggedSetRow(
     val exerciseId: String,
     val categoryId: String,
     val exerciseType: ExerciseType,
+    /** The stored training style name, possibly empty. */
+    val exerciseStyle: String,
     @Embedded val set: WorkoutSetEntity,
 )
 
@@ -76,6 +77,9 @@ interface WorkoutDao {
     @Insert
     suspend fun insertWorkoutExercise(workoutExercise: WorkoutExerciseEntity)
 
+    @Query("SELECT * FROM workout_exercises WHERE workoutId = :workoutId AND deletedAt IS NULL ORDER BY sortOrder")
+    suspend fun getWorkoutExercises(workoutId: String): List<WorkoutExerciseEntity>
+
     @Query("SELECT * FROM workout_sets WHERE id = :id")
     suspend fun getSet(id: String): WorkoutSetEntity?
 
@@ -104,17 +108,19 @@ interface WorkoutDao {
 
     @Query(
         """
-        UPDATE workout_exercises SET supersetId = :supersetId, transitionSeconds = :transitionSeconds, updatedAt = :now
+        UPDATE workout_exercises
+        SET supersetId = :supersetId, transitionSeconds = :transitionSeconds, roundRestSeconds = :roundRestSeconds,
+            updatedAt = :now
         WHERE id IN (:ids)
         """,
     )
-    suspend fun setSuperset(ids: List<String>, supersetId: String?, transitionSeconds: Int?, now: Long)
+    suspend fun setSuperset(ids: List<String>, supersetId: String?, transitionSeconds: Int?, roundRestSeconds: Int?, now: Long)
 
     @Query(
         """
         UPDATE workout_exercises
         SET sortOrder = :sortOrder, supersetId = :supersetId, transitionSeconds = :transitionSeconds,
-            dropSetMode = :dropSetMode, plannedSets = :plannedSets, updatedAt = :now
+            roundRestSeconds = :roundRestSeconds, updatedAt = :now
         WHERE id = :id
         """,
     )
@@ -123,14 +129,13 @@ interface WorkoutDao {
         sortOrder: Int,
         supersetId: String?,
         transitionSeconds: Int?,
-        dropSetMode: Int,
-        plannedSets: Int?,
+        roundRestSeconds: Int?,
         now: Long,
     )
 
     @Query(
         """
-        UPDATE workout_exercises SET supersetId = NULL, updatedAt = :now
+        UPDATE workout_exercises SET supersetId = NULL, transitionSeconds = NULL, roundRestSeconds = NULL, updatedAt = :now
         WHERE supersetId = :supersetId AND deletedAt IS NULL
         """,
     )
@@ -146,7 +151,7 @@ interface WorkoutDao {
                s.id AS setId, s.weightKg AS weightKg, s.reps AS reps,
                s.distanceMeters AS distanceMeters, s.durationSeconds AS durationSeconds,
                s.rpe AS rpe, s.comment AS comment, s.isDropSet AS isDropSet, we.supersetId AS supersetId,
-               we.transitionSeconds AS transitionSeconds, we.dropSetMode AS dropSetMode, we.plannedSets AS plannedSets
+               we.transitionSeconds AS transitionSeconds, we.roundRestSeconds AS roundRestSeconds
         FROM workouts w
         JOIN workout_exercises we ON we.workoutId = w.id AND we.deletedAt IS NULL
         JOIN exercises e ON e.id = we.exerciseId
@@ -184,7 +189,7 @@ interface WorkoutDao {
     @Query(
         """
         SELECT w.date AS date, we.exerciseId AS exerciseId, e.categoryId AS categoryId,
-               e.type AS exerciseType, s.*
+               e.type AS exerciseType, e.style AS exerciseStyle, s.*
         FROM workout_sets s
         JOIN workout_exercises we ON we.id = s.workoutExerciseId AND we.deletedAt IS NULL
         JOIN workouts w ON w.id = we.workoutId AND w.deletedAt IS NULL

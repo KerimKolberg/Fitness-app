@@ -65,15 +65,17 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kkfittracking.R
-import com.kkfittracking.model.ArrangeRow
 import com.kkfittracking.model.DayExercise
-import com.kkfittracking.model.DropSetMode
 import com.kkfittracking.model.ExerciseType
 import com.kkfittracking.model.HistorySession
 import com.kkfittracking.model.UnitSystem
+import com.kkfittracking.model.dropStepLabel
 import com.kkfittracking.model.formatDuration
 import com.kkfittracking.model.formatSet
+import com.kkfittracking.model.parseDecimal
+import com.kkfittracking.model.planProgress
 import com.kkfittracking.model.setLabels
+import com.kkfittracking.timer.IntervalTimerState
 import com.kkfittracking.timer.RestTimerState
 import com.kkfittracking.ui.components.formatShortDate
 import com.kkfittracking.ui.components.rememberNotificationPermissionRequester
@@ -92,6 +94,9 @@ fun ExerciseLogScreen(
     var showTimer by remember { mutableStateOf(false) }
     var showPlans by remember { mutableStateOf(false) }
     val plans by viewModel.plans.collectAsStateWithLifecycle()
+    val categories by viewModel.categories.collectAsStateWithLifecycle()
+    val intervals by viewModel.intervalState.collectAsStateWithLifecycle()
+    var editingPlan by remember { mutableStateOf(false) }
     val requestNotificationPermission = rememberNotificationPermissionRequester()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -153,6 +158,7 @@ fun ExerciseLogScreen(
                 Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }, text = { Text("Track") })
                 Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }, text = { Text("History") })
                 Tab(selected = selectedTab == 2, onClick = { selectedTab = 2 }, text = { Text("Progress") })
+                Tab(selected = selectedTab == 3, onClick = { selectedTab = 3 }, text = { Text("About") })
             }
             if (state.superset.isNotEmpty()) {
                 SupersetBar(state.superset, currentId = viewModel.exerciseId, onSelect = onSwitchExercise)
@@ -182,6 +188,12 @@ fun ExerciseLogScreen(
                     viewModel = viewModel,
                     state = state,
                     type = exercise.type,
+                    intervals = intervals,
+                    onEditPlan = { editingPlan = true },
+                    onStartIntervals = {
+                        requestNotificationPermission()
+                        viewModel.startIntervals()
+                    },
                     onSave = {
                         if (viewModel.selectedSetId == null && state.settings.autoStartRestTimer) {
                             requestNotificationPermission()
@@ -190,7 +202,15 @@ fun ExerciseLogScreen(
                     },
                 )
                 selectedTab == 1 -> HistoryTab(state = state, type = exercise.type, currentDate = viewModel.date)
-                else -> ProgressTab(history = state.history, type = exercise.type, units = state.units)
+                selectedTab == 2 -> ProgressTab(history = state.history, type = exercise.type, units = state.units)
+                else -> AboutTab(
+                    exercise = exercise,
+                    sectionName = categories.firstOrNull { it.id == exercise.categoryId }?.name,
+                    onSaveDescription = viewModel::saveDescription,
+                    onAddLink = viewModel::addLink,
+                    onRemoveLink = viewModel::removeLink,
+                    onEditExercise = { onEditExercise(viewModel.exerciseId) },
+                )
             }
         }
     }
@@ -203,6 +223,30 @@ fun ExerciseLogScreen(
             onToggle = viewModel::setInPlan,
             onCreatePlan = viewModel::createPlanWithExercise,
             onDismiss = { showPlans = false },
+        )
+    }
+
+    val exercise = state.exercise
+    if (editingPlan && exercise != null) {
+        SetPlanDialog(
+            plan = state.plan,
+            type = exercise.type,
+            units = state.units,
+            defaultRestSeconds = state.settings.restTimerSeconds,
+            defaultPercent = state.settings.dropSetPercent,
+            enteredWeightKg = parseDecimal(viewModel.input.weight)?.let(state.units::weightToKg)
+                ?: state.sets.lastOrNull()?.values?.weightKg
+                ?: state.previousSession?.sets?.lastOrNull()?.values?.weightKg,
+            inSuperset = state.superset.isNotEmpty(),
+            onSave = {
+                editingPlan = false
+                viewModel.savePlan(it)
+            },
+            onClear = {
+                editingPlan = false
+                viewModel.clearPlan()
+            },
+            onDismiss = { editingPlan = false },
         )
     }
 
@@ -241,6 +285,9 @@ private fun TrackTab(
     viewModel: ExerciseLogViewModel,
     state: ExerciseLogUiState,
     type: ExerciseType,
+    intervals: IntervalTimerState,
+    onEditPlan: () -> Unit,
+    onStartIntervals: () -> Unit,
     onSave: () -> Unit,
 ) {
     val input = viewModel.input
@@ -255,22 +302,38 @@ private fun TrackTab(
         item {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 state.exercise?.let { exercise ->
-                    val plan = state.dayEntry
                     val hints = listOfNotNull(
                         exercise.tempo.takeIf { it.isNotBlank() }?.let { "Tempo $it (down-pause-up-pause, seconds)" },
                         "Log each side as its own set".takeIf { exercise.perSide },
-                        when (plan?.dropSetMode) {
-                            DropSetMode.LAST_SET ->
-                                "Plan: ${plan.plannedSets ?: ArrangeRow.DEFAULT_PLANNED_SETS} sets, then a drop set"
-                            DropSetMode.EVERY_SET -> "Plan: every set after the first is a drop set"
-                            else -> null
-                        },
                     )
                     if (hints.isNotEmpty()) {
                         Text(
                             text = hints.joinToString("\n"),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.secondary,
+                        )
+                    }
+                    if (type == ExerciseType.INTERVALS) {
+                        IntervalCard(
+                            timer = intervals,
+                            plan = state.plan,
+                            exerciseId = exercise.id,
+                            onStart = onStartIntervals,
+                            onPause = viewModel::pauseIntervals,
+                            onResume = viewModel::resumeIntervals,
+                            onFinish = viewModel::finishIntervals,
+                            onReset = viewModel::resetIntervals,
+                            onChange = { high, low, rounds -> viewModel.changeIntervals(high, low, rounds) },
+                        )
+                    } else if (!type.isSession) {
+                        SetPlanCard(
+                            plan = state.plan,
+                            type = type,
+                            progress = planProgress(state.plan, state.sets, state.dueDrop?.takeIf { viewModel.dropMode }),
+                            inSuperset = state.superset.isNotEmpty(),
+                            defaultPercent = state.settings.dropSetPercent,
+                            units = units,
+                            onEdit = onEditPlan,
                         )
                     }
                 }
@@ -290,7 +353,7 @@ private fun TrackTab(
                 }
                 if (type.usesReps) {
                     StepperField(
-                        label = "Reps",
+                        label = type.repsLabel,
                         value = input.reps,
                         onValueChange = { viewModel.updateInput(input.copy(reps = it)) },
                         onDecrement = { viewModel.adjustReps(-1) },
@@ -358,17 +421,12 @@ private fun TrackTab(
                     Text(message, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
                 }
                 if (!isEditing && viewModel.canUseDropSets(state)) {
+                    val step = state.plan.dropStepLabel(state.settings.dropSetPercent, units)
                     FilterChip(
                         selected = viewModel.dropMode,
                         onClick = viewModel::toggleDropMode,
                         label = {
-                            Text(
-                                if (viewModel.dropMode) {
-                                    "Drop sets on: each save is ${state.settings.dropSetPercent}% lighter"
-                                } else {
-                                    "Drop set (−${state.settings.dropSetPercent}%)"
-                                },
-                            )
+                            Text(if (viewModel.dropMode) "Drop sets on: $step each" else "Drop set ($step)")
                         },
                     )
                 }

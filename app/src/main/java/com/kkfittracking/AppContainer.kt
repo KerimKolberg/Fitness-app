@@ -11,6 +11,9 @@ import com.kkfittracking.data.WorkoutRepository
 import com.kkfittracking.data.backup.BackupRepository
 import com.kkfittracking.data.backup.DataTransfer
 import com.kkfittracking.data.db.AppDatabase
+import com.kkfittracking.timer.Alerts
+import com.kkfittracking.timer.IntervalAlarm
+import com.kkfittracking.timer.IntervalTimer
 import com.kkfittracking.timer.RestTimer
 import com.kkfittracking.timer.RestTimerAlarm
 import kotlinx.coroutines.CoroutineScope
@@ -46,7 +49,12 @@ class AppContainer(context: Context) {
         workoutDao = database.workoutDao(),
         bodyRepository = bodyRepository,
         settingsRepository = settingsRepository,
+        exerciseRepository = exerciseRepository,
     )
 
-    val restTimer = RestTimer(appScope, onFinished = RestTimerAlarm(appContext)::fire)
+    private val alerts = Alerts(appContext)
+
+    val restTimer = RestTimer(appScope, onFinished = RestTimerAlarm(alerts)::fire)
+
+    val intervalTimer = IntervalTimer(appScope, onEvent = IntervalAlarm(alerts)::onEvent)
 }

@@ -102,11 +102,12 @@ private fun CategoryDto.toEntity() = CategoryEntity(id, name, color, sortOrder, 
 private fun ExerciseEntity.toDto() = ExerciseDto(
     id = id, name = name, categoryId = categoryId, type = type.name, notes = notes, isCustom = isCustom,
     tempo = tempo, perSide = perSide, createdAt = createdAt, updatedAt = updatedAt, deletedAt = deletedAt,
+    muscle = muscle, style = style, plan = plan, links = links,
 )
 private fun ExerciseDto.toEntity() = ExerciseEntity(
     id = id, name = name, categoryId = categoryId, type = enumOf<ExerciseType>(type, "exercise type"),
     notes = notes, isCustom = isCustom, createdAt = createdAt, updatedAt = updatedAt, deletedAt = deletedAt,
-    tempo = tempo, perSide = perSide,
+    tempo = tempo, perSide = perSide, muscle = muscle, style = style, plan = plan, links = links,
 )
 
 private fun WorkoutEntity.toDto() = WorkoutDto(id, date.toString(), comment, createdAt, updatedAt, deletedAt)
@@ -114,11 +115,11 @@ private fun WorkoutDto.toEntity() = WorkoutEntity(id, dateOf(date), comment, cre
 
 private fun WorkoutExerciseEntity.toDto() = WorkoutExerciseDto(
     id, workoutId, exerciseId, sortOrder, createdAt, updatedAt, deletedAt,
-    supersetId, transitionSeconds, dropSetMode, plannedSets,
+    supersetId, transitionSeconds, roundRestSeconds,
 )
 private fun WorkoutExerciseDto.toEntity() = WorkoutExerciseEntity(
     id, workoutId, exerciseId, sortOrder, createdAt, updatedAt, deletedAt,
-    supersetId, transitionSeconds, dropSetMode, plannedSets,
+    supersetId, transitionSeconds, roundRestSeconds,
 )
 
 private fun WorkoutSetEntity.toDto() = SetDto(
@@ -135,10 +136,14 @@ private fun SetDto.toEntity() = WorkoutSetEntity(
 private fun RoutineEntity.toDto() = PlanDto(id, name, notes, createdAt, updatedAt, deletedAt)
 private fun PlanDto.toEntity() = RoutineEntity(id, name, notes, createdAt, updatedAt, deletedAt)
 
-private fun RoutineExerciseEntity.toDto() =
-    PlanExerciseDto(id, routineId, exerciseId, sortOrder, createdAt, updatedAt, deletedAt)
-private fun PlanExerciseDto.toEntity() =
-    RoutineExerciseEntity(id, planId, exerciseId, sortOrder, createdAt, updatedAt, deletedAt)
+private fun RoutineExerciseEntity.toDto() = PlanExerciseDto(
+    id, routineId, exerciseId, sortOrder, createdAt, updatedAt, deletedAt,
+    supersetId, transitionSeconds, roundRestSeconds,
+)
+private fun PlanExerciseDto.toEntity() = RoutineExerciseEntity(
+    id, planId, exerciseId, sortOrder, createdAt, updatedAt, deletedAt,
+    supersetId, transitionSeconds, roundRestSeconds,
+)
 
 private fun BodyMeasurementEntity.toDto() =
     BodyMeasurementDto(id, date.toString(), metric.name, value, createdAt, updatedAt, deletedAt)

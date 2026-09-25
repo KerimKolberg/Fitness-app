@@ -7,7 +7,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
-import com.kkfittracking.ui.arrange.ArrangeDayScreen
 import com.kkfittracking.ui.body.BodyMetricScreen
 import com.kkfittracking.ui.body.BodyScreen
 import com.kkfittracking.ui.calendar.CalendarScreen
@@ -18,6 +17,7 @@ import com.kkfittracking.ui.log.ExerciseLogScreen
 import com.kkfittracking.ui.routines.RoutineScreen
 import com.kkfittracking.ui.routines.RoutinesScreen
 import com.kkfittracking.ui.settings.SettingsScreen
+import com.kkfittracking.ui.supersets.SupersetsScreen
 import com.kkfittracking.ui.workout.WorkoutScreen
 import com.kkfittracking.ui.workout.WorkoutViewModel
 import kotlinx.serialization.Serializable
@@ -50,8 +50,9 @@ object RoutinesRoute
 @Serializable
 data class RoutineRoute(val routineId: String)
 
+/** "+Super-sets" for the plan [planId], or else for the day [epochDay]. */
 @Serializable
-data class ArrangeDayRoute(val epochDay: Long)
+data class SupersetsRoute(val epochDay: Long = 0, val planId: String? = null)
 
 @Serializable
 object AchievementsRoute
@@ -77,7 +78,7 @@ fun AppNavHost(navController: NavHostController = rememberNavController()) {
                 onOpenBody = { navController.navigate(BodyRoute) },
                 onOpenAchievements = { navController.navigate(AchievementsRoute) },
                 onNewSuperset = { date -> navController.navigate(ExercisePickerRoute(date.toEpochDay(), superset = true)) },
-                onArrangeDay = { date -> navController.navigate(ArrangeDayRoute(date.toEpochDay())) },
+                onSupersets = { date -> navController.navigate(SupersetsRoute(epochDay = date.toEpochDay())) },
             )
         }
         composable<ExercisePickerRoute> { entry ->
@@ -149,10 +150,11 @@ fun AppNavHost(navController: NavHostController = rememberNavController()) {
             RoutineScreen(
                 onBack = { navController.popBackStack() },
                 onAddExercise = { routineId -> navController.navigate(ExercisePickerRoute(routineId = routineId)) },
+                onSupersets = { routineId -> navController.navigate(SupersetsRoute(planId = routineId)) },
             )
         }
-        composable<ArrangeDayRoute> {
-            ArrangeDayScreen(onDone = { navController.popBackStack() })
+        composable<SupersetsRoute> {
+            SupersetsScreen(onDone = { navController.popBackStack() })
         }
         composable<AchievementsRoute> {
             AchievementsScreen(onBack = { navController.popBackStack() })

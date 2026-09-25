@@ -7,12 +7,14 @@ import com.kkfittracking.data.db.WorkoutEntity
 import com.kkfittracking.data.db.WorkoutExerciseEntity
 import com.kkfittracking.data.db.WorkoutSetEntity
 import com.kkfittracking.model.ArrangedExercise
+import com.kkfittracking.model.Block
 import com.kkfittracking.model.DayExercise
-import com.kkfittracking.model.DropSetMode
 import com.kkfittracking.model.HistorySession
 import com.kkfittracking.model.MAX_SUPERSET_SIZE
+import com.kkfittracking.model.PlannedExercise
 import com.kkfittracking.model.SetEntry
 import com.kkfittracking.model.SetValues
+import com.kkfittracking.model.groupSupersets
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.time.LocalDate
@@ -96,12 +98,33 @@ class WorkoutRepository(
      * Adds exercises to a day without sets, as a plan to fill in (from a routine or an earlier
      * workout). Exercises already on that day are skipped.
      */
-    suspend fun addExercisesToDay(date: LocalDate, exerciseIds: List<String>) {
-        if (exerciseIds.isEmpty()) return
+    suspend fun addExercisesToDay(date: LocalDate, exerciseIds: List<String>) =
+        addPlannedExercises(date, exerciseIds.map { PlannedExercise(it) }, withSupersets = false)
+
+    /**
+     * Adds a plan's exercises to a day, ready to be filled in. With [withSupersets], the plan's
+     * supersets are grouped on the day too (with their timing), each under a new superset id so
+     * they can be ungrouped on that day alone. Exercises already on the day are reused.
+     */
+    suspend fun addPlannedExercises(date: LocalDate, exercises: List<PlannedExercise>, withSupersets: Boolean) {
+        if (exercises.isEmpty()) return
         database.withTransaction {
             val time = now()
             val workout = getOrCreateWorkout(date, time)
-            exerciseIds.distinct().forEach { getOrCreateWorkoutExercise(workout, it, time) }
+            val entries = exercises.distinctBy { it.exerciseId }
+                .associate { it.exerciseId to getOrCreateWorkoutExercise(workout, it.exerciseId, time) }
+            if (!withSupersets) return@withTransaction
+            groupSupersets(exercises.distinctBy { it.exerciseId }) { it.supersetId }.forEach { block ->
+                if (block !is Block.Superset) return@forEach
+                val members = block.items.take(MAX_SUPERSET_SIZE)
+                dao.setSuperset(
+                    ids = members.mapNotNull { entries[it.exerciseId]?.id },
+                    supersetId = newId(),
+                    transitionSeconds = members.firstNotNullOfOrNull { it.transitionSeconds },
+                    roundRestSeconds = members.firstNotNullOfOrNull { it.roundRestSeconds },
+                    now = time,
+                )
+            }
         }
     }
 
@@ -132,7 +155,12 @@ class WorkoutRepository(
      * Groups exercises into a superset on [date], adding any that are not on that day yet. Exercises
      * already in another superset leave it. Returns the new superset id.
      */
-    suspend fun createSuperset(date: LocalDate, exerciseIds: List<String>, transitionSeconds: Int? = null): String {
+    suspend fun createSuperset(
+        date: LocalDate,
+        exerciseIds: List<String>,
+        transitionSeconds: Int? = null,
+        roundRestSeconds: Int? = null,
+    ): String {
         val ids = exerciseIds.distinct()
         require(ids.size in 2..MAX_SUPERSET_SIZE) { "A superset has 2 to $MAX_SUPERSET_SIZE exercises" }
         return database.withTransaction {
@@ -140,23 +168,22 @@ class WorkoutRepository(
             val workout = getOrCreateWorkout(date, time)
             val entries = ids.map { getOrCreateWorkoutExercise(workout, it, time) }
             val supersetId = newId()
-            dao.setSuperset(entries.map { it.id }, supersetId, transitionSeconds, time)
+            dao.setSuperset(entries.map { it.id }, supersetId, transitionSeconds, roundRestSeconds, time)
             supersetId
         }
     }
 
-    /** Saves the order, supersets and drop set plans chosen on the arrange screen. */
+    /** Saves the order and supersets chosen on the "+Super-sets" screen. */
     suspend fun arrangeDay(exercises: List<ArrangedExercise>) {
         database.withTransaction {
             val time = now()
             exercises.forEach {
                 dao.arrange(
-                    id = it.workoutExerciseId,
+                    id = it.id,
                     sortOrder = it.sortOrder,
                     supersetId = it.supersetId,
                     transitionSeconds = it.transitionSeconds,
-                    dropSetMode = it.dropSetMode.code,
-                    plannedSets = it.plannedSets,
+                    roundRestSeconds = it.roundRestSeconds,
                     now = time,
                 )
             }
@@ -189,8 +216,7 @@ private fun groupDayRows(rows: List<DayRow>): List<DayExercise> =
             categoryColor = first.categoryColor,
             supersetId = first.supersetId,
             transitionSeconds = first.transitionSeconds,
-            dropSetMode = DropSetMode.of(first.dropSetMode),
-            plannedSets = first.plannedSets,
+            roundRestSeconds = first.roundRestSeconds,
             sets = exerciseRows.mapNotNull { row ->
                 row.setId?.let { id ->
                     SetEntry(

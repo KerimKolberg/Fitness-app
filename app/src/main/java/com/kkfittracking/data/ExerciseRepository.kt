@@ -5,7 +5,12 @@ import com.kkfittracking.data.db.ExerciseDao
 import com.kkfittracking.data.db.ExerciseEntity
 import com.kkfittracking.model.Category
 import com.kkfittracking.model.Exercise
+import com.kkfittracking.model.ExerciseLink
+import com.kkfittracking.model.ExerciseLinks
+import com.kkfittracking.model.ExercisePlan
 import com.kkfittracking.model.ExerciseType
+import com.kkfittracking.model.Muscle
+import com.kkfittracking.model.TrainingStyle
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.util.UUID
@@ -26,45 +31,97 @@ class ExerciseRepository(
     suspend fun getExercise(id: String): Exercise? = dao.getExercise(id)?.toModel()
 
     /**
-     * Adds any built-in categories and exercises that are not in the database yet. Safe to call on
-     * every launch: rows the user edited or deleted are left alone.
+     * Brings the built-in catalog up to date. Safe to call on every launch: it only writes what
+     * changed, and keeps the user's own edits and deletions.
+     *
+     * It adds new sections and exercises, updates the built-in sections' names, colors and order
+     * ("Abs" became "Core"), files exercises that were never classified under their muscle and
+     * training style, and moves exercises out of the categories of earlier versions (such as
+     * Mobility or Tendons), which are then removed.
      */
-    suspend fun addMissingBuiltIns() {
+    suspend fun syncBuiltIns() {
         val time = now()
-        val categories = BuiltInExercises.categories
-        dao.insertCategoriesIfMissing(
-            categories.mapIndexed { index, category ->
-                CategoryEntity(
-                    id = category.id,
-                    name = category.name,
-                    color = category.color,
+        val categories = dao.getAllCategories().associateBy { it.id }
+
+        val changedCategories = mutableListOf<CategoryEntity>()
+        val missingCategories = mutableListOf<CategoryEntity>()
+        BuiltInExercises.regions.forEachIndexed { index, region ->
+            val existing = categories[region.id]
+            when {
+                existing == null -> missingCategories += CategoryEntity(
+                    id = region.id,
+                    name = region.name,
+                    color = region.color,
                     sortOrder = index,
                     createdAt = time,
                     updatedAt = time,
                 )
-            },
-        )
+                existing.name != region.name || existing.color != region.color || existing.sortOrder != index ->
+                    changedCategories += existing.copy(name = region.name, color = region.color, sortOrder = index, updatedAt = time)
+            }
+        }
+        // Sections first: exercises may be moved into them.
+        dao.insertCategoriesIfMissing(missingCategories)
+
+        val exercises = dao.getAllExercises()
+        val existingIds = exercises.map { it.id }.toSet()
         dao.insertExercisesIfMissing(
-            categories.flatMap { category ->
-                category.exercises.map { exercise ->
-                    ExerciseEntity(
-                        id = exercise.id,
-                        name = exercise.name,
-                        categoryId = category.id,
-                        type = exercise.type,
-                        notes = "",
-                        isCustom = false,
-                        createdAt = time,
-                        updatedAt = time,
-                        tempo = exercise.tempo,
-                        perSide = exercise.perSide,
-                    )
-                }
+            BuiltInExercises.exercises.filter { it.id !in existingIds }.map { exercise ->
+                ExerciseEntity(
+                    id = exercise.id,
+                    name = exercise.name,
+                    categoryId = BuiltInExercises.stableId("category", exercise.regionKey),
+                    type = exercise.type,
+                    notes = "",
+                    isCustom = false,
+                    createdAt = time,
+                    updatedAt = time,
+                    tempo = exercise.tempo,
+                    perSide = exercise.perSide,
+                    muscle = exercise.muscle.name,
+                    style = exercise.style.name,
+                    plan = exercise.plan.toJson(),
+                )
             },
         )
+        dao.updateExercises(exercises.mapNotNull { filed(it, time) })
+
+        // The old categories are empty now.
+        changedCategories += BuiltInExercises.retiredCategories.mapNotNull { retired ->
+            categories[retired.id]?.takeIf { it.deletedAt == null }?.copy(deletedAt = time, updatedAt = time)
+        }
+        dao.updateCategories(changedCategories)
     }
 
-    /** Creates an exercise when [id] is null, otherwise updates it. Returns the exercise id. */
+    /** The exercise filed under the new library levels, or null when nothing needs to change. */
+    private fun filed(row: ExerciseEntity, time: Long): ExerciseEntity? {
+        val retired = BuiltInExercises.retired(row.categoryId)
+        val builtIn = BuiltInExercises.exercise(row.id)
+        val section = BuiltInExercises.regionKeyOf(row.categoryId)
+        val result = when {
+            // Never filed: in the catalog's place, unless the user moved it to another section.
+            builtIn != null && row.muscle.isEmpty() ->
+                if (retired != null || section == null || section == builtIn.regionKey) {
+                    row.copy(
+                        categoryId = BuiltInExercises.stableId("category", builtIn.regionKey),
+                        muscle = builtIn.muscle.name,
+                        style = row.style.ifEmpty { builtIn.style.name },
+                    )
+                } else {
+                    row.copy(muscle = Muscle.defaultFor(section).name, style = row.style.ifEmpty { builtIn.style.name })
+                }
+            // The user's own exercises in an old category go to its fallback.
+            retired != null -> row.copy(
+                categoryId = BuiltInExercises.stableId("category", retired.muscle.regionKey),
+                muscle = row.muscle.ifEmpty { retired.muscle.name },
+                style = row.style.ifEmpty { retired.style.name },
+            )
+            else -> return null
+        }
+        return result.copy(updatedAt = time)
+    }
+
+    /** Creates an exercise when [id] is null, otherwise updates it. Null values keep what is stored. Returns the id. */
     suspend fun saveExercise(
         id: String?,
         name: String,
@@ -73,6 +130,9 @@ class ExerciseRepository(
         notes: String,
         tempo: String = "",
         perSide: Boolean = false,
+        muscle: Muscle? = null,
+        style: TrainingStyle? = null,
+        links: List<ExerciseLink>? = null,
     ): String {
         val time = now()
         val existing = id?.let { dao.getExercise(it) }
@@ -83,6 +143,9 @@ class ExerciseRepository(
             notes = notes.trim(),
             tempo = tempo.trim(),
             perSide = perSide,
+            muscle = muscle?.name ?: existing.muscle,
+            style = style?.name ?: existing.style,
+            links = links?.let { ExerciseLinks.format(it) } ?: existing.links,
             updatedAt = time,
         ) ?: ExerciseEntity(
             id = id ?: newId(),
@@ -95,10 +158,20 @@ class ExerciseRepository(
             updatedAt = time,
             tempo = tempo.trim(),
             perSide = perSide,
+            muscle = muscle?.name.orEmpty(),
+            style = style?.name.orEmpty(),
+            links = links?.let { ExerciseLinks.format(it) }.orEmpty(),
         )
         dao.upsertExercise(entity)
         return entity.id
     }
+
+    suspend fun savePlan(id: String, plan: ExercisePlan) = dao.updatePlan(id, plan.toJson(), now())
+
+    /** The description: how the exercise is done. */
+    suspend fun saveNotes(id: String, notes: String) = dao.updateNotes(id, notes.trim(), now())
+
+    suspend fun saveLinks(id: String, links: List<ExerciseLink>) = dao.updateLinks(id, ExerciseLinks.format(links), now())
 
     /** Hides the exercise from the library. Its logged sets stay in the workout history. */
     suspend fun deleteExercise(id: String) {
@@ -108,15 +181,22 @@ class ExerciseRepository(
     }
 }
 
-private fun CategoryEntity.toModel() = Category(id = id, name = name, color = color)
+private fun CategoryEntity.toModel() = Category(id = id, name = name, color = color, key = BuiltInExercises.regionKeyOf(id))
 
-private fun ExerciseEntity.toModel() = Exercise(
-    id = id,
-    name = name,
-    categoryId = categoryId,
-    type = type,
-    notes = notes,
-    isCustom = isCustom,
-    tempo = tempo,
-    perSide = perSide,
-)
+private fun ExerciseEntity.toModel(): Exercise {
+    val section = BuiltInExercises.regionKeyOf(categoryId)
+    return Exercise(
+        id = id,
+        name = name,
+        categoryId = categoryId,
+        type = type,
+        notes = notes,
+        isCustom = isCustom,
+        tempo = tempo,
+        perSide = perSide,
+        muscle = Muscle.resolve(muscle, section),
+        style = TrainingStyle.resolve(style, section, type),
+        plan = ExercisePlan.fromJson(plan),
+        links = ExerciseLinks.parse(links),
+    )
+}

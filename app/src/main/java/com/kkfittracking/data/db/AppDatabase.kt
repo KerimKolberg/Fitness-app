@@ -3,9 +3,11 @@ package com.kkfittracking.data.db
 import android.content.Context
 import androidx.room.AutoMigration
 import androidx.room.Database
+import androidx.room.DeleteColumn
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import androidx.room.migration.AutoMigrationSpec
 
 @Database(
     entities = [
@@ -18,7 +20,7 @@ import androidx.room.TypeConverters
         RoutineExerciseEntity::class,
         BodyMeasurementEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = true,
     autoMigrations = [
         // v2 adds routines and body measurements (new tables only).
@@ -27,6 +29,8 @@ import androidx.room.TypeConverters
         AutoMigration(from = 2, to = 3),
         // v4 adds drop sets and supersets.
         AutoMigration(from = 3, to = 4),
+        // v5 adds the library levels (muscle, style), exercise plans and links, and plan supersets.
+        AutoMigration(from = 4, to = 5, spec = Version5Migration::class),
     ],
 )
 @TypeConverters(Converters::class)
@@ -47,3 +51,13 @@ abstract class AppDatabase : RoomDatabase() {
             Room.databaseBuilder(context, AppDatabase::class.java, "fitness.db").build()
     }
 }
+
+/**
+ * Drop sets are now planned on the exercise, so the day's drop set plan columns of v4 go. The
+ * sets themselves keep their drop set flag.
+ */
+@DeleteColumn.Entries(
+    DeleteColumn(tableName = "workout_exercises", columnName = "dropSetMode"),
+    DeleteColumn(tableName = "workout_exercises", columnName = "plannedSets"),
+)
+class Version5Migration : AutoMigrationSpec

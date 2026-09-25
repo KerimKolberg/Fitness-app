@@ -54,11 +54,20 @@ data class Routine(
     val name: String,
     val notes: String,
     val exercises: List<RoutineExercise>,
-)
+) {
+    /** The plan's exercises as they are shown and done: on their own, or together as supersets. */
+    val blocks: List<Block<RoutineExercise>> get() = groupSupersets(exercises) { it.supersetId }
+
+    val supersetCount: Int get() = blocks.count { it is Block.Superset }
+}
 
 data class RoutineExercise(
     val id: String,
     val exerciseId: String,
     val exerciseName: String,
     val categoryColor: Int,
+    /** Exercises of the plan with the same id are done as a superset. */
+    val supersetId: String? = null,
+    val transitionSeconds: Int? = null,
+    val roundRestSeconds: Int? = null,
 )

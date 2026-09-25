@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -19,13 +20,17 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -37,9 +42,14 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.kkfittracking.model.Block
+import com.kkfittracking.model.RoutineExercise
+import com.kkfittracking.model.formatDuration
 import com.kkfittracking.ui.components.ColorDot
 import com.kkfittracking.ui.components.TextInputDialog
 
@@ -47,6 +57,7 @@ import com.kkfittracking.ui.components.TextInputDialog
 fun RoutineScreen(
     onBack: () -> Unit,
     onAddExercise: (routineId: String) -> Unit,
+    onSupersets: (routineId: String) -> Unit,
     viewModel: RoutineViewModel = viewModel(factory = RoutineViewModel.Factory),
 ) {
     val routine by viewModel.routine.collectAsStateWithLifecycle()
@@ -80,8 +91,9 @@ fun RoutineScreen(
             )
         },
     ) { padding ->
-        val exercises = routine?.exercises.orEmpty()
-        if (exercises.isEmpty()) {
+        val current = routine
+        val exercises = current?.exercises.orEmpty()
+        if (current == null || exercises.isEmpty()) {
             Column(Modifier.padding(padding).padding(24.dp)) {
                 Text(
                     text = "Add the exercises of this plan in the order you do them.",
@@ -89,37 +101,61 @@ fun RoutineScreen(
                 )
             }
         } else {
+            val blocks = current.blocks
             LazyColumn(
                 modifier = Modifier
                     .padding(padding)
                     .fillMaxSize(),
                 contentPadding = PaddingValues(bottom = 96.dp),
             ) {
-                itemsIndexed(exercises, key = { _, item -> item.id }) { index, item ->
-                    ListItem(
-                        headlineContent = { Text(item.exerciseName) },
-                        leadingContent = { ColorDot(item.categoryColor) },
-                        trailingContent = {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(0.dp),
-                            ) {
-                                IconButton(onClick = { viewModel.moveExercise(item.id, -1) }, enabled = index > 0) {
-                                    Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Move up")
-                                }
-                                IconButton(
-                                    onClick = { viewModel.moveExercise(item.id, 1) },
-                                    enabled = index < exercises.lastIndex,
-                                ) {
-                                    Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Move down")
-                                }
-                                IconButton(onClick = { viewModel.removeExercise(item.id) }) {
-                                    Icon(Icons.Default.Close, contentDescription = "Remove ${item.exerciseName}")
-                                }
+                if (exercises.size >= 2) {
+                    item(key = "supersets") {
+                        Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                            OutlinedButton(onClick = { onSupersets(viewModel.routineId) }, modifier = Modifier.fillMaxWidth()) {
+                                Text("+Super-sets")
                             }
-                        },
-                    )
-                    HorizontalDivider()
+                            if (current.supersetCount > 0) {
+                                Text(
+                                    text = "When you add this plan to a day, you can do it with its supersets or one by one.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(top = 4.dp),
+                                )
+                            }
+                        }
+                    }
+                }
+                itemsIndexed(blocks, key = { _, block ->
+                    when (block) {
+                        is Block.Single -> block.item.id
+                        is Block.Superset -> "superset-${block.id}"
+                    }
+                }) { index, block ->
+                    val moveUp = { viewModel.moveBlock(index, -1) }.takeIf { index > 0 }
+                    val moveDown = { viewModel.moveBlock(index, 1) }.takeIf { index < blocks.lastIndex }
+                    when (block) {
+                        is Block.Single -> {
+                            ListItem(
+                                headlineContent = { Text(block.item.exerciseName) },
+                                leadingContent = { ColorDot(block.item.categoryColor) },
+                                trailingContent = {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        MoveButtons(block.item.exerciseName, moveUp, moveDown)
+                                        IconButton(onClick = { viewModel.removeExercise(block.item.id) }) {
+                                            Icon(Icons.Default.Close, contentDescription = "Remove ${block.item.exerciseName}")
+                                        }
+                                    }
+                                },
+                            )
+                            HorizontalDivider()
+                        }
+                        is Block.Superset -> SupersetCard(
+                            members = block.items,
+                            onMoveUp = moveUp,
+                            onMoveDown = moveDown,
+                            onRemove = { viewModel.removeExercise(it.id) },
+                        )
+                    }
                 }
             }
         }
@@ -152,5 +188,66 @@ fun RoutineScreen(
             },
             dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Cancel") } },
         )
+    }
+}
+
+/** Up and down arrows; a null action disables its arrow. */
+@Composable
+private fun MoveButtons(name: String, onMoveUp: (() -> Unit)?, onMoveDown: (() -> Unit)?) {
+    Row(horizontalArrangement = Arrangement.spacedBy(0.dp)) {
+        IconButton(onClick = { onMoveUp?.invoke() }, enabled = onMoveUp != null) {
+            Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Move $name up")
+        }
+        IconButton(onClick = { onMoveDown?.invoke() }, enabled = onMoveDown != null) {
+            Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Move $name down")
+        }
+    }
+}
+
+/** A superset of the plan: its exercises in order, moved up or down together. */
+@Composable
+private fun SupersetCard(
+    members: List<RoutineExercise>,
+    onMoveUp: (() -> Unit)?,
+    onMoveDown: (() -> Unit)?,
+    onRemove: (RoutineExercise) -> Unit,
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+    ) {
+        Row(Modifier.padding(start = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = "Superset · ${members.size} exercises",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                )
+                val transition = members.firstNotNullOfOrNull { it.transitionSeconds }
+                val rest = members.firstNotNullOfOrNull { it.roundRestSeconds }
+                val timing = listOfNotNull(
+                    transition?.let { "$it s to the next exercise" },
+                    rest?.let { "${formatDuration(it)} rest after each round" },
+                )
+                if (timing.isNotEmpty()) {
+                    Text(timing.joinToString(" · "), style = MaterialTheme.typography.bodySmall)
+                }
+            }
+            MoveButtons("superset", onMoveUp, onMoveDown)
+        }
+        members.forEachIndexed { index, member ->
+            ListItem(
+                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                headlineContent = { Text("${index + 1}. ${member.exerciseName}") },
+                leadingContent = { ColorDot(member.categoryColor) },
+                trailingContent = {
+                    IconButton(onClick = { onRemove(member) }) {
+                        Icon(Icons.Default.Close, contentDescription = "Remove ${member.exerciseName}")
+                    }
+                },
+            )
+        }
     }
 }

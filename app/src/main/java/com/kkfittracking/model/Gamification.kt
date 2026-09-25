@@ -9,10 +9,10 @@ data class LoggedSet(
     val id: String,
     val date: LocalDate,
     val exerciseId: String,
-    /** The built-in category key (e.g. "mobility"), or null for custom categories. */
-    val categoryKey: String?,
     val categoryId: String,
     val type: ExerciseType,
+    /** How the exercise trains, for the variety achievements. */
+    val style: TrainingStyle,
     val values: SetValues,
 )
 
@@ -27,11 +27,12 @@ enum class Achievement(val emoji: String, val title: String, val description: St
     STREAK_4("🔥", "On a roll", "Reach your weekly goal 4 weeks in a row", 4),
     STREAK_12("🌋", "Unstoppable", "Reach your weekly goal 12 weeks in a row", 12),
     TON_DAY("🦍", "Heavy day", "Lift 10,000 kg (weight × reps) in one day", 10_000),
-    EXPLORER("🧭", "Explorer", "Train exercises from 6 different categories", 6),
+    EXPLORER("🧭", "Explorer", "Train exercises from 6 different sections", 6),
     MOBILITY_10("🧘", "Supple", "Do mobility or stretching on 10 days", 10),
-    TENDONS_10("🛡️", "Bulletproof", "Train tendons or isometrics on 10 days", 10),
+    TENDONS_10("🛡️", "Bulletproof", "Do isometrics or slow eccentrics on 10 days", 10),
     PLYOMETRICS_10("🦘", "Springy", "Do plyometrics on 10 days", 10),
     SPORTS_10("🎾", "Game on", "Play sports on 10 days", 10),
+    HIIT_10("⚡", "Interval hero", "Do HIIT or intervals on 10 days", 10),
 }
 
 data class AchievementStatus(
@@ -103,6 +104,7 @@ fun computeGameStats(sets: List<LoggedSet>, weeklyGoal: Int, today: LocalDate): 
     var tendonDays = 0
     var plyometricDays = 0
     var sportDays = 0
+    var hiitDays = 0
     var heaviestDay = 0.0
     val workoutsPerWeek = mutableMapOf<LocalDate, Int>()
     val goalWeeks = mutableSetOf<LocalDate>()
@@ -129,6 +131,7 @@ fun computeGameStats(sets: List<LoggedSet>, weeklyGoal: Int, today: LocalDate): 
         Achievement.TENDONS_10 -> tendonDays
         Achievement.PLYOMETRICS_10 -> plyometricDays
         Achievement.SPORTS_10 -> sportDays
+        Achievement.HIIT_10 -> hiitDays
     }
 
     sets.groupBy { it.date }.toSortedMap().forEach { (date, daySets) ->
@@ -139,12 +142,13 @@ fun computeGameStats(sets: List<LoggedSet>, weeklyGoal: Int, today: LocalDate): 
         xp += XpRules.PER_WORKOUT + XpRules.PER_SET * daySets.size + XpRules.PER_RECORD * dayRecords +
             XpRules.PER_NEW_EXERCISE * newExercises
 
-        val keys = daySets.mapNotNull { it.categoryKey }.toSet()
+        val styles = daySets.map { it.style }.toSet()
         seenCategories += daySets.map { it.categoryId }
-        if ("mobility" in keys || "stretching" in keys) mobilityDays++
-        if ("tendons" in keys || "isometrics" in keys) tendonDays++
-        if ("plyometrics" in keys) plyometricDays++
-        if ("sports" in keys) sportDays++
+        if (TrainingStyle.MOBILITY in styles || TrainingStyle.STRETCHING in styles) mobilityDays++
+        if (TrainingStyle.ISOMETRIC in styles || TrainingStyle.ECCENTRIC in styles) tendonDays++
+        if (TrainingStyle.PLYOMETRIC in styles) plyometricDays++
+        if (TrainingStyle.SPORT in styles) sportDays++
+        if (TrainingStyle.HIIT in styles) hiitDays++
         heaviestDay = maxOf(heaviestDay, daySets.sumOf { (it.values.weightKg ?: 0.0) * (it.values.reps ?: 0) })
 
         val week = weekOf(date)

@@ -10,6 +10,6 @@ class FitnessApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         container = AppContainer(this)
-        container.appScope.launch { container.exerciseRepository.addMissingBuiltIns() }
+        container.appScope.launch { container.exerciseRepository.syncBuiltIns() }
     }
 }

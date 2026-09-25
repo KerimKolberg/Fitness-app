@@ -19,6 +19,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -145,5 +146,37 @@ class MigrationTest {
         assertFalse(set.isDropSet)
         assertNull(logged.supersetId)
         assertEquals("5-0-1-0", ExerciseRepository(db.exerciseDao()).getExercise("e")!!.tempo)
+    }
+
+    @Test
+    fun fromVersion4() = runTest {
+        createOldDatabase(4) {
+            seedVersion1Rows()
+            execSQL(
+                "UPDATE workout_exercises SET supersetId = 'ss', transitionSeconds = 20, dropSetMode = 1, " +
+                    "plannedSets = 4 WHERE id = 'we'",
+            )
+            execSQL("UPDATE workout_sets SET isDropSet = 1 WHERE id = 's'")
+            execSQL("INSERT INTO routines (id, name, notes, createdAt, updatedAt) VALUES ('r', 'Push', '', 1, 1)")
+            execSQL(
+                "INSERT INTO routine_exercises (id, routineId, exerciseId, sortOrder, createdAt, updatedAt) " +
+                    "VALUES ('re', 'r', 'e', 0, 1, 1)",
+            )
+        }
+        val db = openCurrent()
+
+        // The day's drop set plan columns are gone; everything else is kept.
+        val logged = WorkoutRepository(db).observeDay(day).first().single()
+        assertEquals("ss", logged.supersetId)
+        assertEquals(20, logged.transitionSeconds)
+        assertNull(logged.roundRestSeconds)
+        assertTrue(logged.sets.single().values.isDropSet)
+
+        val exercise = ExerciseRepository(db.exerciseDao()).getExercise("e")!!
+        assertTrue(exercise.plan.isEmpty)
+        assertTrue(exercise.links.isEmpty())
+        val plan = RoutineRepository(db).routines.first().single()
+        assertEquals(listOf("e"), plan.exercises.map { it.exerciseId })
+        assertNull(plan.exercises.single().supersetId)
     }
 }

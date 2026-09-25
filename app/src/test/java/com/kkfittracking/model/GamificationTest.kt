@@ -16,15 +16,16 @@ class GamificationTest {
         exercise: String = "bench",
         kg: Double = 100.0,
         reps: Int = 5,
-        categoryKey: String? = "chest",
+        categoryId: String = "chest",
         type: ExerciseType = ExerciseType.WEIGHT_REPS,
+        style: TrainingStyle = TrainingStyle.STRENGTH,
     ) = LoggedSet(
         id = "s${nextId++}",
         date = date,
         exerciseId = exercise,
-        categoryKey = categoryKey,
-        categoryId = categoryKey ?: "custom",
+        categoryId = categoryId,
         type = type,
+        style = style,
         values = SetValues(weightKg = kg, reps = reps),
     )
 
@@ -81,12 +82,23 @@ class GamificationTest {
 
     @Test
     fun varietyAchievements() {
+        // Hip CARs are in Legs now, but still count as mobility.
         val sets = (0L until 10L).map { day ->
-            set(monday.plusDays(day), exercise = "hip-cars", categoryKey = "mobility", type = ExerciseType.REPS)
+            set(monday.plusDays(day), exercise = "hip-cars", categoryId = "legs", type = ExerciseType.REPS, style = TrainingStyle.MOBILITY)
         }
         val stats = computeGameStats(sets, weeklyGoal = 3, today = monday.plusDays(10))
         assertEquals(monday.plusDays(9), stats.status(Achievement.MOBILITY_10).unlockedOn)
         assertEquals(0, stats.status(Achievement.SPORTS_10).progress)
+
+        // A Nordic curl (eccentric) and a plank (isometric) on the same day count once.
+        val tendons = listOf(
+            set(monday, exercise = "nordic", style = TrainingStyle.ECCENTRIC),
+            set(monday, exercise = "plank", style = TrainingStyle.ISOMETRIC),
+            set(monday.plusDays(1), exercise = "tabata", type = ExerciseType.INTERVALS, style = TrainingStyle.HIIT),
+        )
+        val more = computeGameStats(tendons, weeklyGoal = 3, today = monday.plusDays(1))
+        assertEquals(1, more.status(Achievement.TENDONS_10).progress)
+        assertEquals(1, more.status(Achievement.HIIT_10).progress)
     }
 
     @Test
@@ -117,6 +129,12 @@ class GamificationTest {
             formatSet(SetValues(durationSeconds = 3600, rpe = 7, note = "doubles"), ExerciseType.SESSION, UnitSystem.METRIC),
         )
         assertNull(recordScore(SetValues(durationSeconds = 3600), ExerciseType.SESSION))
+        assertNull(recordScore(SetValues(reps = 8, durationSeconds = 240), ExerciseType.INTERVALS))
+        assertEquals(
+            "8 rounds · 4:00 · RPE 9",
+            formatSet(SetValues(reps = 8, durationSeconds = 240, rpe = 9), ExerciseType.INTERVALS, UnitSystem.METRIC),
+        )
+        assertEquals("1 round", formatSet(SetValues(reps = 1), ExerciseType.INTERVALS, UnitSystem.METRIC))
         assertEquals(45.0, recordScore(hold, ExerciseType.TIME_WEIGHT)!!, 0.0)
     }
 }

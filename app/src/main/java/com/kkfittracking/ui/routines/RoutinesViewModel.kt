@@ -56,8 +56,9 @@ class RoutineViewModel(
         viewModelScope.launch { repository.removeExercise(routineExerciseId) }
     }
 
-    fun moveExercise(routineExerciseId: String, direction: Int) {
-        viewModelScope.launch { repository.moveExercise(routineId, routineExerciseId, direction) }
+    /** Moves an exercise, or a whole superset, up (-1) or down (+1); [blockIndex] counts [Routine.blocks]. */
+    fun moveBlock(blockIndex: Int, direction: Int) {
+        viewModelScope.launch { repository.moveInPlan(routineId, blockIndex, direction) }
     }
 
     companion object {

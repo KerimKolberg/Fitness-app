@@ -1,7 +1,8 @@
 @file:OptIn(ExperimentalMaterial3Api::class)
 
-package com.kkfittracking.ui.arrange
+package com.kkfittracking.ui.supersets
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -25,7 +27,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalIconButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -58,22 +59,23 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kkfittracking.model.ArrangeRow
-import com.kkfittracking.model.DropSetMode
 import com.kkfittracking.model.MAX_SUPERSET_SIZE
+import com.kkfittracking.model.formatDuration
 import com.kkfittracking.model.membersOf
+import com.kkfittracking.model.supersetMembership
 import com.kkfittracking.ui.components.ColorDot
-import com.kkfittracking.ui.components.formatShortDate
 
 private val RowSpacing = 8.dp
 
 /**
- * Arrange a day: drag exercises (by their ≡ handle) under a superset header to superset them,
- * set the time to walk between superset exercises, and plan drop sets per exercise.
+ * "+Super-sets" for a day or a plan: drag exercises (by their ≡ handle) between a superset's
+ * header and its end line to superset them, set the time to walk from one exercise to the next
+ * and the rest after each round. Exercises outside a superset are done on their own.
  */
 @Composable
-fun ArrangeDayScreen(
+fun SupersetsScreen(
     onDone: () -> Unit,
-    viewModel: ArrangeDayViewModel = viewModel(factory = ArrangeDayViewModel.Factory),
+    viewModel: SupersetsViewModel = viewModel(factory = SupersetsViewModel.Factory),
 ) {
     var editingKey by remember { mutableStateOf<String?>(null) }
     var dragKey by remember { mutableStateOf<String?>(null) }
@@ -89,7 +91,16 @@ fun ArrangeDayScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Arrange ${formatShortDate(viewModel.date)}") },
+                title = {
+                    Column {
+                        Text("+Super-sets")
+                        Text(
+                            text = viewModel.subject,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onDone) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back without saving")
@@ -105,7 +116,8 @@ fun ArrangeDayScreen(
     ) { padding ->
         if (!viewModel.isLoaded) return@Scaffold
         val rows = viewModel.rows
-        var supersetNumber = 0
+        val membership = supersetMembership(rows)
+        val numbers = rows.filterIsInstance<ArrangeRow.Start>().mapIndexed { index, start -> start.supersetId to index + 1 }.toMap()
         Column(
             modifier = Modifier
                 .padding(padding)
@@ -115,7 +127,12 @@ fun ArrangeDayScreen(
             verticalArrangement = Arrangement.spacedBy(RowSpacing),
         ) {
             Text(
-                text = "Drag ≡ to move an exercise under a superset header. Tap an exercise to plan drop sets.",
+                text = "Drag ≡ to move an exercise between a superset's header and its end line. " +
+                    if (viewModel.isPlan) {
+                        "When you add this plan to a day, you can take the supersets along or leave them out."
+                    } else {
+                        "Exercises outside a superset are done on their own."
+                    },
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -132,20 +149,18 @@ fun ArrangeDayScreen(
                             },
                     ) {
                         when (row) {
-                            is ArrangeRow.Section -> if (row.supersetId == null) {
-                                SeparateHeader()
-                            } else {
-                                supersetNumber++
-                                SupersetHeader(
-                                    number = supersetNumber,
-                                    section = row,
-                                    memberCount = membersOf(rows, row.key).size,
-                                    onChangeTransition = { viewModel.changeTransition(row.key, it) },
-                                    onRemove = { viewModel.removeSuperset(row.key) },
-                                )
-                            }
+                            is ArrangeRow.Start -> SupersetHeader(
+                                number = numbers[row.supersetId] ?: 0,
+                                start = row,
+                                memberCount = membersOf(rows, row.supersetId).size,
+                                onChangeTransition = { viewModel.changeTransition(row.supersetId, it) },
+                                onChangeRoundRest = { viewModel.changeRoundRest(row.supersetId, it) },
+                                onRemove = { viewModel.ungroup(row.supersetId) },
+                            )
+                            is ArrangeRow.End -> SupersetEnd(number = numbers[row.supersetId] ?: 0)
                             is ArrangeRow.Item -> ItemRow(
                                 item = row,
+                                inSuperset = row.key in membership,
                                 onEdit = { editingKey = row.key },
                                 dragHandle = Modifier.pointerInput(row.key) {
                                     detectDragGestures(
@@ -174,7 +189,7 @@ fun ArrangeDayScreen(
                                                 viewModel.move(index, index + 1)
                                                 dragOffset -= next
                                             }
-                                        } else if (dragOffset < 0 && index > 1) {
+                                        } else if (dragOffset < 0 && index > 0) {
                                             val previous = (heights[current[index - 1].key] ?: 0) + spacingPx
                                             if (-dragOffset > previous / 2) {
                                                 viewModel.move(index, index - 1)
@@ -188,7 +203,7 @@ fun ArrangeDayScreen(
                     }
                 }
             }
-            OutlinedButton(onClick = viewModel::addSuperset, modifier = Modifier.fillMaxWidth()) {
+            OutlinedButton(onClick = viewModel::addEmptySuperset, modifier = Modifier.fillMaxWidth()) {
                 Icon(Icons.Default.Add, contentDescription = null)
                 Text("Add superset", modifier = Modifier.padding(start = 8.dp))
             }
@@ -200,40 +215,33 @@ fun ArrangeDayScreen(
         ItemDialog(
             item = editing,
             rows = viewModel.rows,
-            onDropSetMode = { viewModel.setDropSetMode(editing.key, it) },
-            onChangePlannedSets = { viewModel.changePlannedSets(editing.key, it) },
             onMoveTo = { viewModel.moveTo(editing.key, it) },
-            onMoveToNewSuperset = { viewModel.moveToNewSuperset(editing.key) },
+            onNewSuperset = { viewModel.startSupersetWith(editing.key) },
             onDismiss = { editingKey = null },
         )
     }
 }
 
 @Composable
-private fun SeparateHeader() {
-    Column(Modifier.padding(top = 8.dp)) {
-        Text("Exercises on their own", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-    }
-}
-
-@Composable
 private fun SupersetHeader(
     number: Int,
-    section: ArrangeRow.Section,
+    start: ArrangeRow.Start,
     memberCount: Int,
     onChangeTransition: (Int) -> Unit,
+    onChangeRoundRest: (Int) -> Unit,
     onRemove: () -> Unit,
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(top = 8.dp),
+        shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp, bottomStart = 4.dp, bottomEnd = 4.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
     ) {
         Column(Modifier.padding(start = 16.dp, end = 4.dp, top = 4.dp, bottom = 8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = "Superset $number · $memberCount exercises",
+                    text = "Superset $number · $memberCount ${if (memberCount == 1) "exercise" else "exercises"}",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.weight(1f),
@@ -242,20 +250,18 @@ private fun SupersetHeader(
                     Icon(Icons.Default.Delete, contentDescription = "Remove superset $number")
                 }
             }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Time to the next exercise", modifier = Modifier.weight(1f))
-                FilledTonalIconButton(onClick = { onChangeTransition(-5) }) {
-                    Text("−", style = MaterialTheme.typography.titleLarge)
-                }
-                Text(
-                    text = "${section.transitionSeconds} s",
-                    modifier = Modifier.padding(horizontal = 8.dp),
-                    style = MaterialTheme.typography.titleMedium,
-                )
-                FilledTonalIconButton(onClick = { onChangeTransition(5) }) {
-                    Text("+", style = MaterialTheme.typography.titleLarge)
-                }
-            }
+            TimeStepper(
+                label = "Time to the next exercise",
+                text = "${start.transitionSeconds} s",
+                onMinus = { onChangeTransition(-5) },
+                onPlus = { onChangeTransition(5) },
+            )
+            TimeStepper(
+                label = "Rest after each round",
+                text = formatDuration(start.roundRestSeconds),
+                onMinus = { onChangeRoundRest(-15) },
+                onPlus = { onChangeRoundRest(15) },
+            )
             when {
                 memberCount > MAX_SUPERSET_SIZE -> Text(
                     text = "A superset has at most $MAX_SUPERSET_SIZE exercises. Move some out to save.",
@@ -263,7 +269,7 @@ private fun SupersetHeader(
                     style = MaterialTheme.typography.bodySmall,
                 )
                 memberCount < 2 -> Text(
-                    text = "Drag at least 2 exercises here.",
+                    text = "Drag at least 2 exercises below this header, above the end line.",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodySmall,
                 )
@@ -273,8 +279,46 @@ private fun SupersetHeader(
 }
 
 @Composable
-private fun ItemRow(item: ArrangeRow.Item, onEdit: () -> Unit, dragHandle: Modifier) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+private fun TimeStepper(label: String, text: String, onMinus: () -> Unit, onPlus: () -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(label, modifier = Modifier.weight(1f))
+        FilledTonalIconButton(onClick = onMinus) {
+            Text("−", style = MaterialTheme.typography.titleLarge)
+        }
+        Text(text = text, modifier = Modifier.padding(horizontal = 8.dp), style = MaterialTheme.typography.titleMedium)
+        FilledTonalIconButton(onClick = onPlus) {
+            Text("+", style = MaterialTheme.typography.titleLarge)
+        }
+    }
+}
+
+/** The line closing a superset: exercises dragged below it are done on their own again. */
+@Composable
+private fun SupersetEnd(number: Int) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                color = MaterialTheme.colorScheme.secondaryContainer,
+                shape = RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp, bottomStart = 12.dp, bottomEnd = 12.dp),
+            )
+            .padding(horizontal = 16.dp, vertical = 6.dp),
+    ) {
+        Text(
+            text = "End of superset $number",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSecondaryContainer,
+        )
+    }
+}
+
+@Composable
+private fun ItemRow(item: ArrangeRow.Item, inSuperset: Boolean, onEdit: () -> Unit, dragHandle: Modifier) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = if (inSuperset) 16.dp else 0.dp),
+    ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(dragHandle.padding(12.dp)) {
                 Icon(Icons.Default.Menu, contentDescription = "Drag to move ${item.exerciseName}")
@@ -287,15 +331,15 @@ private fun ItemRow(item: ArrangeRow.Item, onEdit: () -> Unit, dragHandle: Modif
                     .padding(horizontal = 12.dp, vertical = 10.dp),
             ) {
                 Text(item.exerciseName, style = MaterialTheme.typography.bodyLarge)
-                val details = listOfNotNull(
-                    "${item.setCount} sets logged".takeIf { item.setCount > 0 },
-                    dropSetSummary(item),
-                )
-                if (details.isNotEmpty()) {
+                item.detail?.let {
+                    Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                val ownRest = item.ownRestSeconds
+                if (inSuperset && ownRest != null) {
                     Text(
-                        text = details.joinToString(" · "),
+                        text = "Its own ${formatDuration(ownRest)} rest is replaced by the superset's timing",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MaterialTheme.colorScheme.tertiary,
                     )
                 }
             }
@@ -306,62 +350,36 @@ private fun ItemRow(item: ArrangeRow.Item, onEdit: () -> Unit, dragHandle: Modif
     }
 }
 
-private fun dropSetSummary(item: ArrangeRow.Item): String? = when {
-    !item.supportsDropSets -> null
-    item.dropSetMode == DropSetMode.LAST_SET ->
-        "Drop set after ${item.plannedSets ?: ArrangeRow.DEFAULT_PLANNED_SETS} sets"
-    item.dropSetMode == DropSetMode.EVERY_SET -> "Every set a drop set"
-    else -> null
-}
-
 @Composable
 private fun ItemDialog(
     item: ArrangeRow.Item,
     rows: List<ArrangeRow>,
-    onDropSetMode: (DropSetMode) -> Unit,
-    onChangePlannedSets: (Int) -> Unit,
-    onMoveTo: (String) -> Unit,
-    onMoveToNewSuperset: () -> Unit,
+    onMoveTo: (supersetId: String?) -> Unit,
+    onNewSuperset: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val sections = rows.filterIsInstance<ArrangeRow.Section>()
-    val currentSection = rows.take(rows.indexOf(item)).lastOrNull { it is ArrangeRow.Section }?.key
+    val supersets = rows.filterIsInstance<ArrangeRow.Start>().map { it.supersetId }
+    val current = supersetMembership(rows)[item.key]
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(item.exerciseName) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
-                Text("Drop sets", style = MaterialTheme.typography.titleSmall)
-                if (item.supportsDropSets) {
-                    DropSetMode.entries.forEach { mode ->
-                        RadioLine(mode.label, selected = item.dropSetMode == mode) { onDropSetMode(mode) }
-                    }
-                    if (item.dropSetMode == DropSetMode.LAST_SET) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("Normal sets first", modifier = Modifier.weight(1f))
-                            FilledTonalIconButton(onClick = { onChangePlannedSets(-1) }) { Text("−") }
-                            Text(
-                                text = "${item.plannedSets ?: ArrangeRow.DEFAULT_PLANNED_SETS}",
-                                modifier = Modifier.padding(horizontal = 8.dp),
-                            )
-                            FilledTonalIconButton(onClick = { onChangePlannedSets(1) }) { Text("+") }
-                        }
-                    }
-                } else {
+                Text("Move to", style = MaterialTheme.typography.titleSmall)
+                RadioLine("On its own", selected = current == null) { onMoveTo(null) }
+                supersets.forEachIndexed { index, id ->
+                    RadioLine("Superset ${index + 1}", selected = current == id) { onMoveTo(id) }
+                }
+                TextButton(onClick = onNewSuperset) { Text("+ New superset") }
+                val ownRest = item.ownRestSeconds
+                if (ownRest != null) {
                     Text(
-                        text = "Drop sets are for weight and reps exercises.",
+                        text = "This exercise has its own ${formatDuration(ownRest)} rest. In a superset, the " +
+                            "superset's timing is used instead.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                HorizontalDivider(Modifier.padding(vertical = 12.dp))
-                Text("Move to", style = MaterialTheme.typography.titleSmall)
-                var number = 0
-                sections.forEach { section ->
-                    val label = if (section.supersetId == null) "On its own" else "Superset ${++number}"
-                    RadioLine(label, selected = section.key == currentSection) { onMoveTo(section.key) }
-                }
-                TextButton(onClick = onMoveToNewSuperset) { Text("+ New superset") }
             }
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text("Done") } },

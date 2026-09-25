@@ -148,7 +148,8 @@ fun SettingsScreen(
             SectionTitle("Drop sets and supersets")
             SwitchRow(
                 title = "Drop sets",
-                subtitle = "Show a \"Drop set\" option when logging weight and reps",
+                subtitle = "Show a \"Drop set\" option when logging weight and reps. Plan drop sets for an " +
+                    "exercise in its set plan",
                 checked = current.dropSetsEnabled,
                 onCheckedChange = viewModel::setDropSetsEnabled,
             )
@@ -160,9 +161,9 @@ fun SettingsScreen(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(Modifier.weight(1f)) {
-                        Text("Weight drop per drop set")
+                        Text("Default weight drop")
                         Text(
-                            text = "Rounded to 0.5 kg or 1 lb",
+                            text = "Until you choose one in an exercise's set plan. Rounded to 0.5 kg or 1 lb",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -189,7 +190,7 @@ fun SettingsScreen(
                 Column(Modifier.weight(1f)) {
                     Text("Time to the next superset exercise")
                     Text(
-                        text = "Default for new supersets; change it per superset when arranging a day",
+                        text = "Default for new supersets; change it per superset with +Super-sets",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

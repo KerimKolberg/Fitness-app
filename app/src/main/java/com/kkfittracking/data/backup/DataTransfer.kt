@@ -3,6 +3,7 @@ package com.kkfittracking.data.backup
 import android.content.Context
 import android.net.Uri
 import com.kkfittracking.data.BodyRepository
+import com.kkfittracking.data.ExerciseRepository
 import com.kkfittracking.data.SettingsRepository
 import com.kkfittracking.data.db.WorkoutDao
 import com.kkfittracking.model.CsvExport
@@ -20,6 +21,7 @@ class DataTransfer(
     private val workoutDao: WorkoutDao,
     private val bodyRepository: BodyRepository,
     private val settingsRepository: SettingsRepository,
+    private val exerciseRepository: ExerciseRepository,
 ) {
     suspend fun writeBackup(uri: Uri) {
         val text = BackupJson.encode(backups.createBackup())
@@ -29,7 +31,11 @@ class DataTransfer(
 
     suspend fun readBackup(uri: Uri): BackupFile = BackupJson.decode(read(uri))
 
-    suspend fun restore(file: BackupFile) = backups.restore(file)
+    /** Restores the backup, then files a backup from an earlier version under the current library. */
+    suspend fun restore(file: BackupFile) {
+        backups.restore(file)
+        exerciseRepository.syncBuiltIns()
+    }
 
     suspend fun exportWorkouts(uri: Uri) {
         val units = settingsRepository.settings.first().unitSystem

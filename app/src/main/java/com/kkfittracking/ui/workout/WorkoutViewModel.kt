@@ -10,6 +10,7 @@ import com.kkfittracking.data.SettingsRepository
 import com.kkfittracking.data.WorkoutRepository
 import com.kkfittracking.model.DayExercise
 import com.kkfittracking.model.GameStats
+import com.kkfittracking.model.PlannedExercise
 import com.kkfittracking.model.Routine
 import com.kkfittracking.model.UnitSystem
 import com.kkfittracking.ui.appViewModelFactory
@@ -43,7 +44,6 @@ class WorkoutViewModel(
     val routines: StateFlow<List<Routine>> =
         routineRepository.routines.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-
     // The calendar screen writes the picked day into this key of our SavedStateHandle.
     private val epochDay = savedStateHandle.getStateFlow(KEY_EPOCH_DAY, LocalDate.now().toEpochDay())
 
@@ -76,19 +76,21 @@ class WorkoutViewModel(
         viewModelScope.launch { workoutRepository.deleteWorkoutExercise(workoutExerciseId) }
     }
 
-    /** Adds a routine's exercises to the shown day, ready to be filled in. */
-    fun applyRoutine(routineId: String) {
+    /** Adds a routine's exercises to the shown day, ready to be filled in, with or without its supersets. */
+    fun applyRoutine(routineId: String, withSupersets: Boolean) {
         val date = uiState.value.date
         viewModelScope.launch {
-            workoutRepository.addExercisesToDay(date, routineRepository.exerciseIds(routineId))
+            workoutRepository.addPlannedExercises(date, routineRepository.plannedExercises(routineId), withSupersets)
         }
     }
 
-    /** Copies the shown day's exercises (not their sets) to today, then shows today. */
+    /** Copies the shown day's exercises and supersets (not their sets) to today, then shows today. */
     fun copyExercisesToToday() {
-        val exerciseIds = uiState.value.exercises.map { it.exerciseId }
+        val exercises = uiState.value.exercises.map {
+            PlannedExercise(it.exerciseId, it.supersetId, it.transitionSeconds, it.roundRestSeconds)
+        }
         viewModelScope.launch {
-            workoutRepository.addExercisesToDay(LocalDate.now(), exerciseIds)
+            workoutRepository.addPlannedExercises(LocalDate.now(), exercises, withSupersets = true)
             showToday()
         }
     }

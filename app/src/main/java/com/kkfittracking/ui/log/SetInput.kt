@@ -37,7 +37,7 @@ data class SetInput(
         }
         if (type.usesReps) {
             val value = reps.trim().toIntOrNull()
-            if (value == null || value <= 0) return Result.Invalid("Enter the number of reps")
+            if (value == null || value <= 0) return Result.Invalid("Enter the number of ${type.repsLabel.lowercase()}")
             repCount = value
         }
         if (type.usesDistance && distance.isNotBlank()) {

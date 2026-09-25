@@ -67,6 +67,10 @@ data class ExerciseDto(
     val createdAt: Long,
     val updatedAt: Long,
     val deletedAt: Long? = null,
+    val muscle: String = "",
+    val style: String = "",
+    val plan: String = "",
+    val links: String = "",
 )
 
 @Serializable
@@ -90,8 +94,7 @@ data class WorkoutExerciseDto(
     val deletedAt: Long? = null,
     val supersetId: String? = null,
     val transitionSeconds: Int? = null,
-    val dropSetMode: Int = 0,
-    val plannedSets: Int? = null,
+    val roundRestSeconds: Int? = null,
 )
 
 @Serializable
@@ -130,6 +133,9 @@ data class PlanExerciseDto(
     val createdAt: Long,
     val updatedAt: Long,
     val deletedAt: Long? = null,
+    val supersetId: String? = null,
+    val transitionSeconds: Int? = null,
+    val roundRestSeconds: Int? = null,
 )
 
 @Serializable

@@ -10,13 +10,17 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 
-/** A dialog asking for one line of text, such as a routine name. */
+/**
+ * A dialog asking for text: one line such as a routine name, or with [multiLine] a longer text
+ * such as a description, which may also be left empty.
+ */
 @Composable
 fun TextInputDialog(
     title: String,
     label: String,
     initialValue: String = "",
     confirmText: String = "Save",
+    multiLine: Boolean = false,
     onConfirm: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -25,10 +29,16 @@ fun TextInputDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = {
-            OutlinedTextField(value = text, onValueChange = { text = it }, label = { Text(label) }, singleLine = true)
+            OutlinedTextField(
+                value = text,
+                onValueChange = { text = it },
+                label = { Text(label) },
+                singleLine = !multiLine,
+                minLines = if (multiLine) 5 else 1,
+            )
         },
         confirmButton = {
-            TextButton(onClick = { onConfirm(text.trim()) }, enabled = text.isNotBlank()) { Text(confirmText) }
+            TextButton(onClick = { onConfirm(text.trim()) }, enabled = multiLine || text.isNotBlank()) { Text(confirmText) }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Cancel") }

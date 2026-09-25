@@ -48,7 +48,11 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kkfittracking.model.ExerciseType
+import com.kkfittracking.model.Muscle
+import com.kkfittracking.model.TrainingStyle
+import com.kkfittracking.ui.components.AddLinkDialog
 import com.kkfittracking.ui.components.ColorDot
+import com.kkfittracking.ui.components.LinkRow
 
 @Composable
 fun EditExerciseScreen(
@@ -58,6 +62,7 @@ fun EditExerciseScreen(
 ) {
     val categories by viewModel.categories.collectAsStateWithLifecycle()
     var confirmDelete by remember { mutableStateOf(false) }
+    var addingLink by remember { mutableStateOf(false) }
 
     LaunchedEffect(viewModel.result) {
         when (viewModel.result) {
@@ -109,36 +114,29 @@ fun EditExerciseScreen(
             )
 
             val selectedCategory = categories.firstOrNull { it.id == viewModel.categoryId }
-            var categoryMenuOpen by remember { mutableStateOf(false) }
-            Box {
-                OutlinedTextField(
-                    value = selectedCategory?.name.orEmpty(),
-                    onValueChange = {},
-                    modifier = Modifier.fillMaxWidth(),
-                    readOnly = true,
-                    label = { Text("Category") },
-                    leadingIcon = selectedCategory?.let { category -> { ColorDot(category.color) } },
-                    trailingIcon = { Icon(Icons.Default.ArrowDropDown, contentDescription = null) },
-                )
-                // A read-only text field swallows clicks, so an invisible layer on top opens the menu.
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .clickable { categoryMenuOpen = true },
-                )
-                DropdownMenu(expanded = categoryMenuOpen, onDismissRequest = { categoryMenuOpen = false }) {
-                    categories.forEach { category ->
-                        DropdownMenuItem(
-                            text = { Text(category.name) },
-                            leadingIcon = { ColorDot(category.color) },
-                            onClick = {
-                                viewModel.updateCategory(category.id)
-                                categoryMenuOpen = false
-                            },
-                        )
-                    }
-                }
-            }
+            DropdownField(
+                label = "Section",
+                value = selectedCategory?.name.orEmpty(),
+                options = categories,
+                optionLabel = { it.name },
+                onSelect = { viewModel.updateCategory(it.id) },
+                leadingIcon = selectedCategory?.let { category -> { ColorDot(category.color) } },
+                optionIcon = { ColorDot(it.color) },
+            )
+            DropdownField(
+                label = "Muscle",
+                value = viewModel.muscle.label,
+                options = Muscle.forRegion(viewModel.regionKey),
+                optionLabel = { it.label },
+                onSelect = viewModel::updateMuscle,
+            )
+            DropdownField(
+                label = "Training style",
+                value = viewModel.style.label,
+                options = TrainingStyle.entries,
+                optionLabel = { it.label },
+                onSelect = viewModel::updateStyle,
+            )
 
             Column {
                 Text("Type", style = MaterialTheme.typography.titleSmall)
@@ -188,10 +186,28 @@ fun EditExerciseScreen(
                 value = viewModel.notes,
                 onValueChange = viewModel::updateNotes,
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Notes (optional)") },
+                label = { Text("How to do it (optional)") },
                 minLines = 3,
             )
+
+            Column {
+                Text("Videos & links", style = MaterialTheme.typography.titleSmall)
+                viewModel.links.forEach { link ->
+                    LinkRow(link, onRemove = { viewModel.removeLink(link) })
+                }
+                TextButton(onClick = { addingLink = true }) { Text("+ Add a video or link") }
+            }
         }
+    }
+
+    if (addingLink) {
+        AddLinkDialog(
+            onAdd = {
+                addingLink = false
+                viewModel.addLink(it)
+            },
+            onDismiss = { addingLink = false },
+        )
     }
 
     if (confirmDelete) {
@@ -211,5 +227,48 @@ fun EditExerciseScreen(
                 TextButton(onClick = { confirmDelete = false }) { Text("Cancel") }
             },
         )
+    }
+}
+
+/** A read-only field that opens a menu of [options]. */
+@Composable
+private fun <T> DropdownField(
+    label: String,
+    value: String,
+    options: List<T>,
+    optionLabel: (T) -> String,
+    onSelect: (T) -> Unit,
+    leadingIcon: (@Composable () -> Unit)? = null,
+    optionIcon: (@Composable (T) -> Unit)? = null,
+) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        OutlinedTextField(
+            value = value,
+            onValueChange = {},
+            modifier = Modifier.fillMaxWidth(),
+            readOnly = true,
+            label = { Text(label) },
+            leadingIcon = leadingIcon,
+            trailingIcon = { Icon(Icons.Default.ArrowDropDown, contentDescription = null) },
+        )
+        // A read-only text field swallows clicks, so an invisible layer on top opens the menu.
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .clickable { open = true },
+        )
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            options.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(optionLabel(option)) },
+                    leadingIcon = optionIcon?.let { icon -> { icon(option) } },
+                    onClick = {
+                        onSelect(option)
+                        open = false
+                    },
+                )
+            }
+        }
     }
 }
