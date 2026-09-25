@@ -252,6 +252,13 @@ class RepositoryTest {
         routines.removeExerciseFromRoutine(upper.id, incline)
         assertTrue(incline !in routines.exerciseIds(upper.id))
         assertTrue(incline in routines.exerciseIds(plans.getValue("Push").id))
+
+        // A plan in blocks: each block is a superset of 3 rounds, and the exercises get sets, reps and weights.
+        val lower = plans.getValue("KK Lower body")
+        assertEquals(5, lower.blocks.size)
+        assertTrue(lower.exercises.filter { it.supersetId != null }.all { it.supersetRounds == 3 })
+        val drop = exercises.getExercise(StarterPlans.exerciseId("Slow Single-Leg Pelvic Drop"))!!
+        assertEquals(ExercisePlan(sets = 3, reps = 8, weightKg = 36.0), drop.plan)
     }
 
     @Test

@@ -606,6 +606,22 @@ object BuiltInExercises {
             e("Landmine Rotation", also = listOf(ABS)), e("Cable Lift", perSide = true, also = listOf(ABS)),
         )
         group(ABS, STRENGTH, e("Hollow Rock", REPS))
+
+        // From a real upper and lower body plan (version 0.5).
+        group(
+            FOREARMS, ISOMETRIC,
+            e("Half-Crimp Hang", TIME_WEIGHT, also = listOf(LATS)),
+            e("Open-Hand Hang", TIME_WEIGHT, also = listOf(LATS)),
+        )
+        group(
+            ROTATOR_CUFF, ECCENTRIC,
+            e("Slow Cable External Rotation", tempo = "3-0-1-0", perSide = true),
+            e("Slow High Cable External Rotation", tempo = "3-0-1-0", perSide = true, also = listOf(REAR_DELTS)),
+            e("Slow High Cable Internal Rotation", tempo = "3-0-1-0", perSide = true, also = listOf(CHEST)),
+        )
+        group(ROTATOR_CUFF, ISOMETRIC, e("Band Internal Rotation Hold", TIME, perSide = true))
+        group(TRICEPS, STRENGTH, e("Overhead Cable Triceps Extension"))
+        group(ABS, STRENGTH, e("Sit-Up"))
     }
 
     private val regionKeysById: Map<String, String> = regions.associate { it.id to it.key }

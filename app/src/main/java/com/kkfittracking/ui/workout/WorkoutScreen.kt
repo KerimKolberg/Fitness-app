@@ -65,6 +65,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kkfittracking.model.Block
 import com.kkfittracking.model.DayExercise
 import com.kkfittracking.model.GameStats
+import com.kkfittracking.model.MAX_SUPERSET_SIZE
 import com.kkfittracking.model.Routine
 import com.kkfittracking.model.UnitSystem
 import com.kkfittracking.model.dayCompletion
@@ -150,7 +151,7 @@ fun WorkoutScreen(
                             DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                                 val close = { menuOpen = false }
                                 MenuItem("Add a plan to this day", close) { choosingRoutine = true }
-                                MenuItem("New superset (2–6 exercises)", close) { onNewSuperset(state.date) }
+                                MenuItem("New superset (2–$MAX_SUPERSET_SIZE exercises)", close) { onNewSuperset(state.date) }
                                 if (state.exercises.size >= 2) {
                                     MenuItem("+Super-sets", close) { onSupersets(state.date) }
                                 }

@@ -5,6 +5,7 @@ import com.kkfittracking.data.db.AppDatabase
 import com.kkfittracking.data.db.RoutineEntity
 import com.kkfittracking.data.db.RoutineExerciseEntity
 import com.kkfittracking.model.ArrangedExercise
+import com.kkfittracking.model.ExercisePlan
 import com.kkfittracking.model.PlannedExercise
 import com.kkfittracking.model.Routine
 import com.kkfittracking.model.RoutineExercise
@@ -21,6 +22,7 @@ class RoutineRepository(
     private val newId: () -> String = { UUID.randomUUID().toString() },
 ) {
     private val dao = database.routineDao()
+    private val exerciseDao = database.exerciseDao()
 
     val routines: Flow<List<Routine>> =
         combine(dao.observeRoutines(), dao.observeRoutineExercises()) { routines, rows ->
@@ -110,15 +112,24 @@ class RoutineRepository(
             val id = createRoutine(plan.name)
             plan.exercises.forEach { addExercise(id, StarterPlans.exerciseId(it)) }
             val entries = dao.getRoutineExercises(id)
+            val time = now()
             plan.supersets.forEach { group ->
                 val ids = group.map { StarterPlans.exerciseId(it) }
-                dao.setSuperset(
-                    ids = entries.filter { it.exerciseId in ids }.map { it.id },
-                    supersetId = newId(),
-                    transitionSeconds = null,
-                    roundRestSeconds = null,
-                    now = now(),
+                val supersetId = newId()
+                dao.updateRoutineExercises(
+                    entries.filter { it.exerciseId in ids }
+                        .map { it.copy(supersetId = supersetId, supersetRounds = plan.rounds, updatedAt = time) },
                 )
+            }
+            // Sets, reps and weights, for exercises that have no set plan of their own yet.
+            plan.setPlans.forEach { (name, setPlan) ->
+                val exerciseId = StarterPlans.exerciseId(name)
+                val stored = exerciseDao.getExercise(exerciseId) ?: return@forEach
+                val current = ExercisePlan.fromJson(stored.plan)
+                if (current.sets == null) {
+                    val merged = current.copy(sets = setPlan.sets, reps = setPlan.reps, weightKg = setPlan.weightKg)
+                    exerciseDao.updatePlan(exerciseId, merged.toJson(), time)
+                }
             }
             added++
         }

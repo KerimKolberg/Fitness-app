@@ -47,9 +47,10 @@ object BuiltInTendons {
             "Hip Airplane", "Single-Leg Glute Bridge", "Glute Bridge Hold", "Side Plank",
         ),
         Tendon.ROTATOR_CUFF to listOf(
-            "Side-Lying External Rotation", "90/90 External Rotation Hold", "Prone Y-T-W Raise", "Band Pull-Apart",
-            "Sleeper Stretch", "Wall Slide", "Cable External Rotation", "Eccentric External Rotation",
-            "Shoulder CARs", "Face Pull",
+            "Slow Cable External Rotation", "Slow High Cable External Rotation", "Slow High Cable Internal Rotation",
+            "Band Internal Rotation Hold", "Side-Lying External Rotation", "90/90 External Rotation Hold",
+            "Prone Y-T-W Raise", "Band Pull-Apart", "Sleeper Stretch", "Wall Slide", "Cable External Rotation",
+            "Eccentric External Rotation", "Shoulder CARs", "Face Pull",
         ),
         Tendon.BICEPS to listOf(
             "Lock-Off Hold", "Eccentric Barbell Curl", "Isometric Curl Hold", "Incline Dumbbell Curl",
@@ -62,10 +63,13 @@ object BuiltInTendons {
             "Reverse Tyler Twist", "Wrist Roller", "Dumbbell Pronation-Supination", "Eccentric Wrist Flexion",
             "Wrist Curl", "Wrist Flexor Stretch",
         ),
-        Tendon.TRICEPS to listOf("Eccentric Dip", "Parallel Bar Triceps Dip", "EZ-Bar Skullcrusher"),
+        Tendon.TRICEPS to listOf(
+            "Overhead Cable Triceps Extension", "Eccentric Dip", "Parallel Bar Triceps Dip", "EZ-Bar Skullcrusher",
+        ),
         Tendon.FINGER_FLEXORS to listOf(
-            "Hangboard Hang", "No-Hang Lift", "Campus Board", "Rice Bucket", "Bouldering", "Lock-Off Hold",
-            "Dead Hang", "Towel Hang", "Plate Pinch Hold", "Flexed-Arm Hang", "Climbing",
+            "Half-Crimp Hang", "Open-Hand Hang", "Hangboard Hang", "No-Hang Lift", "Campus Board", "Rice Bucket",
+            "Bouldering", "Lock-Off Hold", "Dead Hang", "Towel Hang", "Plate Pinch Hold", "Flexed-Arm Hang",
+            "Climbing",
         ),
     )
 

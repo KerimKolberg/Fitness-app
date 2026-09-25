@@ -132,7 +132,7 @@ data class PlannedExercise(
 )
 
 /** Supersets can hold at most this many exercises. */
-const val MAX_SUPERSET_SIZE = 6
+const val MAX_SUPERSET_SIZE = 12
 
 /** All sets of one exercise on one date, used for history and "last time" hints. */
 data class HistorySession(

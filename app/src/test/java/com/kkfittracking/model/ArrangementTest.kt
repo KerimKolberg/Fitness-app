@@ -115,11 +115,13 @@ class ArrangementTest {
     }
 
     @Test
-    fun supersetsAreLimitedToSix() {
+    fun supersetsAreLimitedToTwelve() {
+        val last = "${MAX_SUPERSET_SIZE + 1}"
         var rows: List<ArrangeRow> = listOf(ArrangeRow.Start("big", 15, 90))
-        (1..7).forEach { rows = rows + ArrangeRow.Item("$it", "$it", 0) }
+        (1..MAX_SUPERSET_SIZE + 1).forEach { rows = rows + ArrangeRow.Item("$it", "$it", 0) }
         rows = rows + ArrangeRow.End("big")
+        assertEquals(12, MAX_SUPERSET_SIZE)
         assertEquals(listOf("big"), oversizedSupersets(rows))
-        assertEquals(emptyList<String>(), oversizedSupersets(moveToSuperset(rows, "7", null)))
+        assertEquals(emptyList<String>(), oversizedSupersets(moveToSuperset(rows, last, null)))
     }
 }

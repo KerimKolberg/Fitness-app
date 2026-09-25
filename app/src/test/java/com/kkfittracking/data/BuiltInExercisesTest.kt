@@ -1,6 +1,7 @@
 package com.kkfittracking.data
 
 import com.kkfittracking.model.ExerciseType
+import com.kkfittracking.model.MAX_SUPERSET_SIZE
 import com.kkfittracking.model.Muscle
 import com.kkfittracking.model.Tendon
 import com.kkfittracking.model.TrainingStyle
@@ -17,8 +18,9 @@ class BuiltInExercisesTest {
             plan.exercises.forEach { name ->
                 assertTrue("$name in ${plan.name} is not a built-in exercise", StarterPlans.exerciseId(name) in ids)
             }
+            plan.setPlans.keys.forEach { assertTrue("$it has a set plan but is not in ${plan.name}", it in plan.exercises) }
             plan.supersets.forEach { group ->
-                assertTrue("Supersets in ${plan.name} need 2 to 6 exercises", group.size in 2..6)
+                assertTrue("Supersets in ${plan.name} need 2 to $MAX_SUPERSET_SIZE exercises", group.size in 2..MAX_SUPERSET_SIZE)
                 assertTrue("Superset exercises must be in ${plan.name}", plan.exercises.containsAll(group))
             }
         }
