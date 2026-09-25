@@ -180,6 +180,32 @@ fun SettingsScreen(
                     }
                 }
             }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text("Time to the next superset exercise")
+                    Text(
+                        text = "Default for new supersets; change it per superset when arranging a day",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                FilledTonalIconButton(onClick = { viewModel.changeSupersetTransition(-5) }) {
+                    Text("−", style = MaterialTheme.typography.titleLarge)
+                }
+                Text(
+                    text = "${current.supersetTransitionSeconds} s",
+                    modifier = Modifier.padding(horizontal = 12.dp),
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                FilledTonalIconButton(onClick = { viewModel.changeSupersetTransition(5) }) {
+                    Text("+", style = MaterialTheme.typography.titleLarge)
+                }
+            }
             SwitchRow(
                 title = "Supersets: go to the next exercise",
                 subtitle = "After saving a set in a superset, open the next exercise of the superset",

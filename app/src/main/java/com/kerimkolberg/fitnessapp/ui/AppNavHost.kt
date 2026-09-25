@@ -7,6 +7,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import com.kerimkolberg.fitnessapp.ui.arrange.ArrangeDayScreen
 import com.kerimkolberg.fitnessapp.ui.body.BodyMetricScreen
 import com.kerimkolberg.fitnessapp.ui.body.BodyScreen
 import com.kerimkolberg.fitnessapp.ui.calendar.CalendarScreen
@@ -50,6 +51,9 @@ object RoutinesRoute
 data class RoutineRoute(val routineId: String)
 
 @Serializable
+data class ArrangeDayRoute(val epochDay: Long)
+
+@Serializable
 object AchievementsRoute
 
 @Serializable
@@ -73,6 +77,7 @@ fun AppNavHost(navController: NavHostController = rememberNavController()) {
                 onOpenBody = { navController.navigate(BodyRoute) },
                 onOpenAchievements = { navController.navigate(AchievementsRoute) },
                 onNewSuperset = { date -> navController.navigate(ExercisePickerRoute(date.toEpochDay(), superset = true)) },
+                onArrangeDay = { date -> navController.navigate(ArrangeDayRoute(date.toEpochDay())) },
             )
         }
         composable<ExercisePickerRoute> { entry ->
@@ -145,6 +150,9 @@ fun AppNavHost(navController: NavHostController = rememberNavController()) {
                 onBack = { navController.popBackStack() },
                 onAddExercise = { routineId -> navController.navigate(ExercisePickerRoute(routineId = routineId)) },
             )
+        }
+        composable<ArrangeDayRoute> {
+            ArrangeDayScreen(onDone = { navController.popBackStack() })
         }
         composable<AchievementsRoute> {
             AchievementsScreen(onBack = { navController.popBackStack() })

@@ -105,6 +105,11 @@ class SettingsViewModel(
         viewModelScope.launch { repository.setDropSetPercent(current.dropSetPercent + delta) }
     }
 
+    fun changeSupersetTransition(delta: Int) {
+        val current = settings.value ?: return
+        viewModelScope.launch { repository.setSupersetTransitionSeconds(current.supersetTransitionSeconds + delta) }
+    }
+
     fun setSupersetAutoAdvance(value: Boolean) {
         viewModelScope.launch { repository.setSupersetAutoAdvance(value) }
     }

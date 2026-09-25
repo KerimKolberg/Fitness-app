@@ -71,7 +71,23 @@ data class DayExercise(
     val sets: List<SetEntry>,
     /** Exercises of the same day with the same id are done as a superset. */
     val supersetId: String? = null,
+    /** Seconds to get to the next exercise of the superset. */
+    val transitionSeconds: Int? = null,
+    val dropSetMode: DropSetMode = DropSetMode.NONE,
+    /** The number of normal sets planned, used to know when the "last set" drop set comes. */
+    val plannedSets: Int? = null,
 )
+
+/** How drop sets are planned for an exercise on a day. [code] is stored in the database. */
+enum class DropSetMode(val code: Int, val label: String) {
+    NONE(0, "No drop sets"),
+    LAST_SET(1, "Drop set on the last set"),
+    EVERY_SET(2, "Every set after the first is a drop set");
+
+    companion object {
+        fun of(code: Int?): DropSetMode = entries.firstOrNull { it.code == code } ?: NONE
+    }
+}
 
 /** Supersets can hold at most this many exercises. */
 const val MAX_SUPERSET_SIZE = 6

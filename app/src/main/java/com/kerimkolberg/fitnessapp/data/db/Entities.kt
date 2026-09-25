@@ -75,6 +75,12 @@ data class WorkoutExerciseEntity(
     val deletedAt: Long? = null,
     /** Exercises sharing this id are done as a superset (added in v4). */
     val supersetId: String? = null,
+    /** Seconds to walk to the next superset exercise (added in v4). */
+    val transitionSeconds: Int? = null,
+    /** A [com.kerimkolberg.fitnessapp.model.DropSetMode] code (added in v4). */
+    @ColumnInfo(defaultValue = "0") val dropSetMode: Int = 0,
+    /** Normal sets planned, for "drop set on the last set" (added in v4). */
+    val plannedSets: Int? = null,
 )
 
 @Entity(

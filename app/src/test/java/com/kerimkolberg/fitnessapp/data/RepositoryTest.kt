@@ -5,7 +5,9 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.kerimkolberg.fitnessapp.data.db.AppDatabase
+import com.kerimkolberg.fitnessapp.model.ArrangedExercise
 import com.kerimkolberg.fitnessapp.model.BodyMetric
+import com.kerimkolberg.fitnessapp.model.DropSetMode
 import com.kerimkolberg.fitnessapp.model.ExerciseType
 import com.kerimkolberg.fitnessapp.model.SetValues
 import kotlinx.coroutines.flow.first
@@ -279,5 +281,29 @@ class RepositoryTest {
 
         workouts.updateSet(drop, SetValues(weightKg = 75.0, reps = 6, isDropSet = true))
         assertTrue(workouts.observeHistory(bench).first().single().sets.last().values.isDropSet)
+    }
+
+    @Test
+    fun arrangingADayFromAPlan() = runTest {
+        exercises.addMissingBuiltIns()
+        val row = BuiltInExercises.stableId("exercise", "barbell-row")
+        workouts.addExercisesToDay(day, listOf(bench, squat, row))
+        val entries = workouts.observeDay(day).first()
+
+        workouts.arrangeDay(
+            listOf(
+                ArrangedExercise(entries[2].workoutExerciseId, 0, null, null, DropSetMode.LAST_SET, 4),
+                ArrangedExercise(entries[0].workoutExerciseId, 1, "s", 15, DropSetMode.NONE, null),
+                ArrangedExercise(entries[1].workoutExerciseId, 2, "s", 15, DropSetMode.EVERY_SET, null),
+            ),
+        )
+
+        val arranged = workouts.observeDay(day).first()
+        assertEquals(listOf(row, bench, squat), arranged.map { it.exerciseId })
+        assertEquals(DropSetMode.LAST_SET, arranged[0].dropSetMode)
+        assertEquals(4, arranged[0].plannedSets)
+        assertEquals(listOf(null, "s", "s"), arranged.map { it.supersetId })
+        assertEquals(15, arranged[1].transitionSeconds)
+        assertEquals(DropSetMode.EVERY_SET, arranged[2].dropSetMode)
     }
 }

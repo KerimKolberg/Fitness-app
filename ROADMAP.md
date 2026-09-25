@@ -125,7 +125,9 @@ Broaden the library beyond gym lifts. Each group needs the right way to log it:
 ### Phase 2c: Training techniques
 - [x] Drop sets: a "Drop set" option when logging, each drop lighter by a set percentage (Settings, default 20%, rounded to 0.5 kg / 1 lb); shown as ↘ under the set they continue
 - [x] Supersets and circuits of 2 to 6 exercises on a workout day: pick them in order, log round by round (the app opens the next exercise after each set), rest timer only after the last exercise of a round, ungroup any time
-- [ ] Supersets saved inside plans
+- [x] "Arrange" a day (e.g. after adding a plan): drag exercises by their ≡ handle under superset headers, set the time to walk to the next exercise per superset (default in Settings), and plan drop sets per exercise: off, on the last set (after N normal sets), or every set after the first
+- [x] While logging: a "Go to <next exercise>" countdown between superset exercises; drop mode switches on by itself when the plan says a drop set is next
+- [ ] Supersets and drop set plans saved inside plans, so adding the plan brings them along
 
 ### Phase 3: Data safety
 - [x] Backup to a JSON file anywhere the file picker reaches (Drive, Downloads…), with "last backup" shown in Settings

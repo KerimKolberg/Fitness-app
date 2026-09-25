@@ -65,7 +65,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kerimkolberg.fitnessapp.R
+import com.kerimkolberg.fitnessapp.model.ArrangeRow
 import com.kerimkolberg.fitnessapp.model.DayExercise
+import com.kerimkolberg.fitnessapp.model.DropSetMode
 import com.kerimkolberg.fitnessapp.model.ExerciseType
 import com.kerimkolberg.fitnessapp.model.HistorySession
 import com.kerimkolberg.fitnessapp.model.UnitSystem
@@ -155,6 +157,24 @@ fun ExerciseLogScreen(
             if (state.superset.isNotEmpty()) {
                 SupersetBar(state.superset, currentId = viewModel.exerciseId, onSelect = onSwitchExercise)
             }
+            val transitionLabel = timer.label
+            if (timer.isRunning && transitionLabel != null) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer),
+                ) {
+                    Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(transitionLabel, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                        Text(
+                            text = formatDuration(timer.remainingSeconds),
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+                }
+            }
             val exercise = state.exercise
             when {
                 exercise == null -> Unit
@@ -235,9 +255,16 @@ private fun TrackTab(
         item {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 state.exercise?.let { exercise ->
+                    val plan = state.dayEntry
                     val hints = listOfNotNull(
                         exercise.tempo.takeIf { it.isNotBlank() }?.let { "Tempo $it (down-pause-up-pause, seconds)" },
                         "Log each side as its own set".takeIf { exercise.perSide },
+                        when (plan?.dropSetMode) {
+                            DropSetMode.LAST_SET ->
+                                "Plan: ${plan.plannedSets ?: ArrangeRow.DEFAULT_PLANNED_SETS} sets, then a drop set"
+                            DropSetMode.EVERY_SET -> "Plan: every set after the first is a drop set"
+                            else -> null
+                        },
                     )
                     if (hints.isNotEmpty()) {
                         Text(

@@ -16,7 +16,7 @@ See [ROADMAP.md](ROADMAP.md) for the plan and progress.
 - **Progress graphs** per exercise (estimated 1RM, heaviest weight, volume, reps, time, distance)
 - **Plans**: group exercises (Push, Upper body, Tendon health…); one exercise can be in many plans. Add a plan to a workout day, filter the exercise list by plan, or start from the starter plans. Copy an earlier day's exercises to today
 - **Beyond the gym**: mobility, stretching, isometric holds, slow eccentrics for tendons (with tempo), plyometrics (with jump height) and sports sessions (with intensity and notes)
-- **Drop sets and supersets**: mark drop sets (each one lighter by a percentage you choose), and group 2 to 6 exercises into a superset that you log round by round
+- **Drop sets and supersets**: mark drop sets (each one lighter by a percentage you choose), and group 2 to 6 exercises into a superset that you log round by round. Arrange a day by dragging exercises into supersets, with a short countdown to walk to the next exercise, and plan drop sets per exercise (last set or every set)
 - **Gamification**: XP and levels, a weekly goal with streaks, 14 achievements, and celebrations when you hit a record
 - **Body tracker**: bodyweight, body fat and body measurements with graphs
 - **Your data**: back up to a file (e.g. on Google Drive) and restore it on any phone; export workouts and body measurements as CSV

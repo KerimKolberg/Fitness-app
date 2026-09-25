@@ -20,10 +20,12 @@ import com.kerimkolberg.fitnessapp.model.GameStats
 import com.kerimkolberg.fitnessapp.model.HistorySession
 import com.kerimkolberg.fitnessapp.model.Routine
 import com.kerimkolberg.fitnessapp.model.SetEntry
+import com.kerimkolberg.fitnessapp.model.SetValues
 import com.kerimkolberg.fitnessapp.model.Settings
 import com.kerimkolberg.fitnessapp.model.UnitSystem
 import com.kerimkolberg.fitnessapp.model.XpRules
 import com.kerimkolberg.fitnessapp.model.celebrationsBetween
+import com.kerimkolberg.fitnessapp.model.dropSetDue
 import com.kerimkolberg.fitnessapp.model.dropSetWeightKg
 import com.kerimkolberg.fitnessapp.model.formatNumber
 import com.kerimkolberg.fitnessapp.model.isLastInSuperset
@@ -56,6 +58,8 @@ data class ExerciseLogUiState(
     val settings: Settings = Settings(),
     /** The exercises of this exercise's superset on the screen's date, in order; empty if none. */
     val superset: List<DayExercise> = emptyList(),
+    /** This exercise's entry on the screen's date (with its drop set plan), once logged or planned. */
+    val dayEntry: DayExercise? = null,
     val isLoading: Boolean = true,
 )
 
@@ -106,9 +110,10 @@ class ExerciseLogViewModel(
         settingsRepository.settings,
         workoutRepository.observeDay(date),
     ) { exercise, history, settings, day ->
-        val supersetId = day.firstOrNull { it.exerciseId == exerciseId }?.supersetId
-        val superset = supersetId?.let { id -> day.filter { it.supersetId == id } }.orEmpty()
+        val entry = day.firstOrNull { it.exerciseId == exerciseId }
+        val superset = entry?.supersetId?.let { id -> day.filter { it.supersetId == id } }.orEmpty()
         ExerciseLogUiState(
+            dayEntry = entry,
             superset = if (superset.size >= 2) superset else emptyList(),
             exercise = exercise,
             units = settings.unitSystem,
@@ -136,6 +141,12 @@ class ExerciseLogViewModel(
             val lastSet = state.sets.lastOrNull() ?: state.previousSession?.sets?.lastOrNull()
             if (lastSet != null && input == SetInput()) {
                 input = SetInput.from(lastSet.values, state.units)
+            }
+            // The day's plan may say the next set is a drop set.
+            val entry = state.dayEntry
+            if (entry != null && canUseDropSets(state) && dropSetDue(entry.dropSetMode, entry.plannedSets, state.sets)) {
+                dropMode = true
+                lowerWeightForDrop(state)
             }
         }
     }
@@ -174,16 +185,7 @@ class ExerciseLogViewModel(
                     if (best != null && score != null && score > best) {
                         celebrate(listOf("⭐ New personal record! +${XpRules.PER_RECORD} XP"))
                     }
-                    // In a superset, rest only after the last exercise of the round.
-                    if (state.settings.autoStartRestTimer && isLastInSuperset(memberIds, exerciseId)) {
-                        restTimer.start(state.settings.restTimerSeconds)
-                    }
-                    if (isDrop) {
-                        // Ready for the next drop: lighter again.
-                        lowerWeightForDrop(state)
-                    } else if (state.settings.supersetAutoAdvance) {
-                        switchTo = nextInSuperset(memberIds, exerciseId)
-                    }
+                    afterNewSet(state, values, memberIds)
                 }
             }
         }
@@ -207,6 +209,38 @@ class ExerciseLogViewModel(
     }
 
     fun clearInput() = updateInput(SetInput())
+
+    /**
+     * What happens after a new set: straight into a drop set when one is due (no rest), else to the
+     * next superset exercise with a short countdown to get there, else normal rest.
+     */
+    private fun afterNewSet(state: ExerciseLogUiState, saved: SetValues, memberIds: List<String>) {
+        val settings = state.settings
+        if (saved.isDropSet) {
+            // Ready for the next drop: lighter again. Rest restarts after each drop.
+            lowerWeightForDrop(state)
+            if (settings.autoStartRestTimer) restTimer.start(settings.restTimerSeconds)
+            return
+        }
+        val entry = state.dayEntry
+        val setsNow = state.sets + SetEntry("new", saved)
+        if (entry != null && canUseDropSets(state) && dropSetDue(entry.dropSetMode, entry.plannedSets, setsNow)) {
+            dropMode = true
+            lowerWeightForDrop(state)
+            celebrate(listOf("↘ Drop set next: ${input.weight} ${state.units.weightUnit}, no rest"))
+            return
+        }
+        val next = nextInSuperset(memberIds, exerciseId)
+        val nextName = state.superset.firstOrNull { it.exerciseId == next }?.exerciseName
+        if (next != null && !isLastInSuperset(memberIds, exerciseId)) {
+            // Mid-round: a short countdown to walk to the next machine.
+            val seconds = entry?.transitionSeconds ?: settings.supersetTransitionSeconds
+            if (settings.autoStartRestTimer && seconds > 0) restTimer.start(seconds, label = "Go to $nextName")
+        } else if (settings.autoStartRestTimer) {
+            restTimer.start(settings.restTimerSeconds)
+        }
+        if (settings.supersetAutoAdvance && next != null) switchTo = next
+    }
 
     fun canUseDropSets(state: ExerciseLogUiState = uiState.value): Boolean =
         state.settings.dropSetsEnabled && state.exercise?.type == ExerciseType.WEIGHT_REPS

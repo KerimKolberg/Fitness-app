@@ -25,6 +25,9 @@ data class DayRow(
     val comment: String?,
     val isDropSet: Boolean?,
     val supersetId: String?,
+    val transitionSeconds: Int?,
+    val dropSetMode: Int,
+    val plannedSets: Int?,
 )
 
 /** Every logged set with its date and exercise details, for the game stats. */
@@ -99,8 +102,31 @@ interface WorkoutDao {
     )
     suspend fun softDeleteSetsOf(workoutExerciseId: String, now: Long)
 
-    @Query("UPDATE workout_exercises SET supersetId = :supersetId, updatedAt = :now WHERE id IN (:ids)")
-    suspend fun setSuperset(ids: List<String>, supersetId: String?, now: Long)
+    @Query(
+        """
+        UPDATE workout_exercises SET supersetId = :supersetId, transitionSeconds = :transitionSeconds, updatedAt = :now
+        WHERE id IN (:ids)
+        """,
+    )
+    suspend fun setSuperset(ids: List<String>, supersetId: String?, transitionSeconds: Int?, now: Long)
+
+    @Query(
+        """
+        UPDATE workout_exercises
+        SET sortOrder = :sortOrder, supersetId = :supersetId, transitionSeconds = :transitionSeconds,
+            dropSetMode = :dropSetMode, plannedSets = :plannedSets, updatedAt = :now
+        WHERE id = :id
+        """,
+    )
+    suspend fun arrange(
+        id: String,
+        sortOrder: Int,
+        supersetId: String?,
+        transitionSeconds: Int?,
+        dropSetMode: Int,
+        plannedSets: Int?,
+        now: Long,
+    )
 
     @Query(
         """
@@ -119,7 +145,8 @@ interface WorkoutDao {
                e.type AS exerciseType, c.color AS categoryColor,
                s.id AS setId, s.weightKg AS weightKg, s.reps AS reps,
                s.distanceMeters AS distanceMeters, s.durationSeconds AS durationSeconds,
-               s.rpe AS rpe, s.comment AS comment, s.isDropSet AS isDropSet, we.supersetId AS supersetId
+               s.rpe AS rpe, s.comment AS comment, s.isDropSet AS isDropSet, we.supersetId AS supersetId,
+               we.transitionSeconds AS transitionSeconds, we.dropSetMode AS dropSetMode, we.plannedSets AS plannedSets
         FROM workouts w
         JOIN workout_exercises we ON we.workoutId = w.id AND we.deletedAt IS NULL
         JOIN exercises e ON e.id = we.exerciseId

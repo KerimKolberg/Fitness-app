@@ -6,7 +6,9 @@ import com.kerimkolberg.fitnessapp.data.db.DayRow
 import com.kerimkolberg.fitnessapp.data.db.WorkoutEntity
 import com.kerimkolberg.fitnessapp.data.db.WorkoutExerciseEntity
 import com.kerimkolberg.fitnessapp.data.db.WorkoutSetEntity
+import com.kerimkolberg.fitnessapp.model.ArrangedExercise
 import com.kerimkolberg.fitnessapp.model.DayExercise
+import com.kerimkolberg.fitnessapp.model.DropSetMode
 import com.kerimkolberg.fitnessapp.model.HistorySession
 import com.kerimkolberg.fitnessapp.model.MAX_SUPERSET_SIZE
 import com.kerimkolberg.fitnessapp.model.SetEntry
@@ -130,7 +132,7 @@ class WorkoutRepository(
      * Groups exercises into a superset on [date], adding any that are not on that day yet. Exercises
      * already in another superset leave it. Returns the new superset id.
      */
-    suspend fun createSuperset(date: LocalDate, exerciseIds: List<String>): String {
+    suspend fun createSuperset(date: LocalDate, exerciseIds: List<String>, transitionSeconds: Int? = null): String {
         val ids = exerciseIds.distinct()
         require(ids.size in 2..MAX_SUPERSET_SIZE) { "A superset has 2 to $MAX_SUPERSET_SIZE exercises" }
         return database.withTransaction {
@@ -138,8 +140,26 @@ class WorkoutRepository(
             val workout = getOrCreateWorkout(date, time)
             val entries = ids.map { getOrCreateWorkoutExercise(workout, it, time) }
             val supersetId = newId()
-            dao.setSuperset(entries.map { it.id }, supersetId, time)
+            dao.setSuperset(entries.map { it.id }, supersetId, transitionSeconds, time)
             supersetId
+        }
+    }
+
+    /** Saves the order, supersets and drop set plans chosen on the arrange screen. */
+    suspend fun arrangeDay(exercises: List<ArrangedExercise>) {
+        database.withTransaction {
+            val time = now()
+            exercises.forEach {
+                dao.arrange(
+                    id = it.workoutExerciseId,
+                    sortOrder = it.sortOrder,
+                    supersetId = it.supersetId,
+                    transitionSeconds = it.transitionSeconds,
+                    dropSetMode = it.dropSetMode.code,
+                    plannedSets = it.plannedSets,
+                    now = time,
+                )
+            }
         }
     }
 
@@ -168,6 +188,9 @@ private fun groupDayRows(rows: List<DayRow>): List<DayExercise> =
             exerciseType = first.exerciseType,
             categoryColor = first.categoryColor,
             supersetId = first.supersetId,
+            transitionSeconds = first.transitionSeconds,
+            dropSetMode = DropSetMode.of(first.dropSetMode),
+            plannedSets = first.plannedSets,
             sets = exerciseRows.mapNotNull { row ->
                 row.setId?.let { id ->
                     SetEntry(

@@ -58,4 +58,6 @@ data class Settings(
     val dropSetPercent: Int = 20,
     /** After saving a set in a superset, open the next exercise of the superset. */
     val supersetAutoAdvance: Boolean = true,
+    /** Default seconds to get from one superset exercise to the next. */
+    val supersetTransitionSeconds: Int = 15,
 )

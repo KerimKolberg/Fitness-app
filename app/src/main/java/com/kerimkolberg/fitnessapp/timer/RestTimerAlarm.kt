@@ -18,9 +18,10 @@ import com.kerimkolberg.fitnessapp.R
 /** Tells the user their rest is over: a vibration, plus a notification when they allowed notifications. */
 class RestTimerAlarm(private val context: Context) {
 
-    fun fire() {
+    /** Alerts the user; [label] (e.g. "Go to Lat Pulldown") replaces the default text. */
+    fun fire(label: String?) {
         vibrate()
-        showNotification()
+        showNotification(label)
     }
 
     private fun vibrate() {
@@ -32,7 +33,7 @@ class RestTimerAlarm(private val context: Context) {
         vibrator?.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 400, 200, 400), -1))
     }
 
-    private fun showNotification() {
+    private fun showNotification(label: String?) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
             PackageManager.PERMISSION_GRANTED
@@ -51,8 +52,8 @@ class RestTimerAlarm(private val context: Context) {
         }
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_timer)
-            .setContentTitle("Rest is over")
-            .setContentText("Time for your next set")
+            .setContentTitle(if (label != null) "Time's up" else "Rest is over")
+            .setContentText(label ?: "Time for your next set")
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .setContentIntent(contentIntent)

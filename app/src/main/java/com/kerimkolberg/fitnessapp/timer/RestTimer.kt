@@ -15,6 +15,8 @@ data class RestTimerState(
     val totalSeconds: Int = 0,
     val remainingSeconds: Int = 0,
     val isRunning: Boolean = false,
+    /** What the countdown is for, e.g. "Go to Lat Pulldown"; null for normal rest. */
+    val label: String? = null,
 )
 
 /**
@@ -23,7 +25,8 @@ data class RestTimerState(
  */
 class RestTimer(
     private val scope: CoroutineScope,
-    private val onFinished: () -> Unit,
+    /** Called with the timer's label when the countdown reaches zero. */
+    private val onFinished: (label: String?) -> Unit,
     private val elapsedMillis: () -> Long = SystemClock::elapsedRealtime,
 ) {
     private val _state = MutableStateFlow(RestTimerState())
@@ -32,10 +35,10 @@ class RestTimer(
     private var job: Job? = null
     private var endAtMillis = 0L
 
-    fun start(seconds: Int) {
+    fun start(seconds: Int, label: String? = null) {
         job?.cancel()
         endAtMillis = elapsedMillis() + seconds * 1000L
-        _state.value = RestTimerState(totalSeconds = seconds, remainingSeconds = seconds, isRunning = true)
+        _state.value = RestTimerState(totalSeconds = seconds, remainingSeconds = seconds, isRunning = true, label = label)
         job = scope.launch { countDown() }
     }
 
@@ -68,7 +71,7 @@ class RestTimer(
         }
         _state.update { it.copy(isRunning = false) }
         job = null
-        onFinished()
+        onFinished(_state.value.label)
     }
 
     private fun remainingSeconds(): Int =

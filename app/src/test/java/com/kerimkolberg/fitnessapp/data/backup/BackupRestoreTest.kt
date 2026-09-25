@@ -67,6 +67,8 @@ class BackupRestoreTest {
         old.workouts.deleteSet(deleted)
         old.plans.addStarterPlans()
         old.body.saveMeasurement(BodyMetric.BODYWEIGHT, day, 80.0)
+        old.workouts.addSet(day, squat, SetValues(weightKg = 140.0, reps = 3, isDropSet = true))
+        val supersetId = old.workouts.createSuperset(day, listOf(bench, squat), transitionSeconds = 20)
         old.settings.setUnitSystem(UnitSystem.IMPERIAL)
         old.exercises.saveExercise(null, "My Custom Lift", old.exercises.categories.first().first().id,
             ExerciseType.WEIGHT_REPS, "", tempo = "4-0-1-0", perSide = true)
@@ -79,8 +81,11 @@ class BackupRestoreTest {
         new.backups.restore(BackupJson.decode(text))
 
         val restoredDay = new.workouts.observeDay(day).first()
-        assertEquals(listOf(bench), restoredDay.map { it.exerciseId })
-        assertEquals(listOf(5), restoredDay.single().sets.map { it.values.reps })
+        assertEquals(listOf(bench, squat), restoredDay.map { it.exerciseId })
+        assertEquals(listOf(5), restoredDay.first().sets.map { it.values.reps })
+        assertTrue(restoredDay.last().sets.single().values.isDropSet)
+        assertEquals(listOf(supersetId, supersetId), restoredDay.map { it.supersetId })
+        assertEquals(20, restoredDay.first().transitionSeconds)
         assertEquals(StarterPlans.plans.size, new.plans.routines.first().size)
         assertEquals(80.0, new.body.measurements.first().single().value, 0.0)
         assertEquals(UnitSystem.IMPERIAL, new.settings.settings.first().unitSystem)
@@ -88,7 +93,7 @@ class BackupRestoreTest {
         assertEquals("4-0-1-0", custom.tempo)
         assertTrue(custom.perSide)
         // Deleted rows travel too, so a future sync still knows about the deletion.
-        assertEquals(2, new.database.backupDao().sets().size)
+        assertEquals(3, new.database.backupDao().sets().size)
     }
 
     @Test

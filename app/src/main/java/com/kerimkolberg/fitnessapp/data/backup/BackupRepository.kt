@@ -112,10 +112,14 @@ private fun ExerciseDto.toEntity() = ExerciseEntity(
 private fun WorkoutEntity.toDto() = WorkoutDto(id, date.toString(), comment, createdAt, updatedAt, deletedAt)
 private fun WorkoutDto.toEntity() = WorkoutEntity(id, dateOf(date), comment, createdAt, updatedAt, deletedAt)
 
-private fun WorkoutExerciseEntity.toDto() =
-    WorkoutExerciseDto(id, workoutId, exerciseId, sortOrder, createdAt, updatedAt, deletedAt, supersetId)
-private fun WorkoutExerciseDto.toEntity() =
-    WorkoutExerciseEntity(id, workoutId, exerciseId, sortOrder, createdAt, updatedAt, deletedAt, supersetId)
+private fun WorkoutExerciseEntity.toDto() = WorkoutExerciseDto(
+    id, workoutId, exerciseId, sortOrder, createdAt, updatedAt, deletedAt,
+    supersetId, transitionSeconds, dropSetMode, plannedSets,
+)
+private fun WorkoutExerciseDto.toEntity() = WorkoutExerciseEntity(
+    id, workoutId, exerciseId, sortOrder, createdAt, updatedAt, deletedAt,
+    supersetId, transitionSeconds, dropSetMode, plannedSets,
+)
 
 private fun WorkoutSetEntity.toDto() = SetDto(
     id = id, workoutExerciseId = workoutExerciseId, sortOrder = sortOrder, weightKg = weightKg, reps = reps,
@@ -151,6 +155,7 @@ private fun Settings.toDto() = SettingsDto(
     dropSetsEnabled = dropSetsEnabled,
     dropSetPercent = dropSetPercent,
     supersetAutoAdvance = supersetAutoAdvance,
+    supersetTransitionSeconds = supersetTransitionSeconds,
 )
 
 /** Unknown values fall back to the defaults: settings are not worth failing a restore over. */
@@ -165,5 +170,6 @@ private fun SettingsDto.toSettings(): Settings {
         dropSetsEnabled = dropSetsEnabled,
         dropSetPercent = dropSetPercent,
         supersetAutoAdvance = supersetAutoAdvance,
+        supersetTransitionSeconds = supersetTransitionSeconds,
     )
 }

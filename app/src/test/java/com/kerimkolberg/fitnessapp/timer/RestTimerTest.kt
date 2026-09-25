@@ -13,10 +13,14 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class RestTimerTest {
     private var finishedCount = 0
+    private var finishedLabel: String? = null
 
     private fun TestScope.newTimer() = RestTimer(
         scope = backgroundScope,
-        onFinished = { finishedCount++ },
+        onFinished = { label ->
+            finishedCount++
+            finishedLabel = label
+        },
         elapsedMillis = { testScheduler.currentTime },
     )
 
@@ -84,5 +88,18 @@ class RestTimerTest {
         assertEquals(2, timer.state.value.remainingSeconds)
         advanceSeconds(2)
         assertEquals(1, finishedCount)
+    }
+
+    @Test
+    fun aLabeledCountdownPassesItsLabelOn() = runTest {
+        val timer = newTimer()
+        timer.start(15, label = "Go to Lat Pulldown")
+        runCurrent()
+        assertEquals("Go to Lat Pulldown", timer.state.value.label)
+        advanceSeconds(15)
+        assertEquals("Go to Lat Pulldown", finishedLabel)
+
+        timer.start(90)
+        assertEquals(null, timer.state.value.label)
     }
 }

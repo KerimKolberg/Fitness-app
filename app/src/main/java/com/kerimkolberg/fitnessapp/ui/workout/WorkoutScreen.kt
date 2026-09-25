@@ -79,6 +79,7 @@ fun WorkoutScreen(
     onOpenBody: () -> Unit,
     onOpenAchievements: () -> Unit,
     onNewSuperset: (LocalDate) -> Unit,
+    onArrangeDay: (LocalDate) -> Unit,
     viewModel: WorkoutViewModel = viewModel(factory = WorkoutViewModel.Factory),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -104,6 +105,9 @@ fun WorkoutScreen(
                             val close = { menuOpen = false }
                             MenuItem("Add a plan to this day", close) { choosingRoutine = true }
                             MenuItem("New superset (2–6 exercises)", close) { onNewSuperset(state.date) }
+                            if (state.exercises.size >= 2) {
+                                MenuItem("Arrange supersets & drop sets", close) { onArrangeDay(state.date) }
+                            }
                             if (state.exercises.isNotEmpty() && state.date != LocalDate.now()) {
                                 MenuItem("Copy exercises to today", close, viewModel::copyExercisesToToday)
                             }
@@ -150,6 +154,13 @@ fun WorkoutScreen(
                     contentPadding = PaddingValues(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 96.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
+                    if (state.exercises.size >= 2) {
+                        item(key = "arrange") {
+                            OutlinedButton(onClick = { onArrangeDay(state.date) }, modifier = Modifier.fillMaxWidth()) {
+                                Text("Arrange supersets & drop sets")
+                            }
+                        }
+                    }
                     val blocks = groupDay(state.exercises)
                     items(blocks, key = { block ->
                         when (block) {

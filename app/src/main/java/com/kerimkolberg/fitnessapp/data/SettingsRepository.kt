@@ -25,6 +25,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
             dropSetsEnabled = prefs[DROP_SETS_ENABLED] ?: defaults.dropSetsEnabled,
             dropSetPercent = prefs[DROP_SET_PERCENT] ?: defaults.dropSetPercent,
             supersetAutoAdvance = prefs[SUPERSET_AUTO_ADVANCE] ?: defaults.supersetAutoAdvance,
+            supersetTransitionSeconds = prefs[SUPERSET_TRANSITION] ?: defaults.supersetTransitionSeconds,
         )
     }
 
@@ -52,7 +53,11 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         it[DROP_SETS_ENABLED] = settings.dropSetsEnabled
         it[DROP_SET_PERCENT] = settings.dropSetPercent.coerceIn(MIN_DROP_PERCENT, MAX_DROP_PERCENT)
         it[SUPERSET_AUTO_ADVANCE] = settings.supersetAutoAdvance
+        it[SUPERSET_TRANSITION] = settings.supersetTransitionSeconds.coerceIn(0, MAX_TRANSITION_SECONDS)
     }
+
+    suspend fun setSupersetTransitionSeconds(value: Int) =
+        dataStore.edit { it[SUPERSET_TRANSITION] = value.coerceIn(0, MAX_TRANSITION_SECONDS) }
 
     suspend fun setDropSetsEnabled(value: Boolean) = dataStore.edit { it[DROP_SETS_ENABLED] = value }
 
@@ -68,6 +73,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         const val MAX_REST_SECONDS = 15 * 60
         const val MIN_DROP_PERCENT = 5
         const val MAX_DROP_PERCENT = 50
+        const val MAX_TRANSITION_SECONDS = 120
 
         private val UNIT_SYSTEM = stringPreferencesKey("unit_system")
         private val REST_TIMER_SECONDS = intPreferencesKey("rest_timer_seconds")
@@ -78,6 +84,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         private val DROP_SETS_ENABLED = booleanPreferencesKey("drop_sets_enabled")
         private val DROP_SET_PERCENT = intPreferencesKey("drop_set_percent")
         private val SUPERSET_AUTO_ADVANCE = booleanPreferencesKey("superset_auto_advance")
+        private val SUPERSET_TRANSITION = intPreferencesKey("superset_transition_seconds")
     }
 }
 
