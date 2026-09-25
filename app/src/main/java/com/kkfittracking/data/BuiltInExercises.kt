@@ -507,6 +507,105 @@ object BuiltInExercises {
         group(GLUTES, STRETCHING, e("Figure-Four Stretch", TIME, perSide = true))
         group(FOREARMS, STRETCHING, e("Wrist Flexor Stretch", TIME))
         group(CALVES, PLYOMETRIC, e("Single-Leg Hop", REPS_HEIGHT, perSide = true, also = listOf(WHOLE_LEGS)))
+
+        // Sports and athletic training (version 0.5): prehab, tendons and power for court sports,
+        // climbing, sprinting and fighting sports.
+        group(
+            Muscle.SPORT, SPORT,
+            e("Bouldering", SESSION), e("Kickboxing", SESSION), e("Boxing", SESSION), e("Beach Volleyball", SESSION),
+        )
+        group(Muscle.CARDIO, CARDIO, e("Sprinting", DISTANCE_TIME), e("Shuttle Run", TIME), e("Agility Ladder", TIME))
+        group(
+            Muscle.CARDIO, HIIT,
+            e("Hill Sprints", INTERVALS, plan = intervals(high = 10, low = 50, rounds = 8)),
+            e("Heavy Bag Rounds", INTERVALS, plan = intervals(high = 180, low = 60, rounds = 5), also = listOf(FULL_BODY)),
+            e("Shadow Boxing", INTERVALS, plan = intervals(high = 180, low = 60, rounds = 3), also = listOf(FULL_BODY)),
+        )
+        // Hips: glute medius, hip flexors and groin.
+        group(
+            GLUTES, ECCENTRIC,
+            e("Slow Single-Leg Pelvic Drop", tempo = "3-1-1-0", perSide = true, also = listOf(HIPS)),
+        )
+        group(
+            GLUTES, ISOMETRIC,
+            e("Side-Lying Clamshell Hold", TIME, perSide = true, also = listOf(HIPS)),
+            e("Single-Leg Glute Bridge", REPS, perSide = true, also = listOf(HAMSTRINGS)),
+        )
+        group(
+            GLUTES, STRENGTH,
+            e("Clamshell", REPS, perSide = true, also = listOf(HIPS)),
+            e("Banded Lateral Walk", REPS, also = listOf(HIPS)),
+        )
+        group(HIPS, STRENGTH, e("Psoas March", REPS, perSide = true, also = listOf(ABS)))
+        group(HIPS, ISOMETRIC, e("Seated Knee Lift Hold", TIME, perSide = true))
+        group(
+            ADDUCTORS, STRENGTH,
+            e("Lateral Lunge", perSide = true, also = listOf(GLUTES, QUADS)),
+            e("Side-Lying Adductor Raise", REPS, perSide = true),
+        )
+        group(ADDUCTORS, MOBILITY, e("Cossack Squat", REPS, perSide = true, also = listOf(HIPS)))
+        // Legs: knees, ankles and hamstrings for jumping, landing and sprinting.
+        group(QUADS, ISOMETRIC, e("Isometric Reverse Nordic Hold", TIME, also = listOf(HIPS)))
+        group(CALVES, ECCENTRIC, e("Slow Deficit Calf Raise", tempo = "3-1-3-0"))
+        group(CALVES, ISOMETRIC, e("Single-Leg Balance Hold", TIME, perSide = true, also = listOf(SHINS)))
+        group(SHINS, STRENGTH, e("Banded Ankle Eversion", REPS, perSide = true))
+        group(
+            HAMSTRINGS, ECCENTRIC,
+            e("Eccentric Romanian Deadlift", tempo = "3-0-1-0", also = listOf(GLUTES, LOWER_BACK)),
+            e("Hamstring Walkout", REPS, also = listOf(GLUTES)),
+        )
+        group(LOWER_BACK, STRENGTH, e("45-Degree Hyperextension", also = listOf(GLUTES, HAMSTRINGS)))
+        group(
+            WHOLE_LEGS, PLYOMETRIC,
+            e("Approach Jump", REPS_HEIGHT, also = listOf(CALVES, GLUTES)),
+            e("Single-Leg Landing Stick", REPS, perSide = true, also = listOf(QUADS, GLUTES), alsoStyles = listOf(ECCENTRIC)),
+            e("Split Squat Jump", REPS, also = listOf(QUADS, GLUTES)), e("A-Skip", REPS, also = listOf(HIPS, CALVES)),
+            e("Lateral Shuffle", TIME, also = listOf(ADDUCTORS, GLUTES)),
+        )
+        group(
+            FULL_BODY, STRENGTH,
+            e("Sled Push", TIME_WEIGHT, also = listOf(WHOLE_LEGS)),
+            e("Sled Pull", TIME_WEIGHT, also = listOf(WHOLE_LEGS)),
+        )
+        // Shoulders: rotator cuff and shoulder blades for serving, spiking, climbing and punching.
+        group(
+            ROTATOR_CUFF, STRENGTH,
+            e("Side-Lying External Rotation", perSide = true),
+            e("Prone Y-T-W Raise", REPS, also = listOf(UPPER_BACK, REAR_DELTS)),
+        )
+        group(ROTATOR_CUFF, ISOMETRIC, e("90/90 External Rotation Hold", TIME_WEIGHT, perSide = true))
+        group(ROTATOR_CUFF, STRETCHING, e("Sleeper Stretch", TIME, perSide = true))
+        group(ROTATOR_CUFF, MOBILITY, e("Wall Slide", REPS, also = listOf(UPPER_BACK)))
+        group(
+            UPPER_BACK, STRENGTH,
+            e("Band Pull-Apart", REPS, also = listOf(REAR_DELTS)), e("Scapular Push Up", REPS, also = listOf(CHEST)),
+        )
+        group(LATS, STRENGTH, e("Scapular Pull Up", REPS, also = listOf(UPPER_BACK)))
+        group(
+            LATS, ISOMETRIC,
+            e("Lock-Off Hold", TIME, perSide = true, also = listOf(BICEPS)),
+            e("Tuck Front Lever Hold", TIME, also = listOf(ABS)),
+        )
+        // Forearms and fingers: climbing grip, racket and paddle arms.
+        group(FOREARMS, ISOMETRIC, e("Hangboard Hang", TIME_WEIGHT), e("No-Hang Lift", TIME_WEIGHT, perSide = true))
+        group(FOREARMS, PLYOMETRIC, e("Campus Board", REPS, also = listOf(LATS)))
+        group(
+            FOREARMS, STRENGTH,
+            e("Finger Extension with Band", REPS), e("Wrist Roller"),
+            e("Dumbbell Pronation-Supination", perSide = true), e("Rice Bucket", TIME),
+        )
+        group(FOREARMS, ECCENTRIC, e("Reverse Tyler Twist", REPS, tempo = "3-0-1-0", perSide = true))
+        // Core: rotation and bracing for swings, throws and kicks.
+        group(
+            OBLIQUES, PLYOMETRIC,
+            e("Rotational Medicine Ball Throw", REPS, perSide = true, also = listOf(FULL_BODY)),
+            e("Overhead Medicine Ball Throw", REPS, also = listOf(ABS, LATS)),
+        )
+        group(
+            OBLIQUES, STRENGTH,
+            e("Landmine Rotation", also = listOf(ABS)), e("Cable Lift", perSide = true, also = listOf(ABS)),
+        )
+        group(ABS, STRENGTH, e("Hollow Rock", REPS))
     }
 
     private val regionKeysById: Map<String, String> = regions.associate { it.id to it.key }

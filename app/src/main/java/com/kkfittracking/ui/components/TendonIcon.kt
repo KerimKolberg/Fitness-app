@@ -70,6 +70,11 @@ private class Sketch(val scope: DrawScope, val u: Float, val bone: Color, val mu
         when (tendon) {
             Tendon.ACHILLES -> tendon(6.8f, 9f, 6.4f, 17f)
             Tendon.PLANTAR_FASCIA -> tendon(7.5f, 21f, 20f, 22f)
+            Tendon.PERONEAL -> {
+                line(muscle, 9f, 3f, 9f, 11f, 2.2f)
+                tendon(9f, 11f, 9.4f, 17.5f)
+                tendon(9.4f, 17.5f, 12.5f, 19.4f)
+            }
             else -> {
                 line(muscle, 12.5f, 3f, 12.5f, 11f, 2.4f)
                 tendon(12.6f, 11f, 13.8f, 18f)
@@ -89,6 +94,10 @@ private class Sketch(val scope: DrawScope, val u: Float, val bone: Color, val mu
                 dot(bone, 9.5f, 12.2f, 1.2f)
                 line(muscle, 9.5f, 15f, 9f, 22f, 3.4f)
                 tendon(9.5f, 12.8f, 9.3f, 16f)
+            }
+            Tendon.HIP_FLEXOR -> {
+                line(muscle, 11f, 2.5f, 10.8f, 7f, 2.6f)
+                tendon(10.8f, 7f, 8.8f, 14f)
             }
             Tendon.ADDUCTOR -> {
                 line(muscle, 11f, 14f, 7.5f, 20f, 3f)

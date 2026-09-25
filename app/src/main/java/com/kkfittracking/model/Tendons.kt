@@ -32,6 +32,12 @@ enum class Tendon(val label: String, val area: TendonArea, val connects: String,
         "A tough band under the foot that works as a spring together with the Achilles. Slow calf raises " +
             "(with the toes on a rolled towel) load it.",
     ),
+    PERONEAL(
+        "Peroneal tendons", TendonArea.ANKLE,
+        "the outer lower-leg muscles, around the back of the outer ankle bone, to the foot",
+        "They keep the ankle from rolling over when you land or cut sideways: the tendons behind most ankle " +
+            "sprains in tennis, volleyball and basketball. Balance holds and banded eversion make them stronger.",
+    ),
     TIBIALIS(
         "Tibialis anterior tendon", TendonArea.ANKLE,
         "the shin muscle to the inner midfoot",
@@ -42,6 +48,12 @@ enum class Tendon(val label: String, val area: TendonArea, val connects: String,
         "the hamstrings to the sitting bone (ischial tuberosity)",
         "A deep ache at the sitting bone when sitting or sprinting. Isometric bridges first, then Nordics " +
             "and Romanian deadlifts.",
+    ),
+    HIP_FLEXOR(
+        "Hip flexor tendon (iliopsoas)", TendonArea.HIP,
+        "the hip flexors, from the lower spine and inner pelvis, to the inner top of the thigh bone",
+        "Pulls the knee up in every sprint stride and kick. Pain at the front of the hip is common in sprinters, " +
+            "footballers and kickboxers; slow marches and knee-lift holds load it gently.",
     ),
     ADDUCTOR(
         "Adductor tendons (groin)", TendonArea.HIP,

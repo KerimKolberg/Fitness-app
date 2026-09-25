@@ -69,6 +69,8 @@ dependencies {
     implementation(libs.wear.protolayout)
     implementation(libs.wear.protolayout.material)
     implementation(libs.androidx.concurrent.futures.ktx)
+    // The future type the tile and Health Services APIs return.
+    implementation(libs.guava.listenablefuture)
 
     implementation(libs.play.services.wearable)
     implementation(libs.kotlinx.coroutines.play.services)

@@ -74,6 +74,10 @@ class BuiltInExercisesTest {
         BuiltInTendons.exerciseNames.forEach { assertTrue("$it is not a built-in exercise", it in names) }
         val spanish = BuiltInExercises.exercises.single { it.name == "Spanish Squat Hold" }
         assertEquals(listOf(Tendon.PATELLAR, Tendon.QUADRICEPS), BuiltInTendons.of(spanish.id))
+        // From a real plan: the slow pelvic drop is there, filed under glutes, and loads the gluteal tendons.
+        val drop = BuiltInExercises.exercises.single { it.name == "Slow Single-Leg Pelvic Drop" }
+        assertEquals(Muscle.GLUTES, drop.muscle)
+        assertEquals(listOf(Tendon.GLUTEAL), BuiltInTendons.of(drop.id))
         // Every tendon has exercises for it.
         val covered = BuiltInExercises.exercises.flatMap { BuiltInTendons.of(it.id) }.toSet()
         assertEquals(Tendon.entries.toSet(), covered)
