@@ -77,6 +77,12 @@ ksp {
     arg("room.generateKotlin", "true")
 }
 
+// Room writes its schema files into app/schemas, outside the build folder: a KSP task taken from the
+// build cache would skip them, and CI could not check that each database version's schema is committed.
+tasks.matching { it.name.startsWith("ksp") }.configureEach {
+    outputs.doNotCacheIf("Room writes schema files outside the build folder") { true }
+}
+
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
