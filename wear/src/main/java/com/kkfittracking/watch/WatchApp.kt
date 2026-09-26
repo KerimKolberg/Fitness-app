@@ -1,7 +1,6 @@
 package com.kkfittracking.watch
 
 import android.app.RemoteInput
-import android.view.inputmethod.EditorInfo
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -44,7 +43,6 @@ import androidx.wear.compose.material.Scaffold
 import androidx.wear.compose.material.Text
 import androidx.wear.compose.material.TimeText
 import androidx.wear.input.RemoteInputIntentHelper
-import androidx.wear.input.wearableExtender
 import com.kkfittracking.wear.WatchState
 import kotlinx.coroutines.delay
 import java.util.Locale
@@ -356,13 +354,7 @@ private fun rememberNumberInput(label: String, onValue: (Double) -> Unit): () ->
     }
     return {
         val intent = RemoteInputIntentHelper.createActionRemoteInputIntent()
-        val input = RemoteInput.Builder(NUMBER_KEY)
-            .setLabel(label)
-            .wearableExtender {
-                setEmojisAllowed(false)
-                setInputActionType(EditorInfo.IME_ACTION_DONE)
-            }
-            .build()
+        val input = RemoteInput.Builder(NUMBER_KEY).setLabel(label).build()
         RemoteInputIntentHelper.putRemoteInputsExtra(intent, listOf(input))
         launcher.launch(intent)
     }
