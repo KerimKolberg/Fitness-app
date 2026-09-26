@@ -61,7 +61,12 @@ data class Exercise(
     val links: List<ExerciseLink> = emptyList(),
     /** The tendons it loads most (built-in exercises), for isometric and eccentric tendon work. */
     val tendons: List<Tendon> = emptyList(),
+    /** Its own weight unit (kg, lb or machine levels); null follows the app's setting. */
+    val weightUnits: UnitSystem? = null,
 ) {
+    /** The units to show and enter this exercise's weights in. */
+    fun unitsOr(appUnits: UnitSystem): UnitSystem = weightUnits ?: appUnits
+
     /** The muscle it mainly trains. */
     val muscle: Muscle get() = muscles.firstOrNull() ?: Muscle.OTHER
 
@@ -113,6 +118,8 @@ data class DayExercise(
     val memberDropSet: Boolean? = null,
     /** The exercise's planned sets, reps and drop sets. */
     val plan: ExercisePlan = ExercisePlan(),
+    /** The exercise's own weight unit; null follows the app's setting. */
+    val weightUnits: UnitSystem? = null,
 )
 
 /** An exercise to put on a day, from a plan or an earlier day, with its superset if it is in one. */

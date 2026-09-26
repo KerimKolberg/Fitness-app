@@ -35,11 +35,13 @@ class MainActivity : ComponentActivity() {
     private val heartRatePermission =
         if (Build.VERSION.SDK_INT >= 36) "android.permission.health.READ_HEART_RATE" else Manifest.permission.BODY_SENSORS
 
-    private val permissions = arrayOf(
+    private val permissions = listOfNotNull(
         heartRatePermission,
         Manifest.permission.ACTIVITY_RECOGNITION,
         Manifest.permission.ACCESS_FINE_LOCATION,
-    )
+        // The ongoing workout icon comes with a notification.
+        Manifest.permission.POST_NOTIFICATIONS.takeIf { Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU },
+    ).toTypedArray()
 
     private val askPermissions = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { reportPermissions() }
 

@@ -118,7 +118,7 @@ fun guideTarget(day: List<DayExercise>, skipped: Set<String> = emptySet(), setti
         // A drop set that is due comes first: it follows its set with no rest.
         members.forEach { exercise ->
             val target = targetOf(exercise, superset)
-            val drop = pendingDrop(target.plan, exercise.exerciseType, exercise.sets, settings.dropSetPercent, settings.unitSystem)
+            val drop = pendingDrop(target.plan, exercise.exerciseType, exercise.sets, settings.dropSetPercent, exercise.weightUnits ?: settings.unitSystem)
             if (drop != null) {
                 return GuideTarget(
                     exercise.exerciseId, exercise.exerciseName, "Drop ${drop.number} of ${drop.of}",
@@ -152,6 +152,36 @@ fun guideTarget(day: List<DayExercise>, skipped: Set<String> = emptySet(), setti
 }
 
 /**
+ * The exercises coming up after [current], in the order the guide will reach them (the rest of a
+ * superset round first, then the next exercises of the day), each named once: to get ready and set up
+ * the equipment. Found by playing the plan forward, one set at a time.
+ */
+fun upcomingExercises(
+    day: List<DayExercise>,
+    current: GuideTarget,
+    skipped: Set<String> = emptySet(),
+    settings: Settings = Settings(),
+    count: Int = 3,
+): List<String> {
+    val upcoming = mutableListOf<String>()
+    var played = day
+    var target = current
+    repeat(MAX_PLAYED_SETS) { step ->
+        if (upcoming.size >= count) return upcoming
+        played = played.map { exercise ->
+            if (exercise.exerciseId != target.exerciseId) return@map exercise
+            val weight = exercise.sets.lastOrNull()?.values?.weightKg ?: 20.0
+            exercise.copy(sets = exercise.sets + SetEntry("played-$step", SetValues(weight, 1, isDropSet = target.isDrop)))
+        }
+        target = guideTarget(played, skipped, settings) ?: return upcoming
+        if (target.exerciseId != current.exerciseId && target.name !in upcoming) upcoming += target.name
+    }
+    return upcoming
+}
+
+private const val MAX_PLAYED_SETS = 300
+
+/**
  * The values to suggest for the guide's next set: a due drop set's lighter weight (and its reps),
  * else today's last set of the exercise, else the plan's reps and weight over [lastSession]'s last
  * set. Empty when there is nothing to go on.
@@ -160,7 +190,7 @@ fun guideSuggestion(day: List<DayExercise>, target: GuideTarget, settings: Setti
     val exercise = day.firstOrNull { it.exerciseId == target.exerciseId } ?: return SetValues()
     if (target.isDrop) {
         val plan = targetOf(exercise, supersetContextOf(day, exercise.exerciseId)).plan
-        pendingDrop(plan, exercise.exerciseType, exercise.sets, settings.dropSetPercent, settings.unitSystem)?.let {
+        pendingDrop(plan, exercise.exerciseType, exercise.sets, settings.dropSetPercent, exercise.weightUnits ?: settings.unitSystem)?.let {
             return SetValues(weightKg = it.weightKg, reps = it.reps, isDropSet = true)
         }
     }

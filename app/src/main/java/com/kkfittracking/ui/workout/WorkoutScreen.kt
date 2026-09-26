@@ -648,7 +648,7 @@ private fun ExerciseBody(
                         modifier = Modifier.width(28.dp),
                     )
                     Text(
-                        text = formatSet(set.values, exercise.exerciseType, units),
+                        text = formatSet(set.values, exercise.exerciseType, exercise.weightUnits ?: units),
                         style = MaterialTheme.typography.bodyMedium,
                     )
                 }

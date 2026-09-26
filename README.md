@@ -23,6 +23,8 @@ See [ROADMAP.md](ROADMAP.md) for the plan and progress.
 - **Tendons**: isometric and eccentric exercises show the tendons they train (patellar, Achilles, rotator cuff, elbow tendons…) with a drawing and what each one connects; filter by tendon in the library
 - **Watch app** (Wear OS): follow the guided workout on the wrist and log sets there, synced with the phone
 - **Daily steps**: the day's steps and distance from Health Connect (what Samsung Health, Google Fit and your watch record), shown on each day
+- **Kilos, pounds or machine levels**: each exercise can have its own weight unit (tap "Unit" under the weight), for machines marked in lb or with just pin numbers
+- **Hold timer**: time an isometric hold on the phone or the watch; it buzzes until you tap Done and keeps counting (−0:10), and the time held goes into the set
 - **Your library order**: Settings → Exercise library puts the body sections and training styles in the order you like
 - **Guided workout**: press Start on a day with a plan and the app takes you from exercise to exercise (round by round in supersets), moving on after each set you save. Pause for longer breaks, skip, or stop early and move what's left to the next day or any day you pick; a notification shows what's next with the phone locked
 - **Day analysis**: how much of the day's plan is done, and what was done and what wasn't
@@ -49,8 +51,9 @@ install the new build and restore.)
 
 ## Try it on your watch (Wear OS 3+: Galaxy Watch 4 and later, Pixel Watch)
 
-The watch app shows the guided workout: the exercise and set, the values to adjust with + and − (weight,
-reps, time, distance, jump height, effort), Log set, the rest countdown (it buzzes when the rest is over),
+The watch app shows the guided workout, with the next exercises coming up: the exercise and set, the values to adjust with + and − (weight,
+reps, time, distance, jump height, effort; tap a value to type it, hold + or − for big steps), a hold timer
+that buzzes until Done and counts on as −0:10, Log set, the rest countdown (it buzzes when the rest is over),
 Pause, Skip and Stop, and your live heart rate (saved with each set). Runs, walks, rides and sessions can be
 recorded with the watch's sensors: time, GPS distance, steps, heart rate and calories. A **Workout** tile
 shows the exercise and progress at a glance (long-press the watch face or swipe to the tiles to add it).

@@ -100,6 +100,14 @@ fun GuideBar(
                 },
                 style = MaterialTheme.typography.titleSmall,
             )
+            if (state.upcoming.isNotEmpty()) {
+                // What comes after, to get ready and set up the equipment.
+                Text(
+                    text = "Then: " + state.upcoming.joinToString(" → "),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f),
+                )
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (target != null && target.exerciseId != currentExerciseId) {
                     Button(onClick = { onGo(target.exerciseId) }) { Text("Go") }

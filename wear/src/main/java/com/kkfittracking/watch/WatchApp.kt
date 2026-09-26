@@ -1,6 +1,13 @@
 package com.kkfittracking.watch
 
+import android.app.RemoteInput
+import android.view.inputmethod.EditorInfo
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -8,7 +15,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -18,6 +27,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -33,6 +43,8 @@ import androidx.wear.compose.material.PositionIndicator
 import androidx.wear.compose.material.Scaffold
 import androidx.wear.compose.material.Text
 import androidx.wear.compose.material.TimeText
+import androidx.wear.input.RemoteInputIntentHelper
+import androidx.wear.input.wearableExtender
 import com.kkfittracking.wear.WatchState
 import kotlinx.coroutines.delay
 import java.util.Locale
@@ -151,6 +163,17 @@ private fun Guiding(state: WatchState, viewModel: WatchViewModel) {
             overflow = TextOverflow.Ellipsis,
         )
         Text(state.step, style = MaterialTheme.typography.caption1, color = MaterialTheme.colors.secondary)
+        if (state.upcoming.isNotEmpty()) {
+            // What comes after, to get ready and set up the equipment.
+            Text(
+                "Then: " + state.upcoming.joinToString(" → "),
+                style = MaterialTheme.typography.caption3,
+                color = MaterialTheme.colors.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
         RestCountdown(state)
         val tracking = viewModel.health.tracking
         if (tracking != null) {
@@ -168,28 +191,92 @@ private fun Guiding(state: WatchState, viewModel: WatchViewModel) {
     }
 }
 
-/** Steppers for the values this exercise records. */
+/** Steppers for the values this exercise records. Tap a value to type it; hold + or − for bigger steps. */
 @Composable
 private fun Inputs(state: WatchState, viewModel: WatchViewModel) {
     val fields = state.fields
     if (fields.weight) {
-        Stepper("${formatNumber(viewModel.weight)} ${state.weightUnit}", { viewModel.changeWeight(-1) }, { viewModel.changeWeight(1) })
+        Stepper(
+            value = "${formatNumber(viewModel.weight)} ${state.weightUnit}",
+            onChange = { direction, big -> viewModel.changeWeight(direction, big) },
+            typeLabel = "Weight (${state.weightUnit})",
+            onTyped = viewModel::typeWeight,
+        )
     }
     if (fields.reps) {
-        Stepper("${viewModel.reps} ${fields.repsLabel.lowercase()}", { viewModel.changeReps(-1) }, { viewModel.changeReps(1) })
+        Stepper(
+            value = "${viewModel.reps} ${fields.repsLabel.lowercase()}",
+            onChange = { direction, big -> viewModel.changeReps(if (big) direction * 5 else direction) },
+            typeLabel = fields.repsLabel,
+            onTyped = viewModel::typeReps,
+        )
     }
     if (fields.distance) {
-        Stepper("${formatNumber(viewModel.distance)} ${state.distanceUnit}", { viewModel.changeDistance(-1) }, { viewModel.changeDistance(1) })
+        Stepper(
+            value = "${formatNumber(viewModel.distance)} ${state.distanceUnit}",
+            onChange = { direction, big -> viewModel.changeDistance(if (big) direction * 10 else direction) },
+            typeLabel = "Distance (${state.distanceUnit})",
+            onTyped = viewModel::typeDistance,
+        )
     }
     if (fields.height) {
-        Stepper("${formatNumber(viewModel.height)} ${state.heightUnit}", { viewModel.changeHeight(-1) }, { viewModel.changeHeight(1) })
+        Stepper(
+            value = "${formatNumber(viewModel.height)} ${state.heightUnit}",
+            onChange = { direction, big -> viewModel.changeHeight(if (big) direction * 10 else direction) },
+            typeLabel = "Height (${state.heightUnit})",
+            onTyped = viewModel::typeHeight,
+        )
     }
     if (fields.seconds) {
-        Stepper(formatTime(viewModel.seconds * 1000L), { viewModel.changeSeconds(-1) }, { viewModel.changeSeconds(1) })
+        HoldTimer(viewModel)
+        if (viewModel.holdStartedAt == null) {
+            Stepper(
+                value = formatTime(viewModel.seconds * 1000L),
+                onChange = { direction, big -> viewModel.changeSeconds(if (big) direction * 6 else direction) },
+                typeLabel = "Seconds",
+                onTyped = viewModel::typeSeconds,
+            )
+        }
     }
     if (fields.intensity) {
         val effort = viewModel.intensity.takeIf { it > 0 }?.let { "Effort $it/10" } ?: "Effort –"
-        Stepper(effort, { viewModel.changeIntensity(-1) }, { viewModel.changeIntensity(1) })
+        Stepper(effort, onChange = { direction, _ -> viewModel.changeIntensity(direction) })
+    }
+}
+
+/**
+ * A timer for holds: counts down the seconds set above, then buzzes until Done and keeps counting,
+ * shown as −0:10, so a longer hold is timed too. Done puts the time held into the set.
+ */
+@Composable
+private fun HoldTimer(viewModel: WatchViewModel) {
+    val started = viewModel.holdStartedAt
+    if (started == null) {
+        val target = viewModel.seconds
+        WideChip(if (target > 0) "⏱ Start ${formatTime(target * 1000L)} timer" else "⏱ Start timer") { viewModel.startHold() }
+        return
+    }
+    val elapsed = rememberNow() - started
+    val target = viewModel.holdTargetSeconds * 1000L
+    val left = target - elapsed
+    val over = target > 0 && left <= 0
+    Text(
+        text = when {
+            target == 0L -> formatTime(elapsed)
+            over -> "−" + formatTime(-left)
+            else -> formatTime(left + 999)
+        },
+        style = MaterialTheme.typography.display2,
+        color = if (over) MaterialTheme.colors.error else MaterialTheme.colors.onSurface,
+    )
+    if (over) Text("Held ${formatTime(elapsed)}", style = MaterialTheme.typography.caption2)
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Chip(
+            onClick = viewModel::finishHold,
+            label = { Text("✓ Done") },
+            colors = ChipDefaults.primaryChipColors(),
+        )
+        CompactButton(onClick = viewModel::cancelHold) { Text("✕") }
     }
 }
 
@@ -221,14 +308,67 @@ private fun RestCountdown(state: WatchState) {
     }
 }
 
+/** − value +: a tap on − or + moves one step, a long press a big one; a tap on the value opens the keyboard. */
 @Composable
-private fun Stepper(value: String, onMinus: () -> Unit, onPlus: () -> Unit) {
+private fun Stepper(
+    value: String,
+    onChange: (direction: Int, big: Boolean) -> Unit,
+    typeLabel: String? = null,
+    onTyped: (Double) -> Unit = {},
+) {
+    val type = rememberNumberInput(typeLabel.orEmpty(), onTyped)
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        CompactButton(onClick = onMinus) { Text("−") }
-        Text(value, style = MaterialTheme.typography.title3, textAlign = TextAlign.Center, modifier = Modifier.width(84.dp))
-        CompactButton(onClick = onPlus) { Text("+") }
+        StepButton("−", onClick = { onChange(-1, false) }, onLongClick = { onChange(-1, true) })
+        Text(
+            value,
+            style = MaterialTheme.typography.title3,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .width(84.dp)
+                .then(if (typeLabel != null) Modifier.clickable { type() } else Modifier),
+        )
+        StepButton("+", onClick = { onChange(1, false) }, onLongClick = { onChange(1, true) })
     }
 }
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun StepButton(label: String, onClick: () -> Unit, onLongClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(40.dp)
+            .clip(CircleShape)
+            .background(MaterialTheme.colors.primary)
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(label, color = MaterialTheme.colors.onPrimary, style = MaterialTheme.typography.title3)
+    }
+}
+
+/** Opens the watch keyboard (or voice) for a number; "," works as a decimal point. */
+@Composable
+private fun rememberNumberInput(label: String, onValue: (Double) -> Unit): () -> Unit {
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        val data = result.data ?: return@rememberLauncherForActivityResult
+        RemoteInput.getResultsFromIntent(data)?.getCharSequence(NUMBER_KEY)?.toString()
+            ?.trim()?.replace(',', '.')?.toDoubleOrNull()?.let(onValue)
+    }
+    return {
+        val intent = RemoteInputIntentHelper.createActionRemoteInputIntent()
+        val input = RemoteInput.Builder(NUMBER_KEY)
+            .setLabel(label)
+            .wearableExtender {
+                setEmojisAllowed(false)
+                setInputActionType(EditorInfo.IME_ACTION_DONE)
+            }
+            .build()
+        RemoteInputIntentHelper.putRemoteInputsExtra(intent, listOf(input))
+        launcher.launch(intent)
+    }
+}
+
+private const val NUMBER_KEY = "number"
 
 @Composable
 private fun WideChip(label: String, primary: Boolean = false, onClick: () -> Unit) {

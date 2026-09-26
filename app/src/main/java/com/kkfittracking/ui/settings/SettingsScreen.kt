@@ -114,7 +114,7 @@ fun SettingsScreen(
                 .verticalScroll(rememberScrollState()),
         ) {
             SectionTitle("Units")
-            UnitSystem.entries.forEach { unitSystem ->
+            UnitSystem.entries.filter { it.isAppWide }.forEach { unitSystem ->
                 RadioRow(
                     label = unitSystem.label,
                     selected = current.unitSystem == unitSystem,

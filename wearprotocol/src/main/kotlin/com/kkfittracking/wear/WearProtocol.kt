@@ -68,10 +68,14 @@ data class WatchState(
     val distance: Double? = null,
     val height: Double? = null,
     val intensity: Int? = null,
+    /** The exercises after this one, to get ready for. */
+    val upcoming: List<String> = emptyList(),
     val weightUnit: String = "kg",
     val distanceUnit: String = "km",
     val heightUnit: String = "cm",
-    val weightStep: Double = 2.5,
+    /** A tap on + or −; a long press moves [weightBigStep]. */
+    val weightStep: Double = 0.5,
+    val weightBigStep: Double = 5.0,
     val percent: Int = 0,
     /** When the training time started, pauses taken out; null while paused. */
     val trainingSinceMillis: Long? = null,

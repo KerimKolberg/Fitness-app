@@ -41,6 +41,7 @@ import com.kkfittracking.model.parseDecimal
 import com.kkfittracking.model.pendingDrop
 import com.kkfittracking.model.personalRecordSetIds
 import com.kkfittracking.model.recordScore
+import com.kkfittracking.model.roundToPlates
 import com.kkfittracking.timer.IntervalPhase
 import com.kkfittracking.timer.IntervalTimer
 import com.kkfittracking.timer.IntervalTimerState
@@ -167,7 +168,7 @@ class ExerciseLogViewModel(
             dayEntry = entry,
             superset = if (superset.size >= 2) superset else emptyList(),
             exercise = exercise,
-            units = settings.unitSystem,
+            units = exercise?.unitsOr(settings.unitSystem) ?: settings.unitSystem,
             sets = history.firstOrNull { it.date == date }?.sets.orEmpty(),
             previousSession = history.firstOrNull { it.date < date },
             history = history,
@@ -231,6 +232,24 @@ class ExerciseLogViewModel(
         input = value
         errorMessage = null
     }
+
+    /**
+     * Sets this exercise's own weight unit (null: the app's setting). A weight being entered is
+     * converted between kg and lb; machine levels are not weights, so the number stays.
+     */
+    fun setWeightUnit(unit: UnitSystem?) {
+        val state = uiState.value
+        val exercise = state.exercise ?: return
+        val from = state.units
+        val to = unit ?: state.settings.unitSystem
+        parseDecimal(input.weight)?.takeIf { from != UnitSystem.LEVELS && to != UnitSystem.LEVELS }?.let { value ->
+            input = input.copy(weight = formatNumber(roundToPlates(from.weightToKg(value), to).let(to::weightFromKg)))
+        }
+        viewModelScope.launch { exerciseRepository.saveWeightUnit(exercise.id, unit) }
+    }
+
+    /** The time a hold lasted, from the hold timer. */
+    fun setHeldSeconds(total: Int) = updateInput(input.copy(minutes = (total / 60).toString(), seconds = (total % 60).toString()))
 
     fun adjustWeight(direction: Int) = updateInput(input.adjustWeight(direction, uiState.value.units))
 
@@ -300,7 +319,8 @@ class ExerciseLogViewModel(
         guided: Boolean = false,
         target: GuideTarget? = null,
     ) {
-        val settings = state.settings
+        // Drop set weights are worked out in this exercise's own unit (kg, lb or machine levels).
+        val settings = state.settings.copy(unitSystem = state.units)
         // In a guided workout the rest ends with where to go next, and the screen moves there.
         val nextLabel = target?.let { "Next: ${it.name} · ${it.step}" }
         val goTo = target?.exerciseId?.takeIf { guided && it != exerciseId }

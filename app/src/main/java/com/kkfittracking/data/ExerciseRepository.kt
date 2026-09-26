@@ -11,6 +11,7 @@ import com.kkfittracking.model.ExercisePlan
 import com.kkfittracking.model.ExerciseType
 import com.kkfittracking.model.Muscle
 import com.kkfittracking.model.TrainingStyle
+import com.kkfittracking.model.UnitSystem
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.util.UUID
@@ -184,6 +185,9 @@ class ExerciseRepository(
 
     suspend fun saveLinks(id: String, links: List<ExerciseLink>) = dao.updateLinks(id, ExerciseLinks.format(links), now())
 
+    /** The exercise's own weight unit (kg, lb or machine levels), or null to follow the app's setting. */
+    suspend fun saveWeightUnit(id: String, unit: UnitSystem?) = dao.updateWeightUnit(id, unit?.name.orEmpty(), now())
+
     /** Hides the exercise from the library. Its logged sets stay in the workout history. */
     suspend fun deleteExercise(id: String) {
         val existing = dao.getExercise(id) ?: return
@@ -210,5 +214,6 @@ private fun ExerciseEntity.toModel(): Exercise {
         plan = ExercisePlan.fromJson(plan),
         links = ExerciseLinks.parse(links),
         tendons = BuiltInTendons.of(id),
+        weightUnits = UnitSystem.entries.firstOrNull { it.name == weightUnit },
     )
 }

@@ -102,12 +102,13 @@ private fun CategoryDto.toEntity() = CategoryEntity(id, name, color, sortOrder, 
 private fun ExerciseEntity.toDto() = ExerciseDto(
     id = id, name = name, categoryId = categoryId, type = type.name, notes = notes, isCustom = isCustom,
     tempo = tempo, perSide = perSide, createdAt = createdAt, updatedAt = updatedAt, deletedAt = deletedAt,
-    muscles = muscles, style = style, plan = plan, links = links,
+    muscles = muscles, style = style, plan = plan, links = links, weightUnit = weightUnit,
 )
 private fun ExerciseDto.toEntity() = ExerciseEntity(
     id = id, name = name, categoryId = categoryId, type = enumOf<ExerciseType>(type, "exercise type"),
     notes = notes, isCustom = isCustom, createdAt = createdAt, updatedAt = updatedAt, deletedAt = deletedAt,
     tempo = tempo, perSide = perSide, muscles = muscles, style = style, plan = plan, links = links,
+    weightUnit = weightUnit,
 )
 
 private fun WorkoutEntity.toDto() = WorkoutDto(id, date.toString(), comment, createdAt, updatedAt, deletedAt)
@@ -173,7 +174,7 @@ private fun Settings.toDto() = SettingsDto(
 private fun SettingsDto.toSettings(): Settings {
     val defaults = Settings()
     return Settings(
-        unitSystem = UnitSystem.entries.firstOrNull { it.name == unitSystem } ?: defaults.unitSystem,
+        unitSystem = UnitSystem.entries.firstOrNull { it.name == unitSystem && it.isAppWide } ?: defaults.unitSystem,
         restTimerSeconds = restTimerSeconds,
         autoStartRestTimer = autoStartRestTimer,
         themeMode = ThemeMode.entries.firstOrNull { it.name == themeMode } ?: defaults.themeMode,

@@ -11,9 +11,9 @@ import com.kkfittracking.model.SetValues
 import com.kkfittracking.model.Settings
 import com.kkfittracking.model.UnitSystem
 import com.kkfittracking.model.guideSuggestion
-import com.kkfittracking.model.trackKind
 import com.kkfittracking.model.nextStep
 import com.kkfittracking.model.supersetContextOf
+import com.kkfittracking.model.trackKind
 import com.kkfittracking.timer.RestTimer
 import com.kkfittracking.wear.WatchCommand
 import com.kkfittracking.wear.WatchFields
@@ -73,7 +73,8 @@ class WatchBridge(
         val base = WatchState(
             exercisesToday = inputs.exercisesToday,
             weightUnit = units.weightUnit,
-            weightStep = if (units == UnitSystem.METRIC) 2.5 else 5.0,
+            weightStep = fineStep(units),
+            weightBigStep = bigStep(units),
             distanceUnit = units.distanceUnit,
             heightUnit = units.lengthUnit,
             sentAtMillis = now(),
@@ -90,6 +91,8 @@ class WatchBridge(
             SetValues()
         }
         val type = exercise?.exerciseType
+        // The exercise's own weight unit: kg, lb or a machine's levels.
+        val weightUnits = exercise?.weightUnits ?: units
         val restEndsAt = if (inputs.rest.running) now() + restTimer.state.value.remainingSeconds * 1000L else null
         return base.copy(
             active = true,
@@ -108,7 +111,11 @@ class WatchBridge(
                 )
             } ?: WatchFields(),
             track = exercise?.let { trackKind(it.exerciseName, it.exerciseType) },
-            weight = suggestion.weightKg?.let { oneDecimal(units.weightFromKg(it)) },
+            weight = suggestion.weightKg?.let { oneDecimal(weightUnits.weightFromKg(it)) },
+            weightUnit = weightUnits.weightUnit,
+            weightStep = fineStep(weightUnits),
+            weightBigStep = bigStep(weightUnits),
+            upcoming = state.upcoming,
             reps = suggestion.reps,
             seconds = suggestion.durationSeconds,
             distance = suggestion.distanceMeters?.takeIf { type?.usesDistance == true }?.let { oneDecimal(units.distanceFromMeters(it)) },
@@ -159,8 +166,9 @@ class WatchBridge(
         val date = LocalDate.ofEpochDay(command.epochDay)
         val settings = settingsRepository.settings.first()
         val units = settings.unitSystem
+        val weightUnits = workouts.observeDay(date).first().firstOrNull { it.exerciseId == command.exerciseId }?.weightUnits ?: units
         val values = SetValues(
-            weightKg = command.weight?.let { units.weightToKg(it) },
+            weightKg = command.weight?.let { weightUnits.weightToKg(it) },
             reps = command.reps,
             distanceMeters = command.distance?.let { units.distanceToMeters(it) } ?: command.height?.let { units.heightToMeters(it) },
             durationSeconds = command.seconds,
@@ -189,5 +197,11 @@ class WatchBridge(
         const val TAG = "WatchBridge"
 
         fun oneDecimal(value: Double): Double = (value * 10).roundToInt() / 10.0
+
+        /** A tap on the watch's + or −: half kilos, single pounds or levels. */
+        fun fineStep(units: UnitSystem): Double = if (units == UnitSystem.METRIC) 0.5 else 1.0
+
+        /** A long press: 5 kg, 10 lb or 5 levels. */
+        fun bigStep(units: UnitSystem): Double = if (units == UnitSystem.IMPERIAL) 10.0 else 5.0
     }
 }

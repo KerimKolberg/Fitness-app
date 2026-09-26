@@ -71,6 +71,7 @@ data class ExerciseDto(
     val style: String = "",
     val plan: String = "",
     val links: String = "",
+    val weightUnit: String = "",
 )
 
 @Serializable

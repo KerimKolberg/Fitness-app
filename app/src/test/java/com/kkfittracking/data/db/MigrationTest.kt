@@ -149,6 +149,17 @@ class MigrationTest {
     }
 
     @Test
+    fun fromVersion6() = runTest {
+        createOldDatabase(6) { seedVersion1Rows() }
+        val db = openCurrent()
+
+        val exercise = ExerciseRepository(db.exerciseDao()).getExercise("e")!!
+        // Exercises follow the app's unit until one is chosen for them.
+        assertNull(exercise.weightUnits)
+        assertNull(WorkoutRepository(db).observeDay(day).first().single().weightUnits)
+    }
+
+    @Test
     fun fromVersion5() = runTest {
         createOldDatabase(5) {
             seedVersion1Rows()

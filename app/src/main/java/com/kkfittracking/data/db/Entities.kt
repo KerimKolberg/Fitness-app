@@ -53,6 +53,11 @@ data class ExerciseEntity(
     @ColumnInfo(defaultValue = "") val plan: String = "",
     /** Video and page links, one per line (see [com.kkfittracking.model.ExerciseLinks], added in v5). */
     @ColumnInfo(defaultValue = "") val links: String = "",
+    /**
+     * This exercise's own weight unit, a [com.kkfittracking.model.UnitSystem] name (kg, lb or machine
+     * levels); empty follows the app's setting (added in v7).
+     */
+    @ColumnInfo(defaultValue = "") val weightUnit: String = "",
 )
 
 @Entity(tableName = "workouts", indices = [Index("date")])

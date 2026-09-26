@@ -9,6 +9,7 @@ import com.kkfittracking.model.GuideSummary
 import com.kkfittracking.model.GuideTarget
 import com.kkfittracking.model.dayCompletion
 import com.kkfittracking.model.guideTarget
+import com.kkfittracking.model.upcomingExercises
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,6 +30,8 @@ data class GuideState(
     /** Where to go now; null once everything planned is done (or skipped). */
     val target: GuideTarget? = null,
     val completion: DayCompletion = DayCompletion(emptyList()),
+    /** The exercises after [target], to get ready for. */
+    val upcoming: List<String> = emptyList(),
 ) {
     val isActive: Boolean get() = session != null
 
@@ -56,7 +59,14 @@ class GuidedWorkout(
                 flowOf(GuideState())
             } else {
                 combine(workoutRepository.observeDay(LocalDate.ofEpochDay(current.epochDay)), settingsRepository.settings) { day, settings ->
-                    GuideState(current, day, guideTarget(day, current.skipped, settings), dayCompletion(day))
+                    val target = guideTarget(day, current.skipped, settings)
+                    GuideState(
+                        session = current,
+                        day = day,
+                        target = target,
+                        completion = dayCompletion(day),
+                        upcoming = target?.let { upcomingExercises(day, it, current.skipped, settings) }.orEmpty(),
+                    )
                 }
             }
         }

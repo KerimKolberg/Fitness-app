@@ -8,23 +8,35 @@ enum class UnitSystem(
     val weightStep: Double,
 ) {
     METRIC("Metric (kg, km)", "kg", "km", 2.5),
-    IMPERIAL("Imperial (lb, mi)", "lb", "mi", 5.0);
+    IMPERIAL("Imperial (lb, mi)", "lb", "mi", 5.0),
 
-    fun weightFromKg(kg: Double): Double = if (this == METRIC) kg else kg / KG_PER_LB
+    /**
+     * For one exercise only: a machine's own levels (pin or stack numbers), which are neither kg nor
+     * lb. The number is kept as it is; distances stay metric.
+     */
+    LEVELS("Machine levels", "lvl", "km", 1.0),
+    ;
 
-    fun weightToKg(value: Double): Double = if (this == METRIC) value else value * KG_PER_LB
+    /** A choice for the whole app (levels are only for single machines). */
+    val isAppWide: Boolean get() = this != LEVELS
+
+    private val imperial: Boolean get() = this == IMPERIAL
+
+    fun weightFromKg(kg: Double): Double = if (imperial) kg / KG_PER_LB else kg
+
+    fun weightToKg(value: Double): Double = if (imperial) value * KG_PER_LB else value
 
     fun distanceFromMeters(meters: Double): Double =
-        if (this == METRIC) meters / METERS_PER_KM else meters / METERS_PER_MILE
+        if (imperial) meters / METERS_PER_MILE else meters / METERS_PER_KM
 
     fun distanceToMeters(value: Double): Double =
-        if (this == METRIC) value * METERS_PER_KM else value * METERS_PER_MILE
+        if (imperial) value * METERS_PER_MILE else value * METERS_PER_KM
 
-    val lengthUnit: String get() = if (this == METRIC) "cm" else "in"
+    val lengthUnit: String get() = if (imperial) "in" else "cm"
 
-    fun lengthFromCm(cm: Double): Double = if (this == METRIC) cm else cm / CM_PER_INCH
+    fun lengthFromCm(cm: Double): Double = if (imperial) cm / CM_PER_INCH else cm
 
-    fun lengthToCm(value: Double): Double = if (this == METRIC) value else value * CM_PER_INCH
+    fun lengthToCm(value: Double): Double = if (imperial) value * CM_PER_INCH else value
 
     /** Jump height or distance, stored in meters, shown in cm or inches. */
     fun heightFromMeters(meters: Double): Double = lengthFromCm(meters * 100)

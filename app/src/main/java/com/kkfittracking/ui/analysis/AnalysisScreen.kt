@@ -96,7 +96,7 @@ fun AnalysisScreen(onBack: () -> Unit, viewModel: AnalysisViewModel = viewModel(
                     } else {
                         ExerciseChooser(exercise, state.logged) { exerciseId = it.id }
                         Column(Modifier.weight(1f)) {
-                            ProgressTab(state.histories[exercise.id].orEmpty().within(range), exercise.type, state.units)
+                            ProgressTab(state.histories[exercise.id].orEmpty().within(range), exercise.type, exercise.unitsOr(state.units))
                         }
                     }
                 }

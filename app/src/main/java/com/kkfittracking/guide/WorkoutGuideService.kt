@@ -163,7 +163,8 @@ class WorkoutGuideService : Service() {
                     )
                     else -> NotificationContent(
                         title = "${target.name} · ${target.step}",
-                        text = "Exercise ${target.position} of ${target.of} · $done",
+                        text = "Exercise ${target.position} of ${target.of} · $done" +
+                            state.upcoming.takeIf { it.isNotEmpty() }?.let { "\nThen: " + it.joinToString(" → ") }.orEmpty(),
                         epochDay = session.epochDay, exerciseId = target.exerciseId, percent = state.completion.percent,
                         paused = false, canSkip = !target.isDrop, startedAtMillis = startedAt,
                     )

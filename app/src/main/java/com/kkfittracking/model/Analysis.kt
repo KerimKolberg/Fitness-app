@@ -33,7 +33,7 @@ fun allRecords(
     units: UnitSystem,
 ): List<ExerciseRecord> = exercises.mapNotNull { exercise ->
     val history = histories[exercise.id].orEmpty()
-    personalRecords(history, exercise.type, units).firstOrNull()?.let { ExerciseRecord(exercise, it, history.size) }
+    personalRecords(history, exercise.type, exercise.unitsOr(units)).firstOrNull()?.let { ExerciseRecord(exercise, it, history.size) }
 }.sortedWith(compareByDescending<ExerciseRecord> { it.record.date }.thenBy { it.exercise.name })
 
 /** The history of every exercise at once, newest session first, from sets logged on a date. */

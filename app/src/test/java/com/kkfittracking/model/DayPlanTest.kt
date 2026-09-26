@@ -150,4 +150,20 @@ class DayPlanTest {
         assertEquals(listOf(2, 2), move.toAdd.filter { it.supersetId == "s" }.map { it.supersetRounds })
         assertTrue(unfinishedPart(listOf(exercise("bench", ExercisePlan(sets = 1), done = 1))).toAdd.isEmpty())
     }
+
+    @Test
+    fun whatComesNextToGetReady() {
+        val day = listOf(
+            exercise("bench", superset = "s", rounds = 2),
+            exercise("row", superset = "s", rounds = 2),
+            exercise("curl", ExercisePlan(sets = 2)),
+            exercise("plank", ExercisePlan(sets = 1)),
+            exercise("stretch", ExercisePlan(sets = 1)),
+        )
+        val now = guideTarget(day)!!
+        assertEquals("bench", now.exerciseId)
+        // The row of the same superset first, then the next exercises of the day.
+        assertEquals(listOf("row", "curl", "plank"), upcomingExercises(day, now))
+        assertEquals(listOf("row", "plank"), upcomingExercises(day, now, skipped = setOf("curl"), count = 2))
+    }
 }

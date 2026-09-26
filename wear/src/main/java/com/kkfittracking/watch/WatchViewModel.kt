@@ -76,6 +76,16 @@ class WatchViewModel(application: Application) : AndroidViewModel(application), 
     var note by mutableStateOf<String?>(null)
         private set
 
+    /** When the running hold started, or null. */
+    var holdStartedAt by mutableStateOf<Long?>(null)
+        private set
+
+    /** The seconds to hold; 0 counts up with no target. */
+    var holdTargetSeconds by mutableStateOf(0)
+        private set
+
+    private var holdJob: Job? = null
+
     /** Which set the entered values belong to, so a new set starts from its own suggestion. */
     private var inputKey: String? = null
     private var restJob: Job? = null
@@ -145,6 +155,7 @@ class WatchViewModel(application: Application) : AndroidViewModel(application), 
         if (old != null && new.sentAtMillis < old.sentAtMillis) return
         state = new
         WatchStore.saveState(getApplication(), WearJson.encode(new))
+        WatchSession.update(getApplication(), new)
         updateHeartRate()
         connection = Connection.CONNECTED
         val key = "${new.epochDay}|${new.exerciseId}|${new.step}"
@@ -157,6 +168,7 @@ class WatchViewModel(application: Application) : AndroidViewModel(application), 
             height = new.height ?: 0.0
             intensity = new.intensity ?: 0
             trackedNote = ""
+            cancelHold()
             // A new exercise: a short buzz to look at the watch.
             if (old?.exerciseId != null && new.exerciseId != null && old.exerciseId != new.exerciseId) vibrate(0, 150)
         }
@@ -176,9 +188,63 @@ class WatchViewModel(application: Application) : AndroidViewModel(application), 
         }
     }
 
-    fun changeWeight(direction: Int) {
-        val step = state?.weightStep ?: 2.5
+    /** A tap moves the fine step (0.5 kg, 1 lb, 1 level); a long press the big one (5 kg, 10 lb, 5 levels). */
+    fun changeWeight(direction: Int, big: Boolean = false) {
+        val step = if (big) state?.weightBigStep ?: 5.0 else state?.weightStep ?: 0.5
         weight = (((weight + direction * step) * 100).roundToInt() / 100.0).coerceAtLeast(0.0)
+    }
+
+    // Typed values, from the watch keyboard.
+
+    fun typeWeight(value: Double) {
+        weight = value.coerceAtLeast(0.0)
+    }
+
+    fun typeReps(value: Double) {
+        reps = value.roundToInt().coerceAtLeast(0)
+    }
+
+    fun typeSeconds(value: Double) {
+        seconds = value.roundToInt().coerceAtLeast(0)
+    }
+
+    fun typeDistance(value: Double) {
+        distance = value.coerceAtLeast(0.0)
+    }
+
+    fun typeHeight(value: Double) {
+        height = value.coerceAtLeast(0.0)
+    }
+
+    // The hold timer: counts down the seconds to hold, then keeps buzzing and counts on (shown as −0:10)
+    // until Done, so a longer hold is timed too.
+
+    fun startHold() {
+        val now = System.currentTimeMillis()
+        holdTargetSeconds = seconds
+        holdStartedAt = now
+        holdJob?.cancel()
+        holdJob = viewModelScope.launch {
+            if (holdTargetSeconds <= 0) return@launch
+            delay(holdTargetSeconds * 1000L)
+            while (holdStartedAt != null) {
+                vibrate(0, 500)
+                delay(1_500)
+            }
+        }
+    }
+
+    /** Ends the hold: the time held (target plus any extra) goes into the set, ready to log. */
+    fun finishHold() {
+        val started = holdStartedAt ?: return
+        seconds = ((System.currentTimeMillis() - started) / 1000).toInt()
+        cancelHold()
+    }
+
+    fun cancelHold() {
+        holdJob?.cancel()
+        holdJob = null
+        holdStartedAt = null
     }
 
     fun changeReps(direction: Int) {

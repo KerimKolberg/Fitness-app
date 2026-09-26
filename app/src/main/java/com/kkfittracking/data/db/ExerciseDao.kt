@@ -54,4 +54,7 @@ interface ExerciseDao {
 
     @Query("UPDATE exercises SET links = :links, updatedAt = :now WHERE id = :id")
     suspend fun updateLinks(id: String, links: String, now: Long)
+
+    @Query("UPDATE exercises SET weightUnit = :unit, updatedAt = :now WHERE id = :id")
+    suspend fun updateWeightUnit(id: String, unit: String, now: Long)
 }

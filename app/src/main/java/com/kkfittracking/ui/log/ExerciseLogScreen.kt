@@ -5,6 +5,7 @@ package com.kkfittracking.ui.log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -28,6 +29,8 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.FilterChip
@@ -374,6 +377,11 @@ private fun TrackTab(
                         onIncrement = { viewModel.adjustWeight(1) },
                         keyboardType = KeyboardType.Decimal,
                     )
+                    WeightUnitChooser(
+                        current = state.exercise?.weightUnits,
+                        appUnits = state.settings.unitSystem,
+                        onChoose = viewModel::setWeightUnit,
+                    )
                 }
                 if (type.usesReps) {
                     StepperField(
@@ -423,6 +431,11 @@ private fun TrackTab(
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         )
+                    }
+                    // Holds and timed sets: time them here, the result fills the fields above.
+                    if (type == ExerciseType.TIME || type == ExerciseType.TIME_WEIGHT) {
+                        val planned = (input.minutes.toIntOrNull() ?: 0) * 60 + (input.seconds.toIntOrNull() ?: 0)
+                        HoldTimerCard(targetSeconds = planned, onDone = viewModel::setHeldSeconds)
                     }
                 }
                 if (type.usesIntensity) {
@@ -643,6 +656,42 @@ private fun SupersetBar(members: List<DayExercise>, currentId: String, onSelect:
                     selected = member.exerciseId == currentId,
                     onClick = { if (member.exerciseId != currentId) onSelect(member.exerciseId) },
                     label = { Text("${index + 1}. ${member.exerciseName}") },
+                )
+            }
+        }
+    }
+}
+
+/**
+ * This exercise's weight unit: kg, lb, or a machine's own levels (pin numbers), for machines that
+ * show neither. Remembered per exercise.
+ */
+@Composable
+private fun WeightUnitChooser(current: UnitSystem?, appUnits: UnitSystem, onChoose: (UnitSystem?) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        TextButton(onClick = { open = true }) {
+            Text(
+                "Unit: " + when (current) {
+                    null -> "${appUnits.weightUnit} (app setting)"
+                    UnitSystem.LEVELS -> "machine levels"
+                    else -> current.weightUnit
+                } + " ▾",
+            )
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            listOf(
+                null to "App setting (${appUnits.weightUnit})",
+                UnitSystem.METRIC to "kg",
+                UnitSystem.IMPERIAL to "lb",
+                UnitSystem.LEVELS to "Machine levels (pin or stack number)",
+            ).forEach { (unit, label) ->
+                DropdownMenuItem(
+                    text = { Text(label) },
+                    onClick = {
+                        open = false
+                        onChoose(unit)
+                    },
                 )
             }
         }

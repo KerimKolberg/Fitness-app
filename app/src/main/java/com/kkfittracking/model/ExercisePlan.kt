@@ -79,13 +79,19 @@ data class ExercisePlan(
 
 /** Rounds a weight (kg) to what plates and dumbbells allow: 0.5 kg or 1 lb. Never below zero. */
 fun roundToPlates(kg: Double, units: UnitSystem): Double {
-    val step = if (units == UnitSystem.METRIC) 0.5 else 1.0
+    val step = if (units == UnitSystem.METRIC) 0.5 else 1.0 // lb and machine levels go in whole steps
     val rounded = ((units.weightFromKg(kg) / step).roundToInt() * step).coerceAtLeast(0.0)
     return units.weightToKg(rounded)
 }
 
 /** The fixed drop used when none was chosen: 5 kg, or 10 lb. Returns kg. */
-fun defaultDropAmountKg(units: UnitSystem): Double = units.weightToKg(if (units == UnitSystem.METRIC) 5.0 else 10.0)
+fun defaultDropAmountKg(units: UnitSystem): Double = units.weightToKg(
+    when (units) {
+        UnitSystem.METRIC -> 5.0
+        UnitSystem.IMPERIAL -> 10.0
+        UnitSystem.LEVELS -> 1.0
+    },
+)
 
 /** The weight of the drop after a set of [previousKg], rounded to real plates. */
 fun ExercisePlan.nextDropKg(previousKg: Double, defaultPercent: Int, units: UnitSystem): Double =
